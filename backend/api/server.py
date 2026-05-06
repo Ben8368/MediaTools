@@ -260,17 +260,19 @@ async def shutdown_server(request: Request):
 
 @app.post("/api/system/restart")
 async def restart_server(request: Request):
-    """Gracefully shutdown the server for restart. The frontend should poll
-    for the server to come back online. In dev mode with --reload, file changes
-    will trigger automatic restart. In production, use a process manager."""
+    """Gracefully shutdown the server for restart. The watchdog in the startup
+    script will detect exit code 3 and automatically restart the process."""
     client_host = request.client.host if request.client else ""
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
     import signal
+    import app
 
     def _delayed_restart():
         time.sleep(0.5)
+        # Signal restart request before shutdown
+        app.request_restart()
         # Use SIGTERM for graceful shutdown to properly release ports
         os.kill(os.getpid(), signal.SIGTERM)
 

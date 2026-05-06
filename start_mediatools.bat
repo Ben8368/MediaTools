@@ -21,9 +21,21 @@ if "%ERRORLEVEL%"=="10" goto OPEN_BROWSER
 if "%ERRORLEVEL%"=="20" goto PORT_BUSY
 if errorlevel 1 goto FAILED
 
-echo [2/3] Launching backend in background...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $pidFile=Join-Path $root '%PID_FILE%'; $logFile=Join-Path $root '%LOG_FILE%'; $errFile=Join-Path $root '%ERR_FILE%'; Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue; $proc=Start-Process -FilePath 'python' -ArgumentList 'app.py' -WorkingDirectory $root -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Start-Sleep -Seconds 2; if ($proc.HasExited) { Write-Host \"MediaTools backend failed to start. ExitCode=$($proc.ExitCode). See %ERR_FILE%\"; exit 1 }; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"MediaTools backend started. PID=$($proc.Id)\""
-if errorlevel 1 goto FAILED
+echo [2/3] Launching backend with watchdog...
+:WATCHDOG_LOOP
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $pidFile=Join-Path $root '%PID_FILE%'; $logFile=Join-Path $root '%LOG_FILE%'; $errFile=Join-Path $root '%ERR_FILE%'; Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue; $proc=Start-Process -FilePath 'python' -ArgumentList 'app.py' -WorkingDirectory $root -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"MediaTools backend started. PID=$($proc.Id)\"; Start-Sleep -Seconds 2; if ($proc.HasExited) { Write-Host \"MediaTools backend failed to start. ExitCode=$($proc.ExitCode). See %ERR_FILE%\"; exit 1 }; $proc.WaitForExit(); exit $proc.ExitCode"
+set EXIT_CODE=%ERRORLEVEL%
+if "%EXIT_CODE%"=="3" (
+    echo Backend requested restart. Restarting in 2 seconds...
+    timeout /t 2 /nobreak >nul
+    goto WATCHDOG_LOOP
+)
+if "%EXIT_CODE%"=="0" goto WATCHDOG_EXIT
+goto FAILED
+
+:WATCHDOG_EXIT
+echo Backend exited normally.
+exit /b 0
 
 :OPEN_BROWSER
 echo [3/3] Opening WebUI...
@@ -35,7 +47,8 @@ echo PID file: %PID_FILE%
 echo Log file: %LOG_FILE%
 echo Error log: %ERR_FILE%
 echo.
-exit /b 0
+echo Press Ctrl+C to stop the server.
+goto WATCHDOG_LOOP
 
 :PORT_BUSY
 echo.
