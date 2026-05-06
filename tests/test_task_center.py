@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from services.task_center import TaskCenter, TaskStatus, TaskType
+from backend.services.task_center import TaskCenter, TaskStatus, TaskType
 
 
 class TestTaskCenter(unittest.TestCase):

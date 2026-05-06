@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from services.api_server import app
-from services.task_center import TaskCenter, TaskStatus, TaskType
+from backend.api.server import app
+from backend.services.task_center import TaskCenter, TaskStatus, TaskType
 
 
 class TestApiTaskCenterRoutes(unittest.TestCase):

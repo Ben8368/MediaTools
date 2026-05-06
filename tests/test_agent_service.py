@@ -7,8 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 
-import services.agent as agent
-from services.agent import MediaAgentService
+import backend.services.agent as agent
+from backend.agent.service import MediaAgentService
 
 
 class _FakeToolCall:

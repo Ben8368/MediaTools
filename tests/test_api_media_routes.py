@@ -7,8 +7,8 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.api_media_routes import create_router
-from services.task_center import TaskCenter
+from backend.services.api_media_routes import create_router
+from backend.services.task_center import TaskCenter
 
 
 class FakeJobRegistry:

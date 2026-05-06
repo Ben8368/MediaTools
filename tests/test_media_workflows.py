@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import services.media_workflows as media_workflows
+import backend.services.media_workflows as media_workflows
 
 
 def workspace(tmp_path):

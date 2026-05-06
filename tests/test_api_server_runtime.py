@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi.responses import JSONResponse
 
-from services.api_server_runtime import (
+from backend.services.api_server_runtime import (
     JobRegistry,
     _is_loopback_address,
     accept_authorized_websocket,

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.api_files_routes import create_router
+from backend.services.api_files_routes import create_router
 
 
 class TestApiFilesRoutes(unittest.TestCase):

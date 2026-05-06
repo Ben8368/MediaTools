@@ -2,7 +2,7 @@ import threading
 import unittest
 
 from services import photoshop_state
-from services.photoshop_state import PhotoshopExecutionState, cancel_execution, get_execution_state
+from backend.services.photoshop_state import PhotoshopExecutionState, cancel_execution, get_execution_state
 
 
 class TestPhotoshopState(unittest.TestCase):

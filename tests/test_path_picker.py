@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from services.path_picker import get_path_picker_roots, list_path_picker_directory
+from backend.services.path_picker import get_path_picker_roots, list_path_picker_directory
 
 
 def _workspace(root: Path) -> dict[str, str]:

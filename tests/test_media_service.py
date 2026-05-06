@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from services.media import fetch_video_info
+from backend.services.media import fetch_video_info
 
 
 class TestMediaService(unittest.TestCase):

@@ -1,354 +1,277 @@
-# MediaTools 当前架构
+# MediaTools 架构文档
 
-本文只描述当前代码库中的真实结构。历史方案、第三方工具原始文档和实验设计从 `docs/README.md` 进入。
+本文档描述 MediaTools 项目的当前架构设计。
 
 ## 总览
 
+MediaTools 是一个综合媒体处理平台，包含前端 WebUI、后端 CLI 工具和 AI Agent。
+
 ```text
-用户入口
-├── Web: app.py -> services/api_server.py -> frontend/dist
-└── CLI: main.py -> modules/*/cli.py
+入口层
+├── app.py (Web 服务)
+├── cli/main.py (CLI 工具)
+└── backend/api/server.py (API 服务器)
 
-后端服务层
-├── services/api_*_routes.py
-├── services/media_*.py
-├── services/task_center.py
-├── services/agent*.py
-├── services/workspace.py
-└── services/*_runtime.py
+后端层
+├── backend/config/ - 配置管理
+├── backend/agent/ - AI Agent 层
+├── backend/api/ - API 层
+│   ├── server.py - FastAPI 应用
+│   ├── routes/ - API 路由（15个）
+│   ├── runtime.py - 运行时管理
+│   └── models.py - 数据模型
+├── backend/services/ - 业务服务层
+│   ├── media/ - 媒体处理服务
+│   ├── runtime/ - 运行时管理
+│   └── ... - 其他服务
+└── modules/ - 功能模块层
 
-能力模块层
-├── modules/fetcher
-├── modules/encoder
-├── modules/decryptor
-├── modules/assets
-├── modules/workbench
-├── modules/adobe
-├── modules/photoshop
-├── modules/auditor
-├── modules/generator
-└── modules/editor
+基础设施层
+├── core/ - 核心工具（FFmpeg、日志、认证）
+├── adapters/ - 外部工具适配器
+├── patches/ - 工具补丁系统
+└── vendor/ - 第三方代码
 
-基础和外部依赖
-├── core
-├── adapters
-├── patches
-├── vendor
-├── bin
-├── runtime
-└── projects
+前端层
+└── frontend/ - React + TypeScript + Vite
 ```
 
-设计原则：
+## 设计原则
 
-- `services/` 是 Web API 和跨模块业务流程的主层。
-- `modules/` 保持可 CLI 调用的底层能力。
-- `adapters/` 隔离外部软件、第三方工具和本机运行时差异。
-- `vendor/` 放第三方源码或嵌入工具，不作为自有业务代码入口。
-- `runtime/` 和 `projects/` 保存运行状态与工作产物，通常不提交。
+1. **清晰的分层架构**
+   - 入口层：CLI/API/Agent
+   - 业务层：Services
+   - 功能层：Modules
+   - 基础层：Core/Adapters
 
-## 入口层
+2. **Agent 独立成层**
+   - `backend/agent/` 独立管理 AI 能力
+   - 包含 service、tools、routes 等完整功能
 
-### Web 服务
+3. **API 路由集中**
+   - 所有 API 路由集中在 `backend/api/routes/`
+   - 易于查找和管理
 
-入口文件：`app.py`
+4. **模块可独立调用**
+   - 每个 `modules/` 下的模块都有独立的 CLI
+   - 可被 CLI、API、Agent 任意调用
 
-职责：
+5. **前端完全独立**
+   - 独立的构建流程
+   - 通过 HTTP API 与后端通信
 
-- 读取 `GUI_SERVER_NAME`、`GUI_SERVER_PORT`、`API_SECRET_KEY`
-- 配置 Windows 事件循环兼容处理
-- 通过 uvicorn 启动 `services/api_server.py`
-- 默认服务地址为 `http://127.0.0.1:7860`
+## 目录结构
 
-非本机绑定时，如果未设置 `API_SECRET_KEY`，启动会拒绝继续，避免无认证暴露 API。
+### backend/ - 后端代码
 
-### API 应用
-
-核心文件：`services/api_server.py`
-
-职责：
-
-- 创建 FastAPI 应用
-- 挂载 API 路由
-- 服务前端静态资源
-- 管理运行时、任务中心、日志和错误响应
-
-路由主要拆分在：
-
-- `services/api_media_routes.py`
-- `services/api_assets_routes.py`
-- `services/api_files_routes.py`
-- `services/api_filebrowser_routes.py`
-- `services/api_workbench_routes.py`
-- `services/api_workspace_routes.py`
-- `services/api_task_center.py`
-- `services/api_photoshop_routes.py`
-- `services/api_adobe_routes.py`
-- `services/api_auditor_routes.py`
-- `services/api_system_routes.py`
-- `services/agent_direct_routes.py`
-
-### 前端
-
-目录：`frontend/`
-
-技术栈：
-
-- React 18
-- TypeScript
-- Vite
-- Zustand
-- i18next
-
-当前界面是桌面式 Web 工作台，主要应用包括下载器、工作台、文件管理、AI 助手、Photoshop、AE、审核、设置等。
-
-生产构建输出在 `frontend/dist/`，由后端服务。开发时运行：
-
-```powershell
-cd frontend
-npm run dev
+```
+backend/
+├── config/              # 配置管理
+│   ├── __init__.py
+│   └── settings.py      # 全局配置
+│
+├── agent/               # AI Agent 层
+│   ├── service.py       # Agent 服务
+│   ├── tools.py         # Agent 工具实现
+│   ├── tool_specs.py    # 工具规范定义
+│   ├── helpers.py       # 辅助函数
+│   └── routes.py        # Agent 路由
+│
+├── api/                 # API 层
+│   ├── server.py        # FastAPI 应用
+│   ├── setup.py         # 路由配置
+│   ├── runtime.py       # 运行时管理
+│   ├── models.py        # Pydantic 模型
+│   └── routes/          # API 路由
+│       ├── media.py     # 媒体处理
+│       ├── workspace.py # 工作区管理
+│       ├── workbench.py # 工作台
+│       ├── assets.py    # 素材管理
+│       ├── files.py     # 文件操作
+│       ├── photoshop.py # Photoshop 自动化
+│       ├── adobe.py     # Adobe 通用
+│       ├── auditor.py   # 审核
+│       ├── wechat.py    # 微信朋友圈
+│       ├── system.py    # 系统信息
+│       ├── filebrowser.py # 文件浏览器
+│       ├── browser.py   # 浏览器管理
+│       ├── path_picker.py # 路径选择
+│       ├── task_center.py # 任务中心
+│       └── log.py       # 日志查看
+│
+└── services/            # 业务服务层
+    ├── media/           # 媒体服务
+    │   ├── core.py      # 兼容门面
+    │   ├── fetch.py     # 视频获取
+    │   ├── encoding.py  # 转码切片
+    │   ├── decrypt.py   # 解密
+    │   ├── workflows.py # 组合工作流
+    │   └── helpers.py   # 辅助函数
+    ├── runtime/         # 运行时管理
+    │   ├── editor.py    # 编辑器运行时
+    │   └── filebrowser.py # 文件浏览器运行时
+    ├── workspace.py     # 工作区管理
+    ├── workbench.py     # 工作台服务
+    ├── task_center.py   # 任务中心
+    ├── photoshop.py     # Photoshop 服务
+    ├── auditor.py       # 审核服务
+    └── ... # 其他服务
 ```
 
-### CLI
+### cli/ - CLI 入口
 
-入口文件：`main.py`
+```
+cli/
+├── __init__.py
+└── main.py              # CLI 主入口
+```
 
-规范模块：
+### modules/ - 功能模块
 
-- `fetcher`
-- `encoder`
-- `decryptor`
-- `assets`
-- `workbench`
-- `editor`
-- `photoshop`
-- `auditor`
-- `generator`
+```
+modules/
+├── fetcher/             # 视频下载、字幕处理
+├── encoder/             # 转码、切片
+├── decryptor/           # 解密
+├── assets/              # 素材管理
+├── workbench/           # 工作台
+├── editor/              # CapCut 集成
+├── photoshop/           # Photoshop 自动化
+├── adobe/               # Adobe 通用
+├── auditor/             # 审核
+├── generator/           # 素材生成
+└── filebrowser/         # 文件浏览器
+```
 
-兼容旧别名：
+### frontend/ - 前端
 
-- `fetch` -> `fetcher`
-- `encode` -> `encoder`
-- `decrypt` -> `decryptor`
-- `edit` -> `editor`
-
-CLI 负责把命令分发到 `modules/*/cli.py`，适合批处理和调试。
-
-## 服务层
-
-`services/` 是当前后端的主要维护边界。
-
-### 媒体流程
-
-核心文件：
-
-- `services/media.py`
-- `services/media_fetch.py`
-- `services/media_encoding.py`
-- `services/media_decrypt.py`
-- `services/media_workflows.py`
-- `services/media_helpers.py`
-
-职责：
-
-- 视频信息探测
-- 下载和字幕获取
-- 转码、切片、音频提取
-- 下载 -> 字幕分析 -> 自动切片的组合流程
-- 解密任务封装
-- 输出摘要和日志组织
-
-### 工作区和工作台
-
-核心文件：
-
-- `services/workspace.py`
-- `services/workbench.py`
-- `services/path_picker.py`
-
-职责：
-
-- 当前工作区读取和设置
-- 工作区目录展示
-- 视频/字幕/导出结果枚举
-- 字幕分析和片段建议
-- clips 批量导出
-- 路径选择和安全校验
-
-### 任务中心和系统状态
-
-核心文件：
-
-- `services/task_center.py`
-- `services/api_task_center.py`
-- `services/system_monitor.py`
-- `services/log_buffer.py`
-
-职责：
-
-- 长任务状态跟踪
-- 任务日志输出
-- 系统状态和工具状态检查
-- 前端轮询数据模型
-
-### AI 助手
-
-核心文件：
-
-- `services/agent.py`
-- `services/agent_tools.py`
-- `services/agent_tool_specs.py`
-- `services/agent_helpers.py`
-- `services/agent_direct_routes.py`
-
-职责：
-
-- OpenAI 兼容接口封装
-- 工具定义和工具调用
-- 常见媒体任务的本地直连路由
-- 下载、分析、切片、解密、扫描等执行型任务编排
-
-### 外部运行时
-
-核心文件：
-
-- `services/editor_runtime.py`
-- `services/filebrowser_runtime.py`
-- `services/photoshop.py`
-- `services/photoshop_state.py`
-- `services/auditor.py`
-- `services/wechat_moments.py`
-
-职责：
-
-- 管理 capcut-mate/filebrowser 等外部进程
-- 封装 Photoshop/审核/生成类能力
-- 维护运行状态、PID、日志和健康检查
-
-## 模块层
-
-`modules/` 中的模块应尽量保持可独立 CLI 调用。
-
-| 模块 | 职责 |
-|---|---|
-| `modules/fetcher` | yt-dlp 管理、视频下载、字幕处理、字幕分析 |
-| `modules/encoder` | FFmpeg 转码、音频提取、单段切片 |
-| `modules/decryptor` | 解密工具封装 |
-| `modules/assets` | 素材扫描、搜索、预览、文件管理 |
-| `modules/workbench` | 字幕分析和 clips 导出 CLI |
-| `modules/editor` | capcut-mate HTTP 适配 |
-| `modules/adobe` | Adobe 通用、Photoshop、After Effects 自动化 |
-| `modules/photoshop` | Photoshop CLI 入口 |
-| `modules/auditor` | 素材审核 CLI 入口 |
-| `modules/generator` | 截图、朋友圈图片等素材生成 |
-| `modules/filebrowser` | filebrowser 服务封装 |
-
-## 外部工具和目录
-
-### `adapters/`
-
-封装外部工具和本机软件运行时，例如：
-
-- Adobe Runtime
-- Photoshop Runtime
-- After Effects Runtime
-- Auditor Runtime
-- WeChat Moments Runtime
-- external tools
-
-### `core/`
-
-通用基础能力：
-
-- FFmpeg 路径和执行封装
-- 日志
-- 鉴权
-- 输入校验
-
-### `patches/`
-
-维护外部工具补丁规则和加载逻辑。补丁配置加载顺序通常是：
-
-1. `patches/tool_patches.json`
-2. `runtime/tool_patches.json`
-3. 当前工作区的 `manifests/tool_patches.json`
-
-后加载规则可覆盖先加载规则。
-
-### `vendor/`
-
-第三方项目和嵌入工具，例如 yt-dlp、filebrowser、capcut-mate、Adobe 相关桥接代码等。这里的 README 和 LICENSE 主要属于上游项目。
-
-### `bin/`
-
-本地二进制工具目录，例如：
-
-- `ffmpeg`
-- `ffprobe`
-- `yt-dlp`
-- `um-cli`
-
-### `runtime/`
-
-运行时状态目录，例如：
-
-- 当前工作区配置
-- PID 文件
-- 运行日志
-- 临时数据库或 CSV
-
-### `projects/`
-
-工作区和用户产物目录。
+```
+frontend/
+├── src/
+│   ├── main.tsx         # 入口
+│   ├── App.tsx          # 主应用
+│   ├── apps/            # 应用模块
+│   ├── components/      # 通用组件
+│   ├── stores/          # 状态管理（Zustand）
+│   ├── services/        # API 调用
+│   └── i18n/            # 国际化
+└── dist/                # 构建输出
+```
 
 ## 主要数据流
 
-### 下载到切片
+### 1. 下载到切片流程
 
 ```text
 Frontend / AI Assistant / CLI
--> services/api_media_routes.py
--> services/media_workflows.py
--> services/media_fetch.py
--> modules/fetcher
--> services/media_encoding.py
--> modules/encoder
--> projects/<workspace>/clips or exports
+→ backend/api/routes/media.py
+→ backend/services/media/workflows.py
+→ backend/services/media/fetch.py
+→ modules/fetcher
+→ backend/services/media/encoding.py
+→ modules/encoder
+→ projects/<workspace>/clips
 ```
 
-### 工作台复核
+### 2. 工作台复核流程
 
 ```text
 Frontend Workbench
--> services/api_workbench_routes.py
--> services/workbench.py
--> modules/fetcher/analyzer.py
--> modules/encoder/transcoder.py
--> projects/<workspace>/clips
+→ backend/api/routes/workbench.py
+→ backend/services/workbench.py
+→ modules/fetcher/analyzer.py
+→ modules/encoder/transcoder.py
+→ projects/<workspace>/clips
 ```
 
-### AI 助手执行任务
+### 3. AI 助手执行任务
 
 ```text
 Frontend AI Assistant
--> services/agent_direct_routes.py
--> services/agent.py
--> services/agent_tools.py
--> services/media_* / workspace / assets
+→ backend/agent/routes.py
+→ backend/agent/service.py
+→ backend/agent/tools.py
+→ backend/services/* (media/workspace/assets)
 ```
+
+## 启动方式
+
+### Web 服务
+
+```bash
+# 生产模式
+python app.py
+
+# 开发模式（自动重载）
+python app.py --reload
+
+# 指定端口
+python app.py --port 8080
+```
+
+### CLI 工具
+
+```bash
+# 新方式（推荐）
+python -m cli.main fetcher download <url>
+
+# 旧方式（兼容）
+python main.py fetcher download <url>
+```
+
+### 前端开发
+
+```bash
+cd frontend
+npm run dev          # 启动开发服务器
+npm run build        # 构建生产版本
+```
+
+## 配置管理
+
+配置文件位于 `backend/config/settings.py`，支持通过 `.env` 文件覆盖：
+
+```bash
+# .env 示例
+TEC_CHI_API_KEY=your_api_key
+GUI_SERVER_PORT=7860
+WORKSPACE_ALLOWED_ROOTS=/path/to/projects
+```
+
+## 向后兼容
+
+为了保持向后兼容，保留了以下兼容层：
+
+- `config.py` → `backend.config`
+- `main.py` → `cli.main`
+
+这些文件会显示 DeprecationWarning，建议逐步迁移到新的导入路径。
 
 ## 开发建议
 
-- 新的跨模块业务流程优先放到 `services/`。
-- 底层可复用能力放到 `modules/`，并保持 CLI 可测。
-- 外部软件差异放到 `adapters/` 或 `services/*_runtime.py`。
-- Web 路由只做请求解析、校验和响应组织，避免塞入复杂业务逻辑。
-- 新增长任务时接入 `task_center`，让前端能展示状态和日志。
-- 修改工作区路径相关逻辑时同步检查安全校验和测试。
+1. **新的跨模块业务流程**：放到 `backend/services/`
+2. **底层可复用能力**：放到 `modules/`，保持 CLI 可测
+3. **外部软件差异**：放到 `adapters/` 或 `backend/services/runtime/`
+4. **Web 路由**：只做请求解析、校验和响应组织
+5. **长任务**：接入 `task_center`，让前端能展示状态和日志
+6. **工作区路径**：同步检查安全校验和测试
+
+## 测试
+
+```bash
+# 运行测试套件
+pytest tests/ -v
+
+# 运行覆盖率测试
+pytest tests/ --cov=. --cov-report=html
+
+# 类型检查
+mypy backend/ --ignore-missing-imports
+```
 
 ## 当前边界
 
-- Web 服务是能力最完整的入口，CLI 是辅助和批处理入口。
-- 素材管理是工作区索引器，不是完整资产数据库。
-- capcut-mate、Adobe 自动化和审核工具依赖本机环境。
-- `vendor/` 中的第三方代码不应被当作项目自有业务层维护。
+- Web 服务是能力最完整的入口，CLI 是辅助和批处理入口
+- 素材管理是工作区索引器，不是完整资产数据库
+- CapCut-Mate、Adobe 自动化和审核工具依赖本机环境
+- `vendor/` 中的第三方代码不应被当作项目自有业务层维护

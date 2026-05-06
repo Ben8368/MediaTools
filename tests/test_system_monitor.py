@@ -2,8 +2,8 @@ import socket
 import sys
 from unittest.mock import Mock, patch
 
-import services.system_monitor as monitor
-from services.system_monitor import RuntimeMetricSampler, _bytes_per_sec, _status
+import backend.services.system_monitor as monitor
+from backend.services.system_monitor import RuntimeMetricSampler, _bytes_per_sec, _status
 
 
 def test_bytes_per_sec_formats_units():

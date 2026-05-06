@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from services.task_center import TaskCenter, TaskStatus, TaskType
+from backend.services.task_center import TaskCenter, TaskStatus, TaskType
 from tests.api_test_helpers import make_client
 
 
@@ -116,7 +116,7 @@ class TestSystemRoutes(unittest.TestCase):
 
 class TestLogRoutes(unittest.TestCase):
     def test_logs_capture_backend_records_and_filter(self):
-        from services.log_buffer import get_log_buffer
+        from backend.services.log_buffer import get_log_buffer
 
         get_log_buffer().clear()
         client = _make_client()
@@ -135,7 +135,7 @@ class TestLogRoutes(unittest.TestCase):
         self.assertEqual(data["items"][0]["event"], "测试告警")
 
     def test_log_metadata_and_clear(self):
-        from services.log_buffer import get_log_buffer
+        from backend.services.log_buffer import get_log_buffer
 
         get_log_buffer().clear()
         client = _make_client()

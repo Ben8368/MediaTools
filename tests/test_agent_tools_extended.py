@@ -20,7 +20,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_lib.get_stats.return_value = {"total": 1}
         mock_lib_class.return_value = mock_lib
 
-        from services.agent import _tool_scan_assets
+        from backend.agent.service import _tool_scan_assets
         result = _tool_scan_assets(self.temp_dir, keyword="test")
         self.assertTrue(result["ok"])
         mock_lib.search.assert_called_once_with("test")
@@ -33,7 +33,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_lib.get_stats.return_value = {"total": 1}
         mock_lib_class.return_value = mock_lib
 
-        from services.agent import _tool_scan_assets
+        from backend.agent.service import _tool_scan_assets
         result = _tool_scan_assets(self.temp_dir, asset_type="video")
         self.assertTrue(result["ok"])
         mock_lib.list_assets.assert_called_once_with("video")
@@ -47,7 +47,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         }
         mock_gen_class.return_value = mock_gen
 
-        from services.agent import _tool_extract_screenshot
+        from backend.agent.service import _tool_extract_screenshot
         result = _tool_extract_screenshot("/video.mp4", "00:01:30", "/output/frame.jpg")
         self.assertTrue(result["ok"])
         self.assertEqual(result["output_path"], "/output/frame.jpg")
@@ -61,7 +61,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         }
         mock_gen_class.return_value = mock_gen
 
-        from services.agent import _tool_extract_screenshot
+        from backend.agent.service import _tool_extract_screenshot
         result = _tool_extract_screenshot("/video.mp4", "00:01:30")
         self.assertTrue(result["ok"])
 
@@ -74,7 +74,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_draft.return_value = {"draft": {}}
         mock_export.return_value = {"ok": True, "image_path": "/output/moments.jpg"}
 
-        from services.agent import _tool_export_wechat_moments
+        from backend.agent.service import _tool_export_wechat_moments
         result = _tool_export_wechat_moments("测试文本", "A", "dark")
         self.assertTrue(result["ok"])
 
@@ -84,7 +84,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_ws.return_value = {"project_root": self.temp_dir}
         mock_list.return_value = [{"id": "1", "name": "ticket1"}]
 
-        from services.agent import _tool_list_psd_tickets
+        from backend.agent.service import _tool_list_psd_tickets
         result = _tool_list_psd_tickets()
         self.assertTrue(result["ok"])
         self.assertEqual(result["count"], 1)
@@ -95,7 +95,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_ws.return_value = {"project_root": self.temp_dir}
         mock_scan.return_value = {"ok": True, "layers": []}
 
-        from services.agent import _tool_scan_psd
+        from backend.agent.service import _tool_scan_psd
         result = _tool_scan_psd("/path/file.psd", ["en", "zh"])
         self.assertIn("ok", result)
 
@@ -105,7 +105,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
         mock_ws.return_value = {"project_root": self.temp_dir}
         mock_config.return_value = {"config": {"enabled": True}}
 
-        from services.agent import _tool_get_auditor_status
+        from backend.agent.service import _tool_get_auditor_status
         result = _tool_get_auditor_status()
         self.assertTrue(result["ok"])
 
@@ -120,7 +120,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
             "summary": "Scan complete"
         }
 
-        from services.agent import _tool_run_audit_scan
+        from backend.agent.service import _tool_run_audit_scan
         result = _tool_run_audit_scan()
         self.assertTrue(result["ok"])
         self.assertEqual(result["scanned_count"], 10)
@@ -128,7 +128,7 @@ class TestAgentAdditionalTools(unittest.TestCase):
 
 class TestSummarizeToolResultExtended(unittest.TestCase):
     def test_execute_slice_video_result(self):
-        from services.agent import _summarize_tool_result
+        from backend.agent.service import _summarize_tool_result
         result = {"ok": True, "output_path": "/clip.mp4", "log": "success"}
         actions, artifacts = _summarize_tool_result(
             "execute_slice_video",
@@ -140,7 +140,7 @@ class TestSummarizeToolResultExtended(unittest.TestCase):
         self.assertEqual(len(artifacts), 1)
 
     def test_execute_fetch_analyze_slice_result(self):
-        from services.agent import _summarize_tool_result
+        from backend.agent.service import _summarize_tool_result
         result = {
             "ok": True,
             "video_path": "/video.mp4",
@@ -161,7 +161,7 @@ class TestSummarizeToolResultExtended(unittest.TestCase):
         self.assertGreater(len(artifacts), 3)
 
     def test_suggest_asset_names_result(self):
-        from services.agent import _summarize_tool_result
+        from backend.agent.service import _summarize_tool_result
         result = {
             "ok": True,
             "style": "kebab-case",
