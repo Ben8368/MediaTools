@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import AdobeExecuteBody, AdobeScanBody, AdobeTicketBody, FolderScanBody, TicketImportBody
+from backend.api.models import AdobeExecuteBody, AdobeScanBody, AdobeTicketBody, FolderScanBody, TicketImportBody
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:

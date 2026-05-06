@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import Any
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 PHOTOSHOP_AUTO_ROOT = BASE_DIR / "vendor" / "adobe" / "photoshop" / "com"
 PHOTOSHOP_AUTO_SRC = PHOTOSHOP_AUTO_ROOT / "src"

@@ -8,8 +8,8 @@ from modules.fetcher.analyzer import SubtitleAnalyzer
 from modules.fetcher.csv_manager import CSVManager
 from modules.fetcher.downloader import VideoDownloader
 from modules.fetcher.subtitle import SubtitleProcessor
-from services.media_helpers import _normalize_subtitle_outputs
-from services.workspace import get_current_workspace
+from backend.services.media.helpers import _normalize_subtitle_outputs
+from backend.services.workspace import get_current_workspace
 
 
 def fetch_video_info(url: str, output_dir: str, naming_template: str, *, downloader_cls=None) -> dict:

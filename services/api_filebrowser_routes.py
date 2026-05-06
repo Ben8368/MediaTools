@@ -19,7 +19,7 @@ from modules.filebrowser import (
     fb_restore_trash,
     list_filebrowser_disks,
 )
-from services.api_models import (
+from backend.api.models import (
     FilebrowserTrashBody,
     FilesCopyBody,
     FilesDeleteBody,
@@ -27,7 +27,7 @@ from services.api_models import (
     FilesMoveBody,
     FilesRenameBody,
 )
-from services.filebrowser_runtime import (
+from backend.services.runtime.filebrowser import (
     get_filebrowser_status,
     read_filebrowser_log,
     restart_filebrowser_service,

@@ -5,7 +5,7 @@ import re
 import shutil
 from pathlib import Path
 
-from services.workspace import derive_output_path, get_workspace_dir, workspace_path
+from backend.services.workspace import derive_output_path, get_workspace_dir, workspace_path
 
 
 def _ensure_explicit_output_path(path: str | None) -> str | None:

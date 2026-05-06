@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from services.agent_helpers import (
+from backend.agent.helpers import (
     _extract_local_paths,
     _extract_urls,
     _format_fetch_analyze_slice_answer,

@@ -5,9 +5,9 @@ from pathlib import Path
 from modules.fetcher.analyzer import SubtitleAnalyzer
 from modules.fetcher.downloader import VideoDownloader
 from modules.fetcher.subtitle import SubtitleProcessor
-from services.media_encoding import run_batch_slice_job
-from services.media_helpers import _write_analysis_artifact
-from services.workspace import get_current_workspace, get_workspace_dir
+from backend.services.media.encoding import run_batch_slice_job
+from backend.services.media.helpers import _write_analysis_artifact
+from backend.services.workspace import get_current_workspace, get_workspace_dir
 
 
 def run_fetch_analyze_slice_job(

@@ -1,6 +1,6 @@
 """Canonical fetcher service facade."""
 
-from services.media import (
+from backend.services.media.core import (
     fetch_video_info,
     run_fetch_analyze_slice_job,
     run_fetch_batch,

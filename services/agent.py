@@ -6,20 +6,20 @@ import json
 
 from openai import OpenAI
 
-from config import get_api_config
+from backend.config import get_api_config
 from modules.adobe.after_effects import get_ae_status, list_ae_tickets, scan_ae_project
 from modules.assets.library import AssetLibrary
 from modules.generator import ScreenshotGenerator
-from services.agent_direct_routes import try_direct_route as _try_direct_route_impl
-from services.agent_helpers import (
+from backend.agent.routes import try_direct_route as _try_direct_route_impl
+from backend.agent.helpers import (
     _extend_unique,
     _json_dumps,
     _response,
     _summarize_tool_result,
     _summary_success,
 )
-from services.agent_tool_specs import build_agent_tool_specs
-from services.agent_tools import (
+from backend.agent.tool_specs import build_agent_tool_specs
+from backend.agent.tools import (
     tool_analyze_subtitle_impl,
     tool_execute_decrypt_to_assets_impl,
     tool_execute_fetch_analyze_slice_impl,
@@ -40,17 +40,17 @@ from services.agent_tools import (
     tool_scan_psd_impl,
     tool_suggest_asset_names_impl,
 )
-from services.auditor import get_auditor_config, run_auditor_scan_once
-from services.media import (
+from backend.services.auditor import get_auditor_config, run_auditor_scan_once
+from backend.services.media.core import (
     fetch_video_info,
     run_decrypt_job,
     run_fetch_analyze_slice_job,
     run_slice_job,
     run_transcode_job,
 )
-from services.photoshop import list_photoshop_tickets, scan_photoshop_document
-from services.wechat_moments import export_wechat_moments_image, get_wechat_moments_draft, save_wechat_moments_draft
-from services.workspace import get_current_workspace
+from backend.services.photoshop import list_photoshop_tickets, scan_photoshop_document
+from backend.services.wechat_moments import export_wechat_moments_image, get_wechat_moments_draft, save_wechat_moments_draft
+from backend.services.workspace import get_current_workspace
 
 DEFAULT_AGENT_SYSTEM_PROMPT = (
     "你是 MediaTools 的执行型媒体助手。"

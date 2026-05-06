@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from config import BASE_DIR, WORKSPACE_ALLOWED_ROOTS
+from backend.config import BASE_DIR, WORKSPACE_ALLOWED_ROOTS
 
 RUNTIME_DIR = BASE_DIR / "runtime"
 WORKSPACE_FILE = RUNTIME_DIR / "workspace.json"

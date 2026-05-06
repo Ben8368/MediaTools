@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import (
+from backend.api.models import (
     FilesCopyBody,
     FilesDeleteBody,
     FilesExtractIconBody,

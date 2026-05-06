@@ -4,12 +4,12 @@ import re
 from pathlib import Path
 
 from modules.encoder.transcoder import Transcoder
-from services.media_helpers import (
+from backend.services.media.helpers import (
     _default_slice_output_path,
     _default_transcode_output_path,
     _ensure_explicit_output_path,
 )
-from services.workspace import get_current_workspace, get_workspace_dir
+from backend.services.workspace import get_current_workspace, get_workspace_dir
 
 
 def _normalize_codec(codec: str) -> str:

@@ -6,18 +6,18 @@ while existing imports from services.media continue to work.
 
 from modules.encoder.transcoder import Transcoder
 from modules.fetcher.downloader import VideoDownloader
-from services.media_decrypt import (
+from backend.services.media.decrypt import (
     build_umcli,
     get_ffmpeg_status_text,
     get_um_status_text,
     get_ytdlp_status_text,
     run_decrypt_job,
 )
-from services.media_fetch import (
+from backend.services.media.fetch import (
     run_fetch_batch,
     run_fetch_batch_stream,
 )
-from services.workspace import get_current_workspace, get_workspace_dir
+from backend.services.workspace import get_current_workspace, get_workspace_dir
 
 from . import media_encoding as _media_encoding
 from . import media_fetch as _media_fetch

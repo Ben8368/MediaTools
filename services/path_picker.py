@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from config import BASE_DIR, WORKSPACE_ALLOWED_ROOTS
-from services.workspace import get_current_workspace
+from backend.config import BASE_DIR, WORKSPACE_ALLOWED_ROOTS
+from backend.services.workspace import get_current_workspace
 
 
 def _dedupe_roots(items: list[dict[str, str]]) -> list[dict[str, str]]:

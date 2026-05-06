@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from services.task_center import TaskStatus, TaskType, get_task_center
+from backend.services.task_center import TaskStatus, TaskType, get_task_center
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 

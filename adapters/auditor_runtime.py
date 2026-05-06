@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 AUDITOR_ROOT = BASE_DIR / "vendor" / "auditor" / "src"
 

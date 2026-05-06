@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from services.browser_manager import browser_manager
+from backend.services.browser_manager import browser_manager
 
 logger = logging.getLogger(__name__)
 

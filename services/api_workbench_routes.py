@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import WorkbenchAnalyzeBody, WorkbenchExportBody
+from backend.api.models import WorkbenchAnalyzeBody, WorkbenchExportBody
 
 RunSimpleJob = Callable[[str, str, Callable[[], dict[str, Any]]], Awaitable[dict[str, Any]]]
 ListWorkspaceMedia = Callable[[], dict[str, Any]]

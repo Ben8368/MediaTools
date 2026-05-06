@@ -43,22 +43,22 @@ def configure_application_routes(
     analyze_subtitle_for_workbench,
     export_clips_from_workbench,
 ):
-    from services.api_adobe_routes import create_router as create_adobe_router
-    from services.api_assets_routes import create_router as create_assets_router
-    from services.api_auditor_routes import create_router as create_auditor_router
-    from services.api_browser_routes import router as browser_router
-    from services.api_filebrowser_routes import router as filebrowser_router
-    from services.api_files_routes import create_router as create_files_router
-    from services.api_log_routes import router as log_router
-    from services.api_media_routes import create_router as create_media_router
-    from services.api_path_picker_routes import router as path_picker_router
-    from services.api_photoshop_routes import create_router as create_photoshop_router
-    from services.api_system_routes import create_router as create_system_router
-    from services.api_task_center import router as task_center_router
-    from services.api_wechat_routes import create_router as create_wechat_router
-    from services.api_workbench_routes import create_router as create_workbench_router
-    from services.api_workspace_routes import create_router as create_workspace_router
-    from services.log_buffer import install_log_buffer
+    from backend.services.api_adobe_routes import create_router as create_adobe_router
+    from backend.services.api_assets_routes import create_router as create_assets_router
+    from backend.services.api_auditor_routes import create_router as create_auditor_router
+    from backend.services.api_browser_routes import router as browser_router
+    from backend.services.api_filebrowser_routes import router as filebrowser_router
+    from backend.services.api_files_routes import create_router as create_files_router
+    from backend.services.api_log_routes import router as log_router
+    from backend.services.api_media_routes import create_router as create_media_router
+    from backend.services.api_path_picker_routes import router as path_picker_router
+    from backend.services.api_photoshop_routes import create_router as create_photoshop_router
+    from backend.services.api_system_routes import create_router as create_system_router
+    from backend.services.api_task_center import router as task_center_router
+    from backend.services.api_wechat_routes import create_router as create_wechat_router
+    from backend.services.api_workbench_routes import create_router as create_workbench_router
+    from backend.services.api_workspace_routes import create_router as create_workspace_router
+    from backend.services.log_buffer import install_log_buffer
 
     app.include_router(create_system_router(get_current_workspace, get_auditor_status, get_wechat_moments_status))
     app.include_router(

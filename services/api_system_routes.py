@@ -6,12 +6,12 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from adapters import FFmpegAdapter, PhotoshopAutomationAdapter, UmcliAdapter, YtdlpAdapter
-from config import ANALYSIS_MODEL
+from backend.config import ANALYSIS_MODEL
 from patches import get_patch_diagnostics
-from services.api_modules import build_module_catalog
-from services.filebrowser_runtime import get_filebrowser_status
-from services.system_fonts import list_system_fonts
-from services.system_monitor import get_runtime_metrics
+from backend.services.api_modules import build_module_catalog
+from backend.services.runtime.filebrowser import get_filebrowser_status
+from backend.services.system_fonts import list_system_fonts
+from backend.services.system_monitor import get_runtime_metrics
 
 
 def build_system_snapshot() -> dict:

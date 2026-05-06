@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import WechatMomentsDraftBody, WechatMomentsExportBody
+from backend.api.models import WechatMomentsDraftBody, WechatMomentsExportBody
 
 
 def create_router(

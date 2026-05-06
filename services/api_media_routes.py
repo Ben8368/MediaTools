@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import DecryptorDecryptBody, EncoderTranscodeBody, FetcherDownloadBody
+from backend.api.models import DecryptorDecryptBody, EncoderTranscodeBody, FetcherDownloadBody
 
 
 def _start_background(target) -> None:
@@ -31,7 +31,7 @@ def create_router(
 
     @router.post("/api/fetcher/download")
     async def fetcher_download(body: FetcherDownloadBody):
-        from services.task_center import TaskStatus, TaskType, get_task_center
+        from backend.services.task_center import TaskStatus, TaskType, get_task_center
 
         workspace = get_current_workspace()
         platform = (body.platform or "auto").strip() or "auto"
@@ -130,7 +130,7 @@ def create_router(
 
     @router.post("/api/encoder/transcode")
     async def encoder_transcode(body: EncoderTranscodeBody):
-        from services.task_center import TaskStatus, TaskType, get_task_center
+        from backend.services.task_center import TaskStatus, TaskType, get_task_center
 
         task_center = get_task_center()
         task_id = str(uuid.uuid4())
@@ -197,7 +197,7 @@ def create_router(
 
     @router.post("/api/decryptor/decrypt")
     async def decryptor_decrypt(body: DecryptorDecryptBody):
-        from services.task_center import TaskStatus, TaskType, get_task_center
+        from backend.services.task_center import TaskStatus, TaskType, get_task_center
 
         task_center = get_task_center()
         task_id = str(uuid.uuid4())

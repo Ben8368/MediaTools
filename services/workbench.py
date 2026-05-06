@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from config import get_api_config
+from backend.config import get_api_config
 from modules.fetcher.analyzer import SubtitleAnalyzer
 from modules.fetcher.subtitle import SubtitleProcessor
-from services.media import run_batch_slice_job
-from services.workspace import get_current_workspace, get_workspace_dir, workspace_path
+from backend.services.media.core import run_batch_slice_job
+from backend.services.workspace import get_current_workspace, get_workspace_dir, workspace_path
 
 
 def list_workspace_media() -> dict:

@@ -37,7 +37,7 @@ def setup_logger(
 
     if console or log_file:
         try:
-            from services.log_buffer import attach_log_buffer
+            from backend.services.log_buffer import attach_log_buffer
 
             attach_log_buffer(logger)
         except Exception:

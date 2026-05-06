@@ -12,10 +12,10 @@ from typing import Any
 import psutil
 
 from adapters import FFmpegAdapter, PhotoshopAutomationAdapter, UmcliAdapter, YtdlpAdapter
-from services.auditor import get_auditor_status
-from services.task_center import TaskStatus, TaskType, get_task_center
-from services.wechat_moments import get_wechat_moments_status
-from services.workspace import get_current_workspace
+from backend.services.auditor import get_auditor_status
+from backend.services.task_center import TaskStatus, TaskType, get_task_center
+from backend.services.wechat_moments import get_wechat_moments_status
+from backend.services.workspace import get_current_workspace
 
 
 def _bytes_per_sec(value: float) -> dict[str, Any]:

@@ -3,8 +3,8 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.path_picker import get_path_picker_roots, list_path_picker_directory
-from services.workspace import get_current_workspace
+from backend.services.path_picker import get_path_picker_roots, list_path_picker_directory
+from backend.services.workspace import get_current_workspace
 
 router = APIRouter()
 

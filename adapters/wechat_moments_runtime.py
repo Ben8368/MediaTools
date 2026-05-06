@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 WECHAT_MOMENTS_ROOT = BASE_DIR / "vendor" / "wechat_moments_source"
 

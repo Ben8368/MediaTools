@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from adapters import FFmpegAdapter, UmcliAdapter, YtdlpAdapter
-from services.workspace import get_current_workspace, get_workspace_dir
+from backend.services.workspace import get_current_workspace, get_workspace_dir
 
 
 def _normalize_input_type(input_type: str) -> str:

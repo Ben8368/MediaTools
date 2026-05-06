@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.log_buffer import get_log_buffer
+from backend.services.log_buffer import get_log_buffer
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 

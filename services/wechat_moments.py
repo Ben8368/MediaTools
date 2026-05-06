@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from adapters import WechatMomentsRuntimeAdapter
-from services.workspace import get_workspace_dir
+from backend.services.workspace import get_workspace_dir
 
 _adapter = WechatMomentsRuntimeAdapter()
 

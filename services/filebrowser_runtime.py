@@ -10,7 +10,7 @@ import time
 
 import requests
 
-from config import (
+from backend.config import (
     BASE_DIR,
     FILEBROWSER_BASE_URL,
     FILEBROWSER_BINARY,

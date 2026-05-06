@@ -13,7 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from config import TASK_DB_PATH, TASK_HISTORY_DAYS
+from backend.config import TASK_DB_PATH, TASK_HISTORY_DAYS
 
 
 class TaskStatus(Enum):

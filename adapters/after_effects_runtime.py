@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import Any
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 AE_SRC = BASE_DIR / "vendor" / "adobe" / "after-effects" / "com" / "src"
 RUNTIME_MODULES = ["ae_connector.py"]

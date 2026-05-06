@@ -10,7 +10,7 @@ import time
 
 import requests
 
-from config import BASE_DIR, CAPCUT_MATE_BASE_URL
+from backend.config import BASE_DIR, CAPCUT_MATE_BASE_URL
 
 RUNTIME_DIR = BASE_DIR / "runtime"
 CAPCUT_PID_FILE = RUNTIME_DIR / "capcut-mate.pid"

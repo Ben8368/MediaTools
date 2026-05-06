@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import AuditorConfigBody
+from backend.api.models import AuditorConfigBody
 
 
 def create_router(

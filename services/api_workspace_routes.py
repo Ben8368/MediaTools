@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import WorkspaceBody
+from backend.api.models import WorkspaceBody
 
 GetWorkspace = Callable[[], dict[str, Any]]
 SetWorkspace = Callable[..., dict[str, Any]]

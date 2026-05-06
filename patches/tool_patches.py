@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 CommandPatch = Callable[[list[str], dict], list[str]]
 

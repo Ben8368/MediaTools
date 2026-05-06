@@ -16,7 +16,7 @@ from fastapi import Request, WebSocket
 from fastapi.responses import JSONResponse
 
 from core.auth import api_key_error
-from services.api_system_routes import build_system_snapshot
+from backend.services.api_system_routes import build_system_snapshot
 
 
 def _is_loopback_address(host: str | None) -> bool:

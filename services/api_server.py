@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from config import (
+from backend.config import (
     API_SECRET_KEY,
     ASSET_SCAN_MAX_FILES,
     BASE_DIR,
@@ -29,8 +29,8 @@ from config import (
 )
 from core.auth import is_api_key_valid
 from modules.assets import AssetLibrary, FileManager, PreviewGenerator, extract_icon
-from services.api_models import AgentChatBody, AgentTestConnectionBody
-from services.api_server_runtime import (
+from backend.api.models import AgentChatBody, AgentTestConnectionBody
+from backend.api.runtime import (
     JobRegistry,
     _handle_loop_exception,
     _is_loopback_address,
@@ -39,19 +39,19 @@ from services.api_server_runtime import (
     build_api_key_middleware,
     build_simple_job_runner,
 )
-from services.api_server_setup import configure_application_routes
-from services.auditor import get_auditor_config, get_auditor_status, run_auditor_scan_once, save_auditor_config
-from services.decryptor import run_decrypt_job
-from services.encoder import run_transcode_job
-from services.fetcher import run_fetch_batch_stream
-from services.path_picker import resolve_allowed_path
-from services.photoshop import (
+from backend.api.setup import configure_application_routes
+from backend.services.auditor import get_auditor_config, get_auditor_status, run_auditor_scan_once, save_auditor_config
+from backend.services.decryptor import run_decrypt_job
+from backend.services.encoder import run_transcode_job
+from backend.services.fetcher import run_fetch_batch_stream
+from backend.services.path_picker import resolve_allowed_path
+from backend.services.photoshop import (
     cancel_execution as cancel_photoshop_execution,
 )
-from services.photoshop import (
+from backend.services.photoshop import (
     get_execution_state as get_photoshop_execution_state,
 )
-from services.photoshop import (
+from backend.services.photoshop import (
     get_photoshop_status,
     get_photoshop_ticket,
     list_photoshop_tickets,
@@ -59,14 +59,14 @@ from services.photoshop import (
     scan_photoshop_document,
     start_ticket_execution,
 )
-from services.wechat_moments import (
+from backend.services.wechat_moments import (
     export_wechat_moments_image,
     get_wechat_moments_draft,
     get_wechat_moments_status,
     save_wechat_moments_draft,
 )
-from services.workbench import analyze_subtitle_for_workbench, export_clips_from_workbench, list_workspace_media
-from services.workspace import get_current_workspace, set_current_workspace
+from backend.services.workbench import analyze_subtitle_for_workbench, export_clips_from_workbench, list_workspace_media
+from backend.services.workspace import get_current_workspace, set_current_workspace
 
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 FRONTEND_DEV_SERVER = (os.environ.get("MEDIATOOLS_FRONTEND_DEV_URL") or "").rstrip("/")
@@ -170,7 +170,7 @@ async def _proxy_frontend_dev_request(request: Request, full_path: str) -> Respo
 @app.post("/api/agent/chat")
 async def agent_chat(body: AgentChatBody):
     """Run an Agent task in a worker thread."""
-    from services.agent import MediaAgentService
+    from backend.agent.service import MediaAgentService
 
     def _run() -> dict[str, Any]:
         cfg = get_api_config()
@@ -200,7 +200,7 @@ async def agent_chat(body: AgentChatBody):
 @app.post("/api/agent/test-connection")
 async def agent_test_connection(body: AgentTestConnectionBody):
     """Test LLM connectivity with optional config override."""
-    from services.agent import MediaAgentService
+    from backend.agent.service import MediaAgentService
 
     def _run() -> dict[str, Any]:
         cfg = get_api_config()
@@ -333,7 +333,7 @@ async def ws_agent(websocket: WebSocket):
         task = body.get("task", "")
         extra_context = body.get("extra_context", "")
 
-        from services.agent import MediaAgentService
+        from backend.agent.service import MediaAgentService
 
         def _run():
             svc = MediaAgentService(
