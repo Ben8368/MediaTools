@@ -252,7 +252,24 @@ async def shutdown_server(request: Request):
 
     def _delayed_shutdown():
         time.sleep(0.5)
-        os.kill(os.getpid(), signal.SIGTERM)
+        # In reload mode, we need to kill the parent reloader process
+        # Otherwise only the child server process dies and gets restarted
+        parent_pid = os.getppid()
+        current_pid = os.getpid()
+
+        # Check if we're running under a reloader (parent is also python)
+        try:
+            import psutil
+            parent = psutil.Process(parent_pid)
+            if 'python' in parent.name().lower():
+                # Kill the parent reloader process
+                os.kill(parent_pid, signal.SIGTERM)
+            else:
+                # Not in reload mode, kill current process
+                os.kill(current_pid, signal.SIGTERM)
+        except:
+            # Fallback: kill current process
+            os.kill(current_pid, signal.SIGTERM)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server shutting down"})
@@ -266,20 +283,30 @@ async def restart_server(request: Request):
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
-    import signal
-
     def _delayed_restart():
         time.sleep(0.5)
         # Trigger file change to cause reload in dev mode
         restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
         restart_trigger.parent.mkdir(exist_ok=True)
         restart_trigger.write_text(str(time.time()))
-        time.sleep(0.2)
-        # Set restart flag for production mode
-        import app
-        app.request_restart()
-        # Graceful shutdown
-        os.kill(os.getpid(), signal.SIGTERM)
+        # In reload mode, the file change will trigger restart automatically
+        # In production mode, set restart flag and shutdown
+        try:
+            import psutil
+            parent_pid = os.getppid()
+            parent = psutil.Process(parent_pid)
+            if 'python' not in parent.name().lower():
+                # Not in reload mode, use watchdog restart
+                import app
+                import signal
+                app.request_restart()
+                os.kill(os.getpid(), signal.SIGTERM)
+        except:
+            # Fallback: assume production mode
+            import app
+            import signal
+            app.request_restart()
+            os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server restarting"})
