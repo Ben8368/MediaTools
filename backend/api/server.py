@@ -260,20 +260,25 @@ async def shutdown_server(request: Request):
 
 @app.post("/api/system/restart")
 async def restart_server(request: Request):
-    """Gracefully shutdown the server for restart. The watchdog in the startup
-    script will detect exit code 3 and automatically restart the process."""
+    """Restart the server. In production mode with watchdog, exits with code 3.
+    In dev mode with --reload, triggers file change for automatic reload."""
     client_host = request.client.host if request.client else ""
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
     import signal
-    import app
 
     def _delayed_restart():
         time.sleep(0.5)
-        # Signal restart request before shutdown
+        # Trigger file change to cause reload in dev mode
+        restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
+        restart_trigger.parent.mkdir(exist_ok=True)
+        restart_trigger.write_text(str(time.time()))
+        time.sleep(0.2)
+        # Set restart flag for production mode
+        import app
         app.request_restart()
-        # Use SIGTERM for graceful shutdown to properly release ports
+        # Graceful shutdown
         os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
