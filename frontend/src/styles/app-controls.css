@@ -18,6 +18,33 @@
   --app-list-folder-icon-height: 24px;
 }
 
+.app-surface {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-surface__header {
+  flex: 0 0 auto;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--fnos-divider);
+}
+
+.app-surface__header h2 {
+  margin: 0;
+  color: var(--fnos-text-0);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.app-surface__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .mt-btn {
   display: inline-flex;
   align-items: center;

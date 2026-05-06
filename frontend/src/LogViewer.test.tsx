@@ -44,7 +44,7 @@ describe('LogViewer', () => {
   })
 
   it('renders backend logs with level labels and module metadata', async () => {
-    render(<LogViewer onClose={vi.fn()} />)
+    render(<LogViewer />)
 
     expect(await screen.findByText('日志')).toBeInTheDocument()
     expect((await screen.findAllByText('通知')).length).toBeGreaterThan(0)
@@ -55,7 +55,7 @@ describe('LogViewer', () => {
   })
 
   it('reloads logs when level and module filters change', async () => {
-    render(<LogViewer onClose={vi.fn()} />)
+    render(<LogViewer />)
 
     await screen.findByText('服务启动')
     const selects = screen.getAllByRole('combobox')
@@ -73,7 +73,7 @@ describe('LogViewer', () => {
   })
 
   it('clears logs and reloads the table', async () => {
-    render(<LogViewer onClose={vi.fn()} />)
+    render(<LogViewer />)
 
     await screen.findByText('服务启动')
     fireEvent.click(screen.getByRole('button', { name: /清空/ }))

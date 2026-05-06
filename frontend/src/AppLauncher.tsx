@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MEDIA_TOOLS_APPS } from '@/mediaToolsCatalog'
+import { getLauncherApps } from '@/appRegistry'
 import { useSystemStore } from '@/store'
 
 export function AppLauncher({ onOpenApp }: { onOpenApp: (id: string) => void }) {
@@ -16,7 +16,7 @@ export function AppLauncher({ onOpenApp }: { onOpenApp: (id: string) => void }) 
 
   if (!showLauncher) return null
 
-  const filtered = MEDIA_TOOLS_APPS.filter((app) => app.label.includes(search) || app.title.includes(search))
+  const filtered = getLauncherApps().filter((app) => app.label.includes(search) || app.title.includes(search))
 
   return (
     <div className="fnos-launcher-overlay" onClick={() => setShowLauncher(false)}>

@@ -277,13 +277,6 @@
 }
 
 @media (max-width: 1100px) {
-  .lv-window {
-    width: calc(100vw - 16px);
-    height: calc(100vh - 16px);
-    min-width: 0;
-    min-height: 0;
-  }
-
   .lv-head,
   .lv-row {
     grid-template-columns: 86px 120px 170px minmax(220px, 1fr);

@@ -1,6 +1,6 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react'
 
-import { MEDIA_TOOLS_APPS } from '@/mediaToolsCatalog'
+import { getLauncherApps } from '@/appRegistry'
 
 const ICON_ROW_HEIGHT = 86
 const ICON_ROW_GAP = 28
@@ -42,7 +42,7 @@ export function DesktopIcons({ onOpenApp }: { onOpenApp: (id: string) => void })
       className="icon-grid"
       style={{ '--desktop-icon-rows': rows } as CSSProperties}
     >
-      {MEDIA_TOOLS_APPS.map((app) => (
+      {getLauncherApps().map((app) => (
         <div
           key={app.id}
           className={`app-icon app-icon--${app.id}`}

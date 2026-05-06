@@ -112,8 +112,13 @@
 
 .fnos-window-body {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
   background: rgba(12,14,18,.97);
+}
+
+.fnos-window-body > * {
+  min-height: 0;
 }
 
 /* Resize handles */

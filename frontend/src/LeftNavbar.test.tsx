@@ -12,10 +12,6 @@ const apiMocks = vi.hoisted(() => ({
 
 vi.mock('@/api', () => apiMocks)
 
-vi.mock('@/LogViewer', () => ({
-  LogViewer: () => null,
-}))
-
 describe('LeftNavbar shutdown flow', () => {
   beforeEach(() => {
     apiMocks.restartSystem.mockReset()
@@ -58,5 +54,36 @@ describe('LeftNavbar shutdown flow', () => {
     expect(screen.getByRole('button', { name: '重新连接' })).toBeInTheDocument()
 
     confirmSpy.mockRestore()
+  })
+
+  it('opens logs through the shared window manager', () => {
+    render(<LeftNavbar />)
+
+    fireEvent.click(screen.getByTitle('日志'))
+
+    expect(useWindowStore.getState().getWindowByType('logs')).toMatchObject({
+      appType: 'logs',
+      title: '日志',
+      width: 960,
+      height: 640,
+    })
+  })
+
+  it('focuses, minimizes, and restores running app windows from the sidebar', () => {
+    useWindowStore.getState().openWindow('fetcher')
+    useWindowStore.getState().openWindow('agent')
+
+    render(<LeftNavbar />)
+
+    fireEvent.click(screen.getByTitle('下载'))
+    const focusedFetcher = useWindowStore.getState().getWindowByType('fetcher')
+    const agent = useWindowStore.getState().getWindowByType('agent')
+    expect(focusedFetcher?.zIndex).toBeGreaterThan(agent?.zIndex ?? 0)
+
+    fireEvent.click(screen.getByTitle('下载'))
+    expect(useWindowStore.getState().getWindowByType('fetcher')?.isMinimized).toBe(true)
+
+    fireEvent.click(screen.getByTitle('下载'))
+    expect(useWindowStore.getState().getWindowByType('fetcher')?.isMinimized).toBe(false)
   })
 })

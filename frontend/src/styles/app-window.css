@@ -1,6 +1,6 @@
 :root {
-  --app-window-min-width: 400px;
-  --app-window-min-height: 300px;
+  --app-window-min-width: 760px;
+  --app-window-min-height: 520px;
   --app-window-radius: 20px;
   --app-window-header-height: 50px;
   --app-window-header-padding-x: 16px;

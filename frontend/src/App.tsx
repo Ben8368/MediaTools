@@ -6,14 +6,13 @@ import { DesktopIcons } from '@/DesktopIcons'
 import { RightPanel } from '@/RightPanel'
 import { useWindowStore } from '@/windowStore'
 import { useSystemStore } from '@/store'
-import { APP_TITLES } from '@/mediaToolsCatalog'
 
 export default function App() {
   const { openWindow } = useWindowStore()
   const { setShowLauncher, wallpaper } = useSystemStore()
 
   const handleOpenApp = useCallback((id: string) => {
-    openWindow(id, APP_TITLES[id] || id)
+    openWindow(id)
     setShowLauncher(false)
   }, [openWindow, setShowLauncher])
 

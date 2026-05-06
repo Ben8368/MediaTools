@@ -1,35 +1,14 @@
 /* ===== Log Viewer ===== */
-.lv-window {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  z-index: 2200;
+.lv-app {
   display: grid;
-  grid-template-rows: 58px minmax(0, 1fr);
-  width: 960px;
-  height: 640px;
-  min-width: 600px;
-  min-height: 400px;
-  transform: translate(-50%, -50%);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 18px;
-  background: rgba(10,10,11,.98);
-  box-shadow: 0 26px 90px rgba(0,0,0,.66), 0 0 0 1px rgba(0,0,0,.5);
+  background: rgba(10,12,18,.65);
   color: #fff;
 }
 
-.lv-window--maximized {
-  left: 18px;
-  right: 18px;
-  top: 18px;
-  bottom: 18px;
-  width: auto;
-  height: auto;
-  transform: none;
-}
-
-.lv-window svg {
+.lv-app svg {
   width: 16px;
   height: 16px;
   fill: none;
@@ -39,99 +18,71 @@
   stroke-linejoin: round;
 }
 
-.lv-titlebar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 18px;
-  background: rgba(8,8,9,.96);
-  user-select: none;
-  cursor: default;
-}
-
-.lv-titlebar strong {
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.lv-app-icon {
-  display: grid;
-  place-items: end center;
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, #f7f7f8, #777b82);
-  box-shadow: inset -6px -6px 10px rgba(0,0,0,.24), 0 8px 20px rgba(0,0,0,.34);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  padding-bottom: 6px;
-}
-
-.lv-window-control {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-left: 2px;
-  border: 0;
-  background: transparent;
-  color: rgba(255,255,255,.9);
-  cursor: pointer;
-}
-
-.lv-window-control:first-of-type {
-  margin-left: auto;
-}
-
-.lv-window-control:hover {
-  border-radius: 7px;
-  background: rgba(255,255,255,.08);
-}
-
 .lv-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 0;
-  margin: 0 12px 12px;
   overflow: hidden;
-  border-radius: 10px;
-  background: #222325;
+  background: rgba(16,17,21,.92);
+}
+
+.lv-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.lv-toolbar h2 {
+  margin: 0 0 4px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.lv-toolbar p {
+  margin: 0;
+  color: rgba(255,255,255,.52);
+  font-size: 12px;
 }
 
 .lv-filters {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 24px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
 }
 
 .lv-filter {
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: rgba(255,255,255,.92);
-  font-size: 14px;
+  gap: 10px;
+  color: rgba(255,255,255,.84);
+  font-size: 12px;
   font-weight: 800;
 }
 
 .lv-filter select,
 .lv-page-size select,
 .lv-jump input {
-  min-height: 36px;
+  min-height: 34px;
   border: 1px solid rgba(255,255,255,.14);
-  border-radius: 8px;
-  background: rgba(12,13,15,.4);
+  border-radius: 6px;
+  background: rgba(255,255,255,.04);
   color: #fff;
   outline: 0;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .lv-filter select {
-  width: min(260px, 22vw);
-  padding: 0 14px;
+  width: min(220px, 22vw);
+  padding: 0 12px;
 }
 
 .lv-spacer {
@@ -142,16 +93,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  gap: 10px;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 8px;
+  min-height: 32px;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 6px;
   background: rgba(255,255,255,.04);
   color: rgba(255,255,255,.84);
   cursor: pointer;
-  padding: 0 14px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .lv-action:hover,
@@ -171,17 +123,17 @@
 .lv-head,
 .lv-row {
   display: grid;
-  grid-template-columns: 92px 140px 190px 130px minmax(260px, 1fr);
+  grid-template-columns: 92px 130px 180px 112px minmax(220px, 1fr);
   align-items: center;
-  column-gap: 18px;
-  padding: 0 22px;
+  column-gap: 16px;
+  padding: 0 20px;
 }
 
 .lv-head {
-  min-height: 46px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.58);
-  font-size: 14px;
+  min-height: 40px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  color: rgba(255,255,255,.52);
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -192,8 +144,8 @@
 }
 
 .lv-row {
-  min-height: 48px;
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  min-height: 46px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
   color: #fff;
   font-size: 13px;
   font-weight: 650;
@@ -244,7 +196,7 @@
   place-items: center;
   min-height: 180px;
   color: rgba(255,255,255,.42);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .lv-empty--error {
@@ -254,12 +206,12 @@
 .lv-footer {
   display: flex;
   align-items: center;
-  min-height: 58px;
+  min-height: 52px;
   gap: 10px;
-  padding: 0 22px;
-  border-top: 1px solid rgba(255,255,255,.08);
-  color: rgba(255,255,255,.88);
-  font-size: 13px;
+  padding: 0 20px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  color: rgba(255,255,255,.82);
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -267,8 +219,8 @@
 .lv-page {
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 6px;
   background: rgba(255,255,255,.04);
   color: rgba(255,255,255,.76);
   cursor: pointer;
@@ -277,21 +229,19 @@
 .lv-refresh {
   width: 34px;
   height: 34px;
-  border: 0;
-  background: transparent;
 }
 
 .lv-pages {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
 }
 
 .lv-page {
-  width: 36px;
-  height: 36px;
-  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -315,16 +265,16 @@
 .lv-jump {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   white-space: nowrap;
 }
 
 .lv-page-size select {
-  min-width: 110px;
-  padding: 0 12px;
+  min-width: 96px;
+  padding: 0 10px;
 }
 
 .lv-jump input {
-  width: 86px;
-  padding: 0 12px;
+  width: 72px;
+  padding: 0 10px;
 }

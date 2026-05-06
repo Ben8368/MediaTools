@@ -15,6 +15,7 @@ export const APP_ICON_PATHS = {
   ae:         `${BASE}/ae.png`,
   filebrowser: `${BASE}/file-manager.png`,
   settings:    `${BASE}/setting.png`,
+  logs:        `${BASE}/log-center.png`,
 } as const
 
 export type AppId = keyof typeof APP_ICON_PATHS

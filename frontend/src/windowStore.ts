@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { getAppMetadata } from '@/appRegistry'
 import { getWindowPreset } from '@/appPresentation'
 
 export interface FnOSWindow {
@@ -18,7 +19,7 @@ export interface FnOSWindow {
 interface WindowStore {
   windows: FnOSWindow[]
   maxZ: number
-  openWindow: (appType: string, title: string) => void
+  openWindow: (appType: string, title?: string) => void
   closeWindow: (id: string) => void
   minimizeWindow: (id: string) => void
   maximizeWindow: (id: string) => void
@@ -49,11 +50,12 @@ export const useWindowStore = create<WindowStore>()((set, get) => ({
     const newZ = get().maxZ + 1
     const offset = (count % 5) * 30
     const preset = getWindowPreset(appType)
+    const appTitle = title || getAppMetadata(appType)?.title || appType
     set((s) => ({
       windows: [...s.windows, {
         id,
         appType,
-        title,
+        title: appTitle,
         width: preset.width,
         height: preset.height,
         x: preset.x + offset,

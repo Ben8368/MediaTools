@@ -1,7 +1,5 @@
-import { LogViewer } from '@/LogViewer'
 import { restartSystem, shutdownSystem } from '@/api'
 import { getAppIcon } from '@/icon-library'
-import { APP_TITLES } from '@/mediaToolsCatalog'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
 import { useState } from 'react'
@@ -12,7 +10,6 @@ export function LeftNavbar() {
   const openWindow = useWindowStore((state) => state.openWindow)
   const minimizeWindow = useWindowStore((state) => state.minimizeWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)
-  const [showLogs, setShowLogs] = useState(false)
   const [showPowerMenu, setShowPowerMenu] = useState(false)
   const [isRestarting, setIsRestarting] = useState(false)
   const [isShuttingDown, setIsShuttingDown] = useState(false)
@@ -28,7 +25,7 @@ export function LeftNavbar() {
     if (!existingWindow) return
 
     if (existingWindow.isMinimized) {
-      openWindow(appType, APP_TITLES[appType] || appType)
+      openWindow(appType)
       return
     }
 
@@ -183,9 +180,9 @@ export function LeftNavbar() {
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
         <Btn icon={<IconGlobe />} tooltip="网络" />
-        <Btn icon={<IconBell />} tooltip="日志" active={showLogs} onClick={() => setShowLogs(!showLogs)} />
+        <Btn icon={<IconBell />} tooltip="日志" active={windows.some((item) => item.appType === 'logs' && !item.isMinimized)} onClick={() => openWindow('logs')} />
         <Btn icon={<IconUser />} tooltip="账号" />
-        <Btn icon={<IconGear />} tooltip="设置" onClick={() => openWindow('settings', '设置')} />
+        <Btn icon={<IconGear />} tooltip="设置" onClick={() => openWindow('settings')} />
         <Btn
           ariaLabel="power-menu"
           icon={<IconPower />}
@@ -231,7 +228,6 @@ export function LeftNavbar() {
           />
         </div>
       )}
-      {showLogs && <LogViewer onClose={() => setShowLogs(false)} />}
     </div>
   )
 }

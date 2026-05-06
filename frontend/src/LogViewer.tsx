@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
 import { clearLogs, fetchLogMetadata, fetchLogs } from '@/api'
 
 type LogEntry = {
@@ -23,18 +23,15 @@ type LogResponse = {
 const LEVEL_LABELS: Record<string, string> = {
   DEBUG: 'Debug',
   INFO: '通知',
-  WARNING: '告警',
+  WARNING: '警告',
   ERROR: '错误',
   CRITICAL: '严重',
 }
 
 const FIXED_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
-export function LogViewer({ onClose }: { onClose: () => void }) {
+export function LogViewer() {
   const [logs, setLogs] = useState<LogResponse>({ total: 0, items: [], page: 1, page_size: 50 })
-  const [isMaximized, setIsMaximized] = useState(false)
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 })
   const [level, setLevel] = useState('')
   const [module, setModule] = useState('')
   const [page, setPage] = useState(1)
@@ -83,33 +80,6 @@ export function LogViewer({ onClose }: { onClose: () => void }) {
 
   const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages])
 
-  const handleTitleMouseDown = useCallback((event: React.MouseEvent<HTMLElement>) => {
-    if (isMaximized) return
-    if ((event.target as HTMLElement).closest('.lv-window-control')) return
-    dragRef.current = {
-      dragging: true,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: pos.x,
-      originY: pos.y,
-    }
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const nextX = dragRef.current.originX + (moveEvent.clientX - dragRef.current.startX)
-      const nextY = Math.max(-320, dragRef.current.originY + (moveEvent.clientY - dragRef.current.startY))
-      setPos({ x: nextX, y: nextY })
-    }
-
-    const onMouseUp = () => {
-      dragRef.current.dragging = false
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
-    }
-
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-  }, [isMaximized, pos.x, pos.y])
-
   async function handleClear() {
     await clearLogs()
     setPage(1)
@@ -134,20 +104,17 @@ export function LogViewer({ onClose }: { onClose: () => void }) {
     setJumpPage('')
   }
 
-  return createPortal(
-    <div
-      className={`lv-window ${isMaximized ? 'lv-window--maximized' : ''}`}
-      style={isMaximized ? undefined : { transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px))` }}
-    >
-      <header className="lv-titlebar" onMouseDown={handleTitleMouseDown}>
-        <span className="lv-app-icon">Log.</span>
-        <strong>日志</strong>
-        <button className="lv-window-control" title="最小化" onClick={onClose}><MinusIcon /></button>
-        <button className="lv-window-control" title="最大化" onClick={() => setIsMaximized((value) => !value)}><SquareIcon /></button>
-        <button className="lv-window-control" title="关闭" onClick={onClose}><CloseIcon /></button>
-      </header>
-
+  return (
+    <div className="lv-app">
       <section className="lv-panel">
+        <div className="lv-toolbar">
+          <div>
+            <h2>日志</h2>
+            <p>查看后端服务与任务事件。</p>
+          </div>
+          <button className="lv-refresh" title="刷新" onClick={() => void loadLogs()}><RefreshIcon /></button>
+        </div>
+
         <div className="lv-filters">
           <label className="lv-filter">
             <span>等级</span>
@@ -220,8 +187,7 @@ export function LogViewer({ onClose }: { onClose: () => void }) {
           </label>
         </footer>
       </section>
-    </div>,
-    document.body,
+    </div>
   )
 }
 
@@ -241,9 +207,6 @@ function PageButton({ children, active, disabled, onClick }: { children: React.R
   return <button className={`lv-page ${active ? 'lv-page--active' : ''}`} disabled={disabled} onClick={onClick}>{children}</button>
 }
 
-const MinusIcon = () => <svg viewBox="0 0 24 24"><path d="M5 12h14" /></svg>
-const SquareIcon = () => <svg viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="14" rx="1" /></svg>
-const CloseIcon = () => <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
 const ClearIcon = () => <svg viewBox="0 0 24 24"><path d="M5 8h14" /><path d="M9 8V5h6v3" /><path d="M8 8l1 11h6l1-11" /></svg>
 const MoreIcon = () => <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /></svg>
 const RefreshIcon = () => <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7" /><path d="M20 4v7h-7" /></svg>

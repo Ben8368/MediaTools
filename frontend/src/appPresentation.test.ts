@@ -1,18 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
+import { appRegistry } from './appRegistry'
 import { DEFAULT_WINDOW_PRESET, WINDOW_CHROME, getWindowPreset } from './appPresentation'
 
 describe('app presentation presets', () => {
-  it('keeps Adobe and workbench apps aligned with the downloader window size', () => {
-    const downloader = getWindowPreset('fetcher')
-
-    expect(getWindowPreset('agent')).toEqual(downloader)
-    expect(getWindowPreset('ps')).toEqual(downloader)
-    expect(getWindowPreset('photoshop')).toEqual(downloader)
-    expect(getWindowPreset('ae')).toEqual(downloader)
-    expect(getWindowPreset('decryptor')).toEqual(downloader)
-    expect(getWindowPreset('workbench')).toEqual(downloader)
-    expect(getWindowPreset('auditor')).toEqual(downloader)
+  it('uses one shared default preset for every registered desktop app', () => {
+    appRegistry.forEach((app) => {
+      expect(getWindowPreset(app.id)).toEqual(DEFAULT_WINDOW_PRESET)
+    })
   })
 
   it('falls back to the shared default preset for unknown apps', () => {
@@ -21,8 +16,8 @@ describe('app presentation presets', () => {
 
   it('keeps window shell geometry in one shared chrome preset', () => {
     expect(WINDOW_CHROME).toEqual({
-      minWidth: 400,
-      minHeight: 300,
+      minWidth: 760,
+      minHeight: 520,
       offscreenGutter: 140,
       minTop: 8,
     })

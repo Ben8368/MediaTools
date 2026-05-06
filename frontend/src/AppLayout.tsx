@@ -2,13 +2,13 @@ import { useState } from 'react'
 
 export function AppLayout({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-surface">
       {title && (
-        <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid var(--fnos-divider)' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--fnos-text-0)' }}>{title}</h2>
+        <div className="app-surface__header">
+          <h2>{title}</h2>
         </div>
       )}
-      <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+      <div className="app-surface__body">{children}</div>
     </div>
   )
 }
