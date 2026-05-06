@@ -200,8 +200,16 @@ def test_status_ticket_crud_and_invalid_ticket_skip(tmp_path, monkeypatch):
     tickets = service.list_photoshop_tickets(ws)
     assert [item["ticket_id"] for item in tickets] == ["ticket-a"]
 
+    external = tmp_path / "external-ps-ticket.json"
+    external.write_text(json.dumps({"meta": {"source_psd": "external.psd"}, "tasks": []}), encoding="utf-8")
+    imported = service.import_photoshop_ticket(str(external), ws, "imported-ps")
+    assert imported["ticket_id"] == "imported-ps"
+    assert imported["imported_from"] == str(external.resolve())
+    assert service.get_photoshop_ticket("imported-ps", ws)["ticket"]["meta"]["source_psd"] == "external.psd"
+
     deleted = service.delete_photoshop_ticket("ticket-a", ws)
     assert deleted["deleted"] is True
+    service.delete_photoshop_ticket("imported-ps", ws)
     assert service.list_photoshop_tickets(ws) == []
 
     with pytest.raises(FileNotFoundError):

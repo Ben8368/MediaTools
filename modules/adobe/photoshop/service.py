@@ -60,6 +60,13 @@ def _ticket_path(ticket_id: str, workspace: dict | None = None) -> Path:
     return _tickets_dir(workspace) / f"{ticket_id}.json"
 
 
+def _import_ticket_id(source: Path, ticket_id: str = "") -> str:
+    if ticket_id.strip():
+        return ticket_id.strip()
+    base = "".join(char if char.isalnum() or char in "-_" else "-" for char in source.stem).strip("-_")
+    return f"{(base or 'imported')[:48]}-{uuid.uuid4().hex[:8]}"
+
+
 def _runtime() -> dict[str, Any]:
     return _adapter.load_runtime()
 
@@ -136,6 +143,17 @@ def save_photoshop_ticket(ticket_id: str, ticket_payload: dict[str, Any], worksp
     path = _ticket_path(ticket_id, workspace)
     _save_ticket_payload(path, ticket_payload)
     return {"ticket_id": ticket_id, "path": str(path), "ticket": _load_ticket_payload(path)}
+
+
+def import_photoshop_ticket(file_path: str, workspace: dict | None = None, ticket_id: str = "") -> dict[str, Any]:
+    source = Path(file_path).expanduser().resolve()
+    if not source.exists() or not source.is_file():
+        raise FileNotFoundError(f"Ticket file not found: {file_path}")
+    ticket_payload = _load_ticket_payload(source)
+    next_id = _import_ticket_id(source, ticket_id)
+    result = save_photoshop_ticket(next_id, ticket_payload, workspace)
+    result["imported_from"] = str(source)
+    return result
 
 
 def delete_photoshop_ticket(ticket_id: str, workspace: dict | None = None) -> dict[str, Any]:

@@ -10,6 +10,7 @@ import {
   fetchPhotoshopTicket,
   fetchPhotoshopTickets,
   fetchSystemFonts,
+  importPhotoshopTicket,
   scanPhotoshopFolder,
   scanPhotoshopTicket,
   updatePhotoshopTicket,
@@ -32,9 +33,11 @@ type AnyRecord = Record<string, any>
 
 export function PhotoshopApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
+  const [activePanel, setActivePanel] = useState<'scan' | 'import'>('scan')
   const [tickets, setTickets] = useState<AnyRecord[]>([])
   const [ticketId, setTicketId] = useState('')
   const [ticketText, setTicketText] = useState('')
+  const [ticketImportPath, setTicketImportPath] = useState('')
   const [sourceMode, setSourceMode] = useState<'active' | 'file' | 'folder'>('active')
   const [psdPath, setPsdPath] = useState('')
   const [psdFolder, setPsdFolder] = useState('')
@@ -62,12 +65,6 @@ export function PhotoshopApp() {
   const sourceLayerCount = uniqueStrings(tasks.map(taskIdentityKey)).length
   const executableIndexes = automationTaskIndexes(tasks)
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
-  const automationReady = Boolean(status?.available)
-  const appRunning = Boolean(status?.app_running)
-  const serviceLabel = automationReady ? '服务正常' : '服务异常'
-  const serviceMessage = automationReady ? '自动化接口已就绪' : '自动化不可用'
-  const appLabel = appRunning ? '软件已打开' : '软件未打开'
-  const appMessage = appRunning ? 'Photoshop 运行中' : 'Photoshop 未运行'
 
   function updateTask(index: number, patch: AnyRecord) {
     const nextTicket = patchAutomationTask(parsedTicket, index, patch)
@@ -121,6 +118,7 @@ export function PhotoshopApp() {
   }
 
   async function loadTicket(nextId: string) {
+    setActivePanel('import')
     setTicketId(nextId)
     const data = await fetchPhotoshopTicket(nextId)
     const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
@@ -162,7 +160,28 @@ export function PhotoshopApp() {
       setTicketText(JSON.stringify(data.ticket, null, 2))
       setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
       setSelected(automationTaskIndexes(nextTasks))
+      setActivePanel('import')
       await refresh()
+    }
+  }
+
+  async function importTicket() {
+    if (!ticketImportPath) {
+      setResult({ ok: false, error: '请先选择工单 JSON 文件' })
+      return
+    }
+    try {
+      const data = await importPhotoshopTicket(ticketImportPath)
+      const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+      setTicketId(data.ticket_id)
+      setTicketText(JSON.stringify(data.ticket, null, 2))
+      setTargetLanguages(uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean)))
+      setSelected(automationTaskIndexes(nextTasks))
+      setActivePanel('import')
+      setResult(data)
+      await refresh()
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message || '导入工单失败' })
     }
   }
 
@@ -208,21 +227,30 @@ export function PhotoshopApp() {
   return (
     <AppLayout>
       <div className="ps-app">
+        <aside className="ps-flow-sidebar" aria-label="Photoshop 工单流程">
+          <button type="button" className={`ps-flow-step ${activePanel === 'scan' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('scan')}>
+            <span>01</span>
+            <div>
+              <strong>扫描工单</strong>
+              <small>{sourceMode === 'active' ? '当前文档' : sourceMode === 'file' ? '单文件扫描' : '文件夹批量扫描'}</small>
+            </div>
+          </button>
+          <button type="button" className={`ps-flow-step ${activePanel === 'import' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('import')}>
+            <span>02</span>
+            <div>
+              <strong>导入工单</strong>
+              <small>{ticketId ? `${ticketId.slice(0, 8)} · ${tasks.length} 个任务` : '扫描后自动导入当前工单'}</small>
+              {sourcePsd ? <em>{sourcePsd}</em> : null}
+            </div>
+          </button>
+        </aside>
+
+        <main className="ps-operation">
         <section className="ps-hero">
           <div>
             <div className="ps-eyebrow">Adobe Automation</div>
             <h2>Photoshop 自动化</h2>
-            <p>扫描 PSD 文本图层，生成可确认的工单；逐项修改替换文本、字体和输出名后，再提交给 Photoshop 执行。</p>
-          </div>
-          <div className={`ps-ready ${automationReady && appRunning ? 'ps-ready--online' : 'ps-ready--offline'}`}>
-            <div className="ps-ready-line">
-              <span>{serviceLabel}</span>
-              <small>{serviceMessage}</small>
-            </div>
-            <div className="ps-ready-line">
-              <span>{appLabel}</span>
-              <small>{appMessage}</small>
-            </div>
+            <p>左侧按扫描工单、导入工单组织流程；右侧完成来源扫描、当前工单确认和执行。</p>
           </div>
         </section>
 
@@ -233,11 +261,11 @@ export function PhotoshopApp() {
           <div className="ps-metric"><span>已选择</span><strong>{selectedExecutableCount}</strong></div>
         </div>
 
-        <section className="ps-panel ps-scan-panel">
+        <section className={`ps-panel ps-scan-panel ${activePanel === 'scan' ? '' : 'ps-panel--hidden'}`}>
           <div className="ps-section-head">
             <div>
-              <h3>1. 选择来源</h3>
-              <p>可以选择 PSD 文件；留空时读取当前 Photoshop 活动文档。</p>
+              <h3>扫描工单</h3>
+              <p>选择 PSD 来源并扫描文本图层，扫描成功后会自动导入为当前工单。</p>
             </div>
             <ToolbarButton onClick={() => void refresh()}>刷新状态</ToolbarButton>
           </div>
@@ -270,15 +298,53 @@ export function PhotoshopApp() {
         </section>
 
         <div className="ps-workspace">
-          <section className="ps-panel ps-ticket-panel">
+          <section className={`ps-panel ps-ticket-panel ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
             <div className="ps-ticket-head">
               <div>
-                <h3>2. 工单与输出</h3>
-                <p>{sourcePsd || '选择已有工单，或先扫描一个 PSD 文件。'}</p>
+                <h3>导入工单</h3>
+                <p>{ticketId ? `当前工单：${ticketId}` : '扫描成功后会自动导入当前工单，也可以从历史工单中手动导入。'}</p>
               </div>
               <span>{tickets.length} 个工单</span>
             </div>
 
+            <div className="ps-import-file">
+              <Field label="导入工单文件">
+                <PathInput value={ticketImportPath} onChange={setTicketImportPath} mode="file" placeholder="选择 Photoshop 工单 JSON 文件" />
+              </Field>
+              <PrimaryButton onClick={importTicket}>导入并设为当前工单</PrimaryButton>
+            </div>
+
+            <div className="ps-ticket-list">
+              {tickets.length ? tickets.map((ticket) => (
+                <div
+                  className={`ps-ticket ${ticket.ticket_id === ticketId ? 'ps-ticket--active' : ''}`}
+                  key={ticket.ticket_id}
+                >
+                  <button type="button" className="ps-ticket-main" onClick={() => void loadTicket(ticket.ticket_id)}>
+                    <span className="ps-ticket-top">
+                      <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
+                      <small>{ticket.task_count || 0} 个任务</small>
+                    </span>
+                    <span>{ticket.source_psd || '未记录来源'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`删除工单 ${ticket.ticket_id?.slice(0, 8) || '未命名'}`}
+                    className="ps-ticket-delete"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      void deleteTicket(ticket.ticket_id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )) : <div className="ps-empty">暂无工单，请先扫描 PSD。</div>}
+            </div>
+          </section>
+
+          <section className={`ps-panel ps-output-panel ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
             <div className="ps-output-cart">
               <div className="ps-output-cart-head">
                 <div>
@@ -315,41 +381,12 @@ export function PhotoshopApp() {
               </div>
               <ToolbarButton onClick={applyLanguageCartToTicket} disabled={!ticketId || !tasks.length}>应用到当前工单</ToolbarButton>
             </div>
-
-            <div className="ps-ticket-list">
-              {tickets.length ? tickets.map((ticket) => (
-                <div
-                  className={`ps-ticket ${ticket.ticket_id === ticketId ? 'ps-ticket--active' : ''}`}
-                  key={ticket.ticket_id}
-                >
-                  <button type="button" className="ps-ticket-main" onClick={() => void loadTicket(ticket.ticket_id)}>
-                    <span className="ps-ticket-top">
-                      <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
-                      <small>{ticket.task_count || 0} 个任务</small>
-                    </span>
-                    <span>{ticket.source_psd || '未记录来源'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`删除工单 ${ticket.ticket_id?.slice(0, 8) || '未命名'}`}
-                    className="ps-ticket-delete"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      void deleteTicket(ticket.ticket_id)
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              )) : <div className="ps-empty">暂无工单，请先扫描 PSD。</div>}
-            </div>
           </section>
 
           <section className="ps-panel ps-task-panel">
             <div className="ps-section-head">
               <div>
-                <h3>3. 确认任务</h3>
+                <h3>当前工单操作</h3>
                 <p>逐项确认要替换的文本、字体和输出名；标记为跳过的任务不会执行。</p>
               </div>
               <div className="ps-actions">
@@ -426,7 +463,7 @@ export function PhotoshopApp() {
         <section className="ps-panel ps-execute-panel">
           <div className="ps-section-head">
             <div>
-              <h3>4. 执行与回执</h3>
+              <h3>执行与回执</h3>
               <p>保存确认后的工单，再执行已选择任务；Dry Run 可先检查将要执行的内容。</p>
             </div>
             <div className="ps-actions">
@@ -446,6 +483,7 @@ export function PhotoshopApp() {
             <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} />
           </details>
         </section>
+        </main>
         <AutomationTaskDialog
           open={editingTaskIndex !== null}
           title={`Photoshop 任务 ${(editingTaskIndex ?? 0) + 1}`}

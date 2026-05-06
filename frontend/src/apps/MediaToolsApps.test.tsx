@@ -42,6 +42,8 @@ const apiMocks = vi.hoisted(() => ({
   fetchPhotoshopTickets: vi.fn(),
   fetchSystemFonts: vi.fn(),
   fetchWorkbenchMedia: vi.fn(),
+  importAETicket: vi.fn(),
+  importPhotoshopTicket: vi.fn(),
   getActiveTasks: vi.fn(),
   getModules: vi.fn(),
   getSystemStatus: vi.fn(),
@@ -97,6 +99,8 @@ function resetApiMocks() {
   apiMocks.fetchPhotoshopTickets.mockResolvedValue({ ok: true, items: [] })
   apiMocks.fetchSystemFonts.mockResolvedValue({ ok: true, items: [] })
   apiMocks.fetchWorkbenchMedia.mockResolvedValue({ ok: true, video_rows: [], subtitle_rows: [], export_rows: [] })
+  apiMocks.importAETicket.mockResolvedValue({ ok: true, ticket_id: 'ae-import-1', ticket: { meta: {}, tasks: [] } })
+  apiMocks.importPhotoshopTicket.mockResolvedValue({ ok: true, ticket_id: 'ps-import-1', ticket: { meta: {}, tasks: [] } })
   apiMocks.getActiveTasks.mockResolvedValue({ ok: true, tasks: [] })
   apiMocks.getModules.mockResolvedValue({ modules: [{ id: 'fetcher', name: '下载', desc: 'ready', status: 'online' }] })
   apiMocks.getSystemStatus.mockResolvedValue({ ok: true })

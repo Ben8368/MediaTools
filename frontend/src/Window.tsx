@@ -1,6 +1,76 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { fetchAEStatus, fetchPhotoshopStatus } from '@/api'
 import { WINDOW_CHROME } from '@/appPresentation'
 import { getAppIcon } from '@/icon-library'
+
+type WindowStatus = {
+  tone: 'online' | 'offline' | 'pending'
+  label: string
+  detail: string
+}
+
+function adobeStatusConfig(appType?: string) {
+  if (appType === 'ps' || appType === 'photoshop') {
+    return { label: 'PS', fetcher: fetchPhotoshopStatus }
+  }
+  if (appType === 'ae') {
+    return { label: 'AE', fetcher: fetchAEStatus }
+  }
+  return null
+}
+
+function formatAdobeStatus(appLabel: string, data: any): WindowStatus {
+  const serviceReady = Boolean(data?.available)
+  const appRunning = Boolean(data?.app_running)
+  const connected = serviceReady && appRunning
+  return {
+    tone: connected ? 'online' : 'offline',
+    label: connected ? `${appLabel} 已连接` : `${appLabel} 未连接`,
+    detail: `${serviceReady ? '服务正常' : '服务断开'} · ${appRunning ? '软件已打开' : '软件未打开'}`,
+  }
+}
+
+function WindowStatusBadge({ appType }: { appType?: string }) {
+  const config = adobeStatusConfig(appType)
+  const [status, setStatus] = useState<WindowStatus | null>(config ? { tone: 'pending', label: `${config.label} 检测中`, detail: '正在检测连接状态' } : null)
+
+  useEffect(() => {
+    const nextConfig = adobeStatusConfig(appType)
+    if (!nextConfig) {
+      setStatus(null)
+      return
+    }
+    const currentConfig = nextConfig
+
+    let alive = true
+    async function refreshStatus() {
+      try {
+        const data = await currentConfig.fetcher()
+        if (alive) setStatus(formatAdobeStatus(currentConfig.label, data))
+      } catch (err: any) {
+        if (alive) {
+          setStatus({ tone: 'offline', label: `${currentConfig.label} 未连接`, detail: err?.message || '状态检测失败' })
+        }
+      }
+    }
+
+    setStatus({ tone: 'pending', label: `${currentConfig.label} 检测中`, detail: '正在检测连接状态' })
+    void refreshStatus()
+    const timer = window.setInterval(refreshStatus, 10000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [appType])
+
+  if (!status) return null
+  return (
+    <div className={`fnos-window-status fnos-window-status--${status.tone}`} title={status.detail}>
+      <span aria-hidden="true" />
+      <strong>{status.label}</strong>
+    </div>
+  )
+}
 
 export function FnOSWindow({
   windowId, title, width = 900, height = 600,
@@ -97,6 +167,7 @@ export function FnOSWindow({
           <strong>{title}</strong>
         </div>
         <div className="fnos-window-controls wc">
+          <WindowStatusBadge appType={appType} />
           <button className="fnos-window-btn fnos-window-btn--min" title="最小化" onClick={(e) => { e.stopPropagation(); onMinimize(windowId) }}>
             <svg viewBox="0 0 24 24"><path d="M5 12h14" /></svg>
           </button>

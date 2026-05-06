@@ -19,6 +19,7 @@ from modules.adobe.after_effects.service import (
     delete_ae_ticket,
     get_ae_status,
     get_ae_ticket,
+    import_ae_ticket,
     list_ae_fonts,
     list_ae_tickets,
     save_ae_ticket,
@@ -176,6 +177,15 @@ def test_save_and_list_ae_ticket(tmp_workspace: dict) -> None:
     tickets = list_ae_tickets(tmp_workspace)
     assert len(tickets) == 1
     assert tickets[0]["ticket_id"] == "ticket-001"
+
+
+def test_import_ae_ticket_file(tmp_workspace: dict, tmp_path: Path) -> None:
+    source = tmp_path / "external-ae-ticket.json"
+    source.write_text(json.dumps({"meta": {"source_project": "external.aep"}, "tasks": []}), encoding="utf-8")
+    result = import_ae_ticket(str(source), tmp_workspace, "imported-ae")
+    assert result["ticket_id"] == "imported-ae"
+    assert result["imported_from"] == str(source.resolve())
+    assert get_ae_ticket("imported-ae", tmp_workspace)["ticket"]["meta"]["source_project"] == "external.aep"
 
 
 def test_delete_ae_ticket(tmp_workspace: dict) -> None:

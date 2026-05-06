@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import AdobeExecuteBody, AdobeScanBody, AdobeTicketBody, FolderScanBody
+from services.api_models import AdobeExecuteBody, AdobeScanBody, AdobeTicketBody, FolderScanBody, TicketImportBody
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:
@@ -113,6 +113,18 @@ def create_router(job_registry, get_current_workspace, get_photoshop_status) -> 
 
         try:
             result = get_ae_ticket(ticket_id, get_current_workspace())
+            return JSONResponse({"ok": True, **result})
+        except FileNotFoundError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+        except ValueError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+    @router.post("/api/adobe/after_effects/tickets/import")
+    async def ae_ticket_import(body: TicketImportBody):
+        from modules.adobe.after_effects import import_ae_ticket
+
+        try:
+            result = import_ae_ticket(body.file_path, get_current_workspace(), body.ticket_id)
             return JSONResponse({"ok": True, **result})
         except FileNotFoundError as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)

@@ -79,6 +79,10 @@ class FolderScanBody(BaseModel):
 class PhotoshopTicketBody(BaseModel):
     ticket: dict[str, Any]
 
+class TicketImportBody(BaseModel):
+    file_path: str
+    ticket_id: str = ""
+
 class PhotoshopExecuteBody(BaseModel):
     dry_run: bool = False
     selected_task_indexes: list[int] | None = None

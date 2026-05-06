@@ -14,6 +14,7 @@ import {
   fetchAETicket,
   fetchAETickets,
   fetchSystemFonts,
+  importAETicket,
   scanAEFolder,
   scanAETicket,
   startAERender,
@@ -37,9 +38,11 @@ type AnyRecord = Record<string, any>
 
 export function AEApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
+  const [activePanel, setActivePanel] = useState<'scan' | 'import'>('scan')
   const [tickets, setTickets] = useState<AnyRecord[]>([])
   const [ticketId, setTicketId] = useState('')
   const [ticketText, setTicketText] = useState('')
+  const [ticketImportPath, setTicketImportPath] = useState('')
   const [sourceMode, setSourceMode] = useState<'file' | 'folder'>('file')
   const [projectPath, setProjectPath] = useState('')
   const [projectFolder, setProjectFolder] = useState('')
@@ -65,13 +68,8 @@ export function AEApp() {
   const tasks: AnyRecord[] = Array.isArray(parsedTicket?.tasks) ? parsedTicket.tasks : []
   const executableIndexes = automationTaskIndexes(tasks)
   const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
+  const sourceProject = activeTicket?.source_project || parsedTicket?.meta?.source_project || ''
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
-  const automationReady = Boolean(status?.available)
-  const appRunning = Boolean(status?.app_running)
-  const serviceLabel = automationReady ? '服务正常' : '服务异常'
-  const serviceMessage = automationReady ? '自动化接口已就绪' : '自动化不可用'
-  const appLabel = appRunning ? '软件已打开' : '软件未打开'
-  const appMessage = appRunning ? 'After Effects 运行中' : 'After Effects 未运行'
 
   function updateTask(index: number, patch: AnyRecord) {
     const nextTicket = patchAutomationTask(parsedTicket, index, patch)
@@ -98,6 +96,7 @@ export function AEApp() {
   }
 
   async function loadTicket(nextId: string) {
+    setActivePanel('import')
     setTicketId(nextId)
     const data = await fetchAETicket(nextId)
     const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
@@ -129,7 +128,29 @@ export function AEApp() {
       setTicketId(data.ticket_id)
       setTicketText(JSON.stringify(data.ticket, null, 2))
       setSelected(automationTaskIndexes(nextTasks))
+      setActivePanel('import')
       await refresh()
+    }
+  }
+
+  async function importTicket() {
+    if (!ticketImportPath) {
+      setResult({ ok: false, error: '请先选择工单 JSON 文件' })
+      return
+    }
+    try {
+      const data = await importAETicket(ticketImportPath)
+      const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+      const nextSourceProject = data.ticket?.meta?.source_project || ''
+      setTicketId(data.ticket_id)
+      setTicketText(JSON.stringify(data.ticket, null, 2))
+      setProjectPath((current) => current || nextSourceProject)
+      setSelected(automationTaskIndexes(nextTasks))
+      setActivePanel('import')
+      setResult(data)
+      await refresh()
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message || '导入工单失败' })
     }
   }
 
@@ -214,21 +235,30 @@ export function AEApp() {
   return (
     <AppLayout>
       <div className="ae-app">
+        <aside className="ae-flow-sidebar" aria-label="After Effects 工单流程">
+          <button type="button" className={`ae-flow-step ${activePanel === 'scan' ? 'ae-flow-step--active' : ''}`} onClick={() => setActivePanel('scan')}>
+            <span>01</span>
+            <div>
+              <strong>扫描工单</strong>
+              <small>{sourceMode === 'file' ? '单文件扫描' : '文件夹批量扫描'}</small>
+            </div>
+          </button>
+          <button type="button" className={`ae-flow-step ${activePanel === 'import' ? 'ae-flow-step--active' : ''}`} onClick={() => setActivePanel('import')}>
+            <span>02</span>
+            <div>
+              <strong>导入工单</strong>
+              <small>{ticketId ? `${ticketId.slice(0, 8)} · ${tasks.length} 个任务` : '扫描后自动导入当前工单'}</small>
+              {sourceProject ? <em>{sourceProject}</em> : null}
+            </div>
+          </button>
+        </aside>
+
+        <main className="ae-operation">
         <section className="ae-hero">
           <div>
             <div className="ae-eyebrow">Adobe Automation</div>
             <h2>After Effects 自动化</h2>
-            <p>扫描 AE 工程中的文本图层，生成可确认的工单；逐项修改替换文本、字体和输出工程后，再提交给 AE 执行。</p>
-          </div>
-          <div className={`ae-ready ${automationReady && appRunning ? 'ae-ready--online' : 'ae-ready--offline'}`}>
-            <div className="ae-ready-line">
-              <span>{serviceLabel}</span>
-              <small>{serviceMessage}</small>
-            </div>
-            <div className="ae-ready-line">
-              <span>{appLabel}</span>
-              <small>{appMessage}</small>
-            </div>
+            <p>左侧按扫描工单、导入工单组织流程；右侧完成来源扫描、当前工单确认和执行。</p>
           </div>
         </section>
 
@@ -239,11 +269,11 @@ export function AEApp() {
           <div className="ae-metric"><span>已选择</span><strong>{selectedExecutableCount}</strong></div>
         </div>
 
-        <section className="ae-panel ae-scan-panel">
+        <section className={`ae-panel ae-scan-panel ${activePanel === 'scan' ? '' : 'ae-panel--hidden'}`}>
           <div className="ae-section-head">
             <div>
-              <h3>1. 选择来源</h3>
-              <p>选择 `.aep` 工程文件后扫描文本图层，系统会生成可确认的 AE 工单。</p>
+              <h3>扫描工单</h3>
+              <p>选择 `.aep` 来源并扫描文本图层，扫描成功后会自动导入为当前工单。</p>
             </div>
             <ToolbarButton onClick={() => void refresh()}>刷新状态</ToolbarButton>
           </div>
@@ -273,13 +303,19 @@ export function AEApp() {
         </section>
 
         <div className="ae-workspace">
-          <section className="ae-panel ae-ticket-panel">
+          <section className={`ae-panel ae-ticket-panel ${activePanel === 'import' ? '' : 'ae-panel--hidden'}`}>
             <div className="ae-section-head">
               <div>
-                <h3>2. 选择工单</h3>
-                <p>{activeTicket?.source_project || '选择已有工单，或先扫描一个 AE 工程。'}</p>
+                <h3>导入工单</h3>
+                <p>{ticketId ? `当前工单：${ticketId}` : '扫描成功后会自动导入当前工单，也可以从历史工单中手动导入。'}</p>
               </div>
               <span>{tickets.length} 个</span>
+            </div>
+            <div className="ae-import-file">
+              <Field label="导入工单文件">
+                <PathInput value={ticketImportPath} onChange={setTicketImportPath} mode="file" placeholder="选择 After Effects 工单 JSON 文件" />
+              </Field>
+              <PrimaryButton onClick={importTicket}>导入并设为当前工单</PrimaryButton>
             </div>
             <div className="ae-ticket-list">
               {tickets.length ? tickets.map((ticket) => (
@@ -315,7 +351,7 @@ export function AEApp() {
           <section className="ae-panel ae-task-panel">
             <div className="ae-section-head">
               <div>
-                <h3>3. 确认任务</h3>
+                <h3>当前工单操作</h3>
                 <p>逐项确认要替换的文本、字体和输出工程；标记为跳过的任务不会执行。</p>
               </div>
               <div className="ae-actions">
@@ -407,7 +443,7 @@ export function AEApp() {
         <section className="ae-panel ae-execute-panel">
           <div className="ae-section-head">
             <div>
-              <h3>4. 执行与回执</h3>
+              <h3>执行与回执</h3>
               <p>保存确认后的工单，再执行已选择任务；Dry Run 可先检查将要执行的内容。</p>
             </div>
             <div className="ae-actions">
@@ -427,6 +463,7 @@ export function AEApp() {
             <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} />
           </details>
         </section>
+        </main>
         <AutomationTaskDialog
           open={editingTaskIndex !== null}
           title={`After Effects 任务 ${(editingTaskIndex ?? 0) + 1}`}

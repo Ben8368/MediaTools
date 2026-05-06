@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.api_models import FolderScanBody, PhotoshopExecuteBody, PhotoshopScanBody, PhotoshopTicketBody
+from services.api_models import FolderScanBody, PhotoshopExecuteBody, PhotoshopScanBody, PhotoshopTicketBody, TicketImportBody
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:
@@ -119,6 +119,18 @@ def create_router(
     async def photoshop_ticket(ticket_id: str):
         try:
             result = get_photoshop_ticket(ticket_id, get_current_workspace())
+            return JSONResponse({"ok": True, **result})
+        except FileNotFoundError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+        except ValueError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+    @router.post("/api/photoshop/tickets/import")
+    async def photoshop_ticket_import(body: TicketImportBody):
+        from modules.adobe.photoshop import import_photoshop_ticket
+
+        try:
+            result = import_photoshop_ticket(body.file_path, get_current_workspace(), body.ticket_id)
             return JSONResponse({"ok": True, **result})
         except FileNotFoundError as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
