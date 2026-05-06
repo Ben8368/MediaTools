@@ -249,27 +249,12 @@ async def shutdown_server(request: Request):
         return JSONResponse({"ok": False, "error": "shutdown only allowed from localhost"}, status_code=403)
 
     import signal
+    import sys
 
     def _delayed_shutdown():
         time.sleep(0.5)
-        # In reload mode, we need to kill the parent reloader process
-        # Otherwise only the child server process dies and gets restarted
-        parent_pid = os.getppid()
-        current_pid = os.getpid()
-
-        # Check if we're running under a reloader (parent is also python)
-        try:
-            import psutil
-            parent = psutil.Process(parent_pid)
-            if 'python' in parent.name().lower():
-                # Kill the parent reloader process
-                os.kill(parent_pid, signal.SIGTERM)
-            else:
-                # Not in reload mode, kill current process
-                os.kill(current_pid, signal.SIGTERM)
-        except:
-            # Fallback: kill current process
-            os.kill(current_pid, signal.SIGTERM)
+        # Force exit to stop both reloader and server
+        sys.exit(0)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server shutting down"})
@@ -277,36 +262,26 @@ async def shutdown_server(request: Request):
 
 @app.post("/api/system/restart")
 async def restart_server(request: Request):
-    """Restart the server. In production mode with watchdog, exits with code 3.
-    In dev mode with --reload, triggers file change for automatic reload."""
+    """Restart the server. Triggers file change to activate --reload in dev mode,
+    or uses watchdog restart in production mode."""
     client_host = request.client.host if request.client else ""
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
+    import signal
+
     def _delayed_restart():
         time.sleep(0.5)
-        # Trigger file change to cause reload in dev mode
+        # Trigger file change to cause reload
         restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
         restart_trigger.parent.mkdir(exist_ok=True)
         restart_trigger.write_text(str(time.time()))
-        # In reload mode, the file change will trigger restart automatically
-        # In production mode, set restart flag and shutdown
-        try:
-            import psutil
-            parent_pid = os.getppid()
-            parent = psutil.Process(parent_pid)
-            if 'python' not in parent.name().lower():
-                # Not in reload mode, use watchdog restart
-                import app
-                import signal
-                app.request_restart()
-                os.kill(os.getpid(), signal.SIGTERM)
-        except:
-            # Fallback: assume production mode
-            import app
-            import signal
-            app.request_restart()
-            os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(0.3)
+        # Set restart flag for production mode watchdog
+        import app
+        app.request_restart()
+        # Graceful shutdown
+        os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server restarting"})
