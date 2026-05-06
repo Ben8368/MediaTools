@@ -84,6 +84,7 @@ Thumbs.db
 desktop.ini
 
 # ===== IDE =====
+.claude/
 .vscode/
 .idea/
 *.swp
