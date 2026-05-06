@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AppLayout } from '@/AppLayout'
 import {
   cancelPhotoshopExecution,
+  deletePhotoshopTicket,
   executePhotoshopTicket,
   fetchPhotoshopExecution,
   fetchPhotoshopStatus,
@@ -37,7 +38,8 @@ export function PhotoshopApp() {
   const [sourceMode, setSourceMode] = useState<'active' | 'file' | 'folder'>('active')
   const [psdPath, setPsdPath] = useState('')
   const [psdFolder, setPsdFolder] = useState('')
-  const [languages, setLanguages] = useState('zh-CN,en-US')
+  const [targetLanguages, setTargetLanguages] = useState<string[]>([])
+  const [languageDraft, setLanguageDraft] = useState('')
   const [selected, setSelected] = useState<number[]>([])
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null)
   const [fonts, setFonts] = useState<string[]>([])
@@ -53,9 +55,13 @@ export function PhotoshopApp() {
   }, [ticketText])
 
   const tasks: AnyRecord[] = Array.isArray(parsedTicket?.tasks) ? parsedTicket.tasks : []
+  const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
+  const ticketLanguages = uniqueStrings(tasks.map((task) => task.language).filter(Boolean))
+  const outputNames = uniqueStrings(tasks.map((task) => task.output_name).filter(Boolean))
+  const sourcePsd = activeTicket?.source_psd || parsedTicket?.meta?.source_psd || ''
+  const sourceLayerCount = uniqueStrings(tasks.map(taskIdentityKey)).length
   const executableIndexes = automationTaskIndexes(tasks)
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
-  const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
   const automationReady = Boolean(status?.available)
   const appRunning = Boolean(status?.app_running)
   const serviceLabel = automationReady ? '服务正常' : '服务异常'
@@ -81,6 +87,33 @@ export function PhotoshopApp() {
     toggleTask(index, checked)
   }
 
+  function confirmTask(index: number) {
+    updateTask(index, { status: 'confirmed' })
+    toggleTask(index, true)
+  }
+
+  function addTargetLanguages(raw: string) {
+    const nextLanguages = raw
+      .split(/[,\n，\s]+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+    if (!nextLanguages.length) return
+    setTargetLanguages((items) => uniqueStrings([...items, ...nextLanguages]))
+    setLanguageDraft('')
+  }
+
+  function removeTargetLanguage(language: string) {
+    setTargetLanguages((items) => items.filter((item) => item !== language))
+  }
+
+  function applyLanguageCartToTicket() {
+    const nextTicket = rebuildTicketForLanguages(parsedTicket, targetLanguages)
+    if (!nextTicket) return
+    const nextTasks = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
+    setTicketText(JSON.stringify(nextTicket, null, 2))
+    setSelected(automationTaskIndexes(nextTasks))
+  }
+
   async function refresh() {
     const [statusData, ticketData] = await Promise.all([fetchPhotoshopStatus(), fetchPhotoshopTickets()])
     setStatus(statusData)
@@ -92,28 +125,42 @@ export function PhotoshopApp() {
     const data = await fetchPhotoshopTicket(nextId)
     const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
     setTicketText(JSON.stringify(data.ticket, null, 2))
+    setTargetLanguages(uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean)))
     setSelected(automationTaskIndexes(nextTasks))
     setResult(data)
   }
 
+  async function deleteTicket(nextId: string) {
+    const data = await deletePhotoshopTicket(nextId)
+    if (ticketId === nextId) {
+      setTicketId('')
+      setTicketText('')
+      setSelected([])
+      setTargetLanguages([])
+    }
+    setResult(data)
+    await refresh()
+  }
+
   async function scan() {
-    const languageList = languages.split(',').map((item) => item.trim()).filter(Boolean)
     const data = sourceMode === 'folder'
       ? await scanPhotoshopFolder({
           directory: psdFolder,
-          languages: languageList,
+          languages: targetLanguages,
           recursive: true,
           max_files: 30,
         })
       : await scanPhotoshopTicket({
           psd_path: sourceMode === 'file' ? psdPath : '',
-          languages: languageList,
+          languages: targetLanguages,
         })
     setResult(data)
     if (data.ok) {
       const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+      const returnedLanguages = uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean))
       setTicketId(data.ticket_id)
       setTicketText(JSON.stringify(data.ticket, null, 2))
+      setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
       setSelected(automationTaskIndexes(nextTasks))
       await refresh()
     }
@@ -153,7 +200,7 @@ export function PhotoshopApp() {
 
   useEffect(() => {
     void fetchSystemFonts({ limit: 700 }).then((data) => {
-      const names = (data.items || []).map((item: AnyRecord) => item.name).filter(Boolean)
+      const names = uniqueStrings((data.items || []).map((item: AnyRecord) => item.name).filter(Boolean))
       setFonts(names)
     }).catch(() => setFonts([]))
   }, [])
@@ -213,38 +260,93 @@ export function PhotoshopApp() {
                 <input value="留空时读取当前 Photoshop 活动文档" readOnly />
               </Field>
             )}
-            <Field label="语言">
-              <input value={languages} onChange={(event) => setLanguages(event.target.value)} placeholder="zh-CN,en-US" />
-            </Field>
+            <div className="ps-language-hint">
+              <span>目标语言</span>
+              <strong>{targetLanguages.length ? targetLanguages.join(', ') : '原始任务'}</strong>
+              <small>在下方输出购物车中添加语言；留空只生成原始任务。</small>
+            </div>
           </div>
           <PrimaryButton onClick={scan}>扫描并生成工单</PrimaryButton>
         </section>
 
         <div className="ps-workspace">
-          <section className="ps-panel">
-            <div className="ps-section-head">
+          <section className="ps-panel ps-ticket-panel">
+            <div className="ps-ticket-head">
               <div>
-                <h3>2. 选择工单</h3>
-                <p>{activeTicket?.source_psd || '选择已有工单，或先扫描一个 PSD 文件。'}</p>
+                <h3>2. 工单与输出</h3>
+                <p>{sourcePsd || '选择已有工单，或先扫描一个 PSD 文件。'}</p>
               </div>
-              <span>{tickets.length} 个</span>
+              <span>{tickets.length} 个工单</span>
             </div>
+
+            <div className="ps-output-cart">
+              <div className="ps-output-cart-head">
+                <div>
+                  <strong>目标语言购物车</strong>
+                  <small>一个工单可输出多个目标语言。</small>
+                </div>
+                <em>{targetLanguages.length || 1} 组输出</em>
+              </div>
+              <div className="ps-language-chips">
+                {targetLanguages.length ? targetLanguages.map((language) => (
+                  <button type="button" key={language} onClick={() => removeTargetLanguage(language)}>
+                    {language}<span>×</span>
+                  </button>
+                )) : <span className="ps-language-empty">原始任务</span>}
+              </div>
+              <div className="ps-language-add">
+                <input
+                  value={languageDraft}
+                  onChange={(event) => setLanguageDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      addTargetLanguages(languageDraft)
+                    }
+                  }}
+                  placeholder="输入 zh-CN,en-US"
+                />
+                <ToolbarButton onClick={() => addTargetLanguages(languageDraft)}>添加</ToolbarButton>
+              </div>
+              <div className="ps-cart-stats">
+                <span><b>{sourceLayerCount || tasks.length || 0}</b> 源图层</span>
+                <span><b>{targetLanguages.length || ticketLanguages.length || 0}</b> 目标语言</span>
+                <span><b>{outputNames.length || (targetLanguages.length ? targetLanguages.length : 0)}</b> 输出文件</span>
+              </div>
+              <ToolbarButton onClick={applyLanguageCartToTicket} disabled={!ticketId || !tasks.length}>应用到当前工单</ToolbarButton>
+            </div>
+
             <div className="ps-ticket-list">
               {tickets.length ? tickets.map((ticket) => (
-                <button
+                <div
                   className={`ps-ticket ${ticket.ticket_id === ticketId ? 'ps-ticket--active' : ''}`}
                   key={ticket.ticket_id}
-                  onClick={() => void loadTicket(ticket.ticket_id)}
                 >
-                  <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
-                  <span>{ticket.source_psd || '未记录来源'}</span>
-                  <small>{ticket.task_count || 0} 个任务</small>
-                </button>
+                  <button type="button" className="ps-ticket-main" onClick={() => void loadTicket(ticket.ticket_id)}>
+                    <span className="ps-ticket-top">
+                      <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
+                      <small>{ticket.task_count || 0} 个任务</small>
+                    </span>
+                    <span>{ticket.source_psd || '未记录来源'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`删除工单 ${ticket.ticket_id?.slice(0, 8) || '未命名'}`}
+                    className="ps-ticket-delete"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      void deleteTicket(ticket.ticket_id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               )) : <div className="ps-empty">暂无工单，请先扫描 PSD。</div>}
             </div>
           </section>
 
-          <section className="ps-panel">
+          <section className="ps-panel ps-task-panel">
             <div className="ps-section-head">
               <div>
                 <h3>3. 确认任务</h3>
@@ -278,10 +380,40 @@ export function PhotoshopApp() {
                         <em className={ready ? 'ps-badge ps-badge--ready' : 'ps-badge'}>{ready ? '可执行' : '待确认'}</em>
                       </div>
                       <div className="ps-task-preview">
-                        <span><b>替换</b>{task.target_text || '待填写'}</span>
-                        <span><b>字体</b>{task.target_font || task.source_font || '未指定'}</span>
-                        <span><b>输出</b>{task.output_name || '默认命名'}</span>
-                        <ToolbarButton onClick={() => setEditingTaskIndex(index)}>确认修改</ToolbarButton>
+                        <label>
+                          <b>替换</b>
+                          <textarea
+                            aria-label={`替换文本 ${index + 1}`}
+                            value={task.target_text || ''}
+                            onChange={(event) => updateTask(index, { target_text: event.target.value })}
+                            placeholder="待填写"
+                          />
+                        </label>
+                        <label>
+                          <b>字体</b>
+                          <select
+                            aria-label={`目标字体 ${index + 1}`}
+                            value={task.target_font || ''}
+                            onChange={(event) => updateTask(index, { target_font: event.target.value })}
+                          >
+                            <option value="">
+                              {task.source_font ? `沿用源字体：${task.source_font}` : '沿用源字体'}
+                            </option>
+                            {fontOptionsForTask(fonts, task).map((font) => (
+                              <option value={font} key={font}>{font}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          <b>输出</b>
+                          <input
+                            aria-label={`输出名称 ${index + 1}`}
+                            value={task.output_name || ''}
+                            onChange={(event) => updateTask(index, { output_name: event.target.value })}
+                            placeholder="默认命名"
+                          />
+                        </label>
+                        <ToolbarButton onClick={() => confirmTask(index)}>确认修改</ToolbarButton>
                       </div>
                     </div>
                   </div>
@@ -328,4 +460,53 @@ export function PhotoshopApp() {
       </div>
     </AppLayout>
   )
+}
+
+function uniqueStrings(items: unknown[]) {
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function taskIdentityKey(task: AnyRecord) {
+  return [
+    task.layer_id,
+    task.artboard_name,
+    task.layer_name,
+    task.original_text,
+    task.source_font,
+  ].map((item) => String(item || '')).join('|')
+}
+
+function fontOptionsForTask(fonts: string[], task: AnyRecord) {
+  return uniqueStrings([task.target_font, task.source_font, ...fonts])
+}
+
+function rebuildTicketForLanguages(ticket: AnyRecord | null, languages: string[]) {
+  if (!ticket || !Array.isArray(ticket.tasks)) return null
+  const bases = new Map<string, AnyRecord>()
+  ticket.tasks.forEach((task: AnyRecord) => {
+    const key = taskIdentityKey(task)
+    if (!bases.has(key)) bases.set(key, task)
+  })
+
+  const nextLanguages = uniqueStrings(languages)
+  const nextTasks = Array.from(bases.entries()).flatMap(([key, baseTask]) => {
+    if (!nextLanguages.length) {
+      const existing = ticket.tasks.find((task: AnyRecord) => taskIdentityKey(task) === key && !task.language) || baseTask
+      return [{ ...existing, language: '', output_name: existing.output_name || '' }]
+    }
+    return nextLanguages.map((language) => {
+      const existing = ticket.tasks.find((task: AnyRecord) => taskIdentityKey(task) === key && task.language === language)
+      return {
+        ...baseTask,
+        ...existing,
+        language,
+        output_name: existing?.output_name || `${language}.psd`,
+      }
+    })
+  })
+
+  return {
+    ...ticket,
+    tasks: nextTasks,
+  }
 }

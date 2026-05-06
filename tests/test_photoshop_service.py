@@ -180,7 +180,7 @@ def test_ticket_payload_validation_and_summary(tmp_path):
 def test_status_ticket_crud_and_invalid_ticket_skip(tmp_path, monkeypatch):
     ws = patch_workspace(monkeypatch, tmp_path)
     monkeypatch.setattr(service._adapter, "get_status", lambda: {"connected": False})
-    with service._executions_guard:
+    with service._execution_lock:
         service._executions.clear()
         service._executions["run-1"] = Mock(status="running")
         service._executions["done-1"] = Mock(status="completed")
@@ -200,8 +200,15 @@ def test_status_ticket_crud_and_invalid_ticket_skip(tmp_path, monkeypatch):
     tickets = service.list_photoshop_tickets(ws)
     assert [item["ticket_id"] for item in tickets] == ["ticket-a"]
 
+    deleted = service.delete_photoshop_ticket("ticket-a", ws)
+    assert deleted["deleted"] is True
+    assert service.list_photoshop_tickets(ws) == []
+
     with pytest.raises(FileNotFoundError):
         service.get_photoshop_ticket("missing", ws)
+
+    with pytest.raises(FileNotFoundError):
+        service.delete_photoshop_ticket("missing", ws)
 
 
 def test_build_ticket_expands_languages_and_defaults():

@@ -22,6 +22,8 @@ const apiMocks = vi.hoisted(() => ({
   clearTaskRecords: vi.fn(),
   cancelPhotoshopExecution: vi.fn(),
   createAECheckpoint: vi.fn(),
+  deleteAETicket: vi.fn(),
+  deletePhotoshopTicket: vi.fn(),
   executeAETicket: vi.fn(),
   executePhotoshopTicket: vi.fn(),
   exportWorkbenchClips: vi.fn(),
@@ -75,6 +77,8 @@ function resetApiMocks() {
   apiMocks.clearTaskRecords.mockResolvedValue({ ok: true })
   apiMocks.cancelPhotoshopExecution.mockResolvedValue({ ok: true })
   apiMocks.createAECheckpoint.mockResolvedValue({ ok: true })
+  apiMocks.deleteAETicket.mockResolvedValue({ ok: true, deleted: true })
+  apiMocks.deletePhotoshopTicket.mockResolvedValue({ ok: true, deleted: true })
   apiMocks.executeAETicket.mockResolvedValue({ ok: true })
   apiMocks.executePhotoshopTicket.mockResolvedValue({ ok: true })
   apiMocks.exportWorkbenchClips.mockResolvedValue({ ok: true })
@@ -172,6 +176,106 @@ describe('MediaTools workflow apps', () => {
     render(<AEApp />)
     expect(await screen.findByText('After Effects 自动化')).toBeInTheDocument()
     expect(apiMocks.fetchAEStatus).toHaveBeenCalled()
+  })
+
+  it('creates Photoshop tickets without implicit languages and allows inline task edits', async () => {
+    apiMocks.fetchSystemFonts.mockResolvedValueOnce({
+      ok: true,
+      items: [{ name: 'NotoSans' }, { name: 'Inter' }],
+    })
+    apiMocks.scanPhotoshopTicket.mockResolvedValueOnce({
+      ok: true,
+      ticket_id: 'ps-1',
+      ticket: {
+        meta: { source_psd: 'demo.psd' },
+        tasks: [{
+          layer_name: 'Title',
+          language: '',
+          original_text: 'Hello',
+          source_font: 'NotoSans',
+          target_text: '',
+          target_font: '',
+          output_name: '',
+          status: 'pending',
+        }],
+      },
+    })
+
+    render(<PhotoshopApp />)
+
+    await screen.findByText('Adobe Automation')
+    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+
+    await waitFor(() => {
+      expect(apiMocks.scanPhotoshopTicket).toHaveBeenCalledWith(expect.objectContaining({
+        psd_path: '',
+        languages: [],
+      }))
+    })
+
+    const replacement = await screen.findByLabelText('替换文本 1')
+    const font = await screen.findByLabelText('目标字体 1')
+    const output = screen.getByLabelText('输出名称 1')
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Inter' })).toBeInTheDocument()
+    })
+    fireEvent.change(replacement, { target: { value: 'New headline' } })
+    fireEvent.change(font, { target: { value: 'Inter' } })
+    fireEvent.change(output, { target: { value: 'custom.psd' } })
+
+    expect(replacement).toHaveValue('New headline')
+    expect(font).toHaveValue('Inter')
+    expect(output).toHaveValue('custom.psd')
+  })
+
+  it('uses the Photoshop language cart as the requested output set', async () => {
+    apiMocks.scanPhotoshopTicket.mockResolvedValueOnce({
+      ok: true,
+      ticket_id: 'ps-1',
+      ticket: {
+        meta: { source_psd: 'demo.psd' },
+        tasks: [
+          {
+            layer_name: 'Title',
+            language: 'zh-CN',
+            original_text: 'Hello',
+            source_font: 'NotoSans',
+            target_text: '',
+            target_font: '',
+            output_name: 'zh-CN.psd',
+            status: 'pending',
+          },
+          {
+            layer_name: 'Title',
+            language: 'en-US',
+            original_text: 'Hello',
+            source_font: 'NotoSans',
+            target_text: '',
+            target_font: '',
+            output_name: 'en-US.psd',
+            status: 'pending',
+          },
+        ],
+      },
+    })
+
+    render(<PhotoshopApp />)
+
+    await screen.findByText('Adobe Automation')
+    fireEvent.change(screen.getByPlaceholderText('输入 zh-CN,en-US'), {
+      target: { value: 'zh-CN,en-US' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '添加' }))
+    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+
+    await waitFor(() => {
+      expect(apiMocks.scanPhotoshopTicket).toHaveBeenCalledWith(expect.objectContaining({
+        psd_path: '',
+        languages: ['zh-CN', 'en-US'],
+      }))
+    })
+    expect(await screen.findByDisplayValue('zh-CN.psd')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('en-US.psd')).toBeInTheDocument()
   })
 
   it('renders workbench and auditor pages with backend configuration', async () => {

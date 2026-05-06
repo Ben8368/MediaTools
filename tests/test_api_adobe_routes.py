@@ -92,6 +92,13 @@ class TestApiAdobeRoutes(unittest.TestCase):
                 400,
             )
 
+        with patch("modules.adobe.after_effects.delete_ae_ticket", return_value={"deleted": True}) as delete_ticket:
+            self.assertEqual(self.client.delete("/api/adobe/after_effects/tickets/ae-1").status_code, 200)
+            delete_ticket.assert_called_once()
+
+        with patch("modules.adobe.after_effects.delete_ae_ticket", side_effect=FileNotFoundError("missing")):
+            self.assertEqual(self.client.delete("/api/adobe/after_effects/tickets/missing").status_code, 404)
+
     def test_ae_execute_success_cancelled_and_error(self):
         def start_success(*args, **kwargs):
             kwargs["on_progress"]("render", 35.0)

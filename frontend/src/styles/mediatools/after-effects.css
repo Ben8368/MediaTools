@@ -1,9 +1,17 @@
 /* ===== After Effects automation workspace ===== */
 .ae-app {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(292px, .32fr) minmax(0, 1fr);
+  grid-template-areas:
+    "hero hero"
+    "metrics metrics"
+    "source tasks"
+    "tickets tasks"
+    "tickets tools"
+    "tickets execute";
   height: 100%;
   min-height: 0;
-  flex-direction: column;
+  align-content: start;
   gap: 14px;
   overflow: auto;
   padding: 16px 18px 20px;
@@ -20,6 +28,7 @@
 }
 
 .ae-hero {
+  grid-area: hero;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -114,6 +123,7 @@
 }
 
 .ae-metrics {
+  grid-area: metrics;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
@@ -271,15 +281,29 @@
   color: #fff;
 }
 
-.ae-workspace,
-.ae-tools {
-  display: grid;
-  grid-template-columns: minmax(230px, .34fr) minmax(0, 1fr);
-  gap: 14px;
+.ae-workspace {
+  display: contents;
 }
 
 .ae-tools {
+  display: grid;
+  grid-area: tools;
   grid-template-columns: minmax(300px, .42fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.ae-scan-panel {
+  grid-area: source;
+}
+
+.ae-ticket-panel {
+  grid-area: tickets;
+  min-height: 0;
+}
+
+.ae-task-panel {
+  grid-area: tasks;
+  min-height: 0;
 }
 
 .ae-ticket-list,
@@ -292,16 +316,38 @@
 }
 
 .ae-ticket {
-  display: grid;
+  position: relative;
+  display: flex;
+  align-items: stretch;
   gap: 4px;
   width: 100%;
   border: 1px solid rgba(174,154,255,.14);
   border-radius: 12px;
   background: rgba(6,8,18,.54);
   color: #f2f3ff;
+  padding: 0;
+  text-align: left;
+}
+
+.ae-ticket-main {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: inherit;
   padding: 11px 12px;
   text-align: left;
   cursor: pointer;
+}
+
+.ae-ticket-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .ae-ticket:hover {
@@ -329,6 +375,37 @@
 .ae-ticket span,
 .ae-ticket small {
   font-size: 12px;
+}
+
+.ae-ticket-delete {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(242,243,255,.42);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  transition: color .14s ease, opacity .14s ease;
+}
+
+.ae-ticket:hover .ae-ticket-delete,
+.ae-ticket--active .ae-ticket-delete,
+.ae-ticket-delete:focus-visible {
+  opacity: 1;
+}
+
+.ae-ticket-delete:hover,
+.ae-ticket-delete:focus-visible {
+  color: rgba(242,243,255,.92);
+  outline: 0;
 }
 
 .ae-empty {
@@ -467,6 +544,10 @@
   gap: 12px;
 }
 
+.ae-execute-panel {
+  grid-area: execute;
+}
+
 .ae-app .mt-result {
   min-height: 118px;
   border: 1px solid rgba(174,154,255,.14);
@@ -498,12 +579,23 @@
 }
 
 @media (max-width: 1150px) {
+  .ae-app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "metrics"
+      "source"
+      "tickets"
+      "tasks"
+      "tools"
+      "execute";
+  }
+
   .ae-metrics,
   .ae-task-preview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ae-workspace,
   .ae-tools,
   .ae-result-grid,
   .ae-form-grid,

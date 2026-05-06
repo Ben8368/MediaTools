@@ -2,6 +2,7 @@
 
 from .service import (
     cancel_execution,
+    delete_photoshop_ticket,
     get_execution_state,
     get_photoshop_status,
     get_photoshop_ticket,
@@ -13,6 +14,7 @@ from .service import (
 
 __all__ = [
     "cancel_execution",
+    "delete_photoshop_ticket",
     "get_execution_state",
     "get_photoshop_status",
     "get_photoshop_ticket",

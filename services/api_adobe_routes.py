@@ -129,6 +129,18 @@ def create_router(job_registry, get_current_workspace, get_photoshop_status) -> 
         except Exception as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
+    @router.delete("/api/adobe/after_effects/tickets/{ticket_id}")
+    async def ae_ticket_delete(ticket_id: str):
+        from modules.adobe.after_effects import delete_ae_ticket
+
+        try:
+            result = delete_ae_ticket(ticket_id, get_current_workspace())
+            return JSONResponse({"ok": True, **result})
+        except FileNotFoundError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+        except ValueError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
     @router.post("/api/adobe/after_effects/tickets/{ticket_id}/execute")
     async def ae_execute(ticket_id: str, body: AdobeExecuteBody):
         from modules.adobe.after_effects import start_ae_ticket_execution

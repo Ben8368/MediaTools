@@ -4,12 +4,14 @@
 """
 
 from modules.adobe.after_effects import (
+    delete_ae_ticket,
     get_ae_status,
     list_ae_tickets,
     scan_ae_project,
 )
 from modules.adobe.photoshop import (
     cancel_execution,
+    delete_photoshop_ticket,
     get_execution_state,
     get_photoshop_status,
     get_photoshop_ticket,
@@ -22,6 +24,7 @@ from modules.adobe.photoshop import (
 __all__ = [
     # Photoshop
     "cancel_execution",
+    "delete_photoshop_ticket",
     "get_execution_state",
     "get_photoshop_status",
     "get_photoshop_ticket",
@@ -31,6 +34,7 @@ __all__ = [
     "start_ticket_execution",
     # After Effects
     "get_ae_status",
+    "delete_ae_ticket",
     "list_ae_tickets",
     "scan_ae_project",
 ]

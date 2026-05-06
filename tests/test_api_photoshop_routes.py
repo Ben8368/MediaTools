@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -114,6 +114,13 @@ class TestApiPhotoshopRoutes(unittest.TestCase):
             self.client.put("/api/photoshop/tickets/ps-1", json={"ticket": {"id": "ps-1"}}).status_code,
             400,
         )
+
+        with patch("modules.adobe.photoshop.delete_photoshop_ticket", return_value={"deleted": True}) as delete_ticket:
+            self.assertEqual(self.client.delete("/api/photoshop/tickets/ps-1").status_code, 200)
+            delete_ticket.assert_called_once_with("ps-1", self.workspace)
+
+        with patch("modules.adobe.photoshop.delete_photoshop_ticket", side_effect=FileNotFoundError("missing")):
+            self.assertEqual(self.client.delete("/api/photoshop/tickets/missing").status_code, 404)
 
     def test_execute_passes_selection_and_callbacks_update_job(self):
         def start_execution(*args, **kwargs):

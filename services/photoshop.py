@@ -9,6 +9,7 @@ from modules.adobe.common.execution import (
     get_execution_state,
 )
 from modules.adobe.photoshop.service import (
+    delete_photoshop_ticket,
     get_photoshop_status,
     get_photoshop_ticket,
     list_photoshop_tickets,
@@ -20,6 +21,7 @@ from modules.adobe.photoshop.service import (
 __all__ = [
     "cancel_execution",
     "get_execution_state",
+    "delete_photoshop_ticket",
     "get_photoshop_status",
     "get_photoshop_ticket",
     "list_photoshop_tickets",

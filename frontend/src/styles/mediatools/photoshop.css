@@ -1,9 +1,16 @@
 /* ===== Photoshop automation workspace ===== */
 .ps-app {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(292px, .32fr) minmax(0, 1fr);
+  grid-template-areas:
+    "hero hero"
+    "metrics metrics"
+    "source tasks"
+    "tickets tasks"
+    "tickets execute";
   height: 100%;
   min-height: 0;
-  flex-direction: column;
+  align-content: start;
   gap: 14px;
   overflow: auto;
   padding: 16px 18px 20px;
@@ -20,6 +27,7 @@
 }
 
 .ps-hero {
+  grid-area: hero;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,6 +117,7 @@
 }
 
 .ps-metrics {
+  grid-area: metrics;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
@@ -212,6 +221,36 @@
   box-shadow: 0 8px 18px rgba(10,115,255,.22);
 }
 
+.ps-language-hint {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(142,183,237,.18);
+  border-radius: 10px;
+  background: rgba(4,10,18,.46);
+  padding: 9px 11px;
+}
+
+.ps-language-hint span {
+  color: rgba(221,235,255,.56);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ps-language-hint strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f6fbff;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-language-hint small {
+  color: rgba(221,235,255,.48);
+  font-size: 11px;
+}
+
 .ps-app .mt-field {
   color: rgba(221,235,255,.72);
 }
@@ -222,6 +261,9 @@
 .ps-app .mt-path-input input,
 .ps-task-fields input,
 .ps-task-fields select,
+.ps-task-preview input,
+.ps-task-preview select,
+.ps-task-preview textarea,
 .ps-json textarea {
   border-color: rgba(142,183,237,.18);
   background: rgba(4,10,18,.70);
@@ -250,9 +292,173 @@
 }
 
 .ps-workspace {
+  display: contents;
+}
+
+.ps-scan-panel {
+  grid-area: source;
+}
+
+.ps-ticket-panel {
+  grid-area: tickets;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.ps-task-panel {
+  grid-area: tasks;
+  min-height: 0;
+}
+
+.ps-ticket-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ps-ticket-head h3 {
+  margin: 0 0 6px;
+  color: #f5f9ff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ps-ticket-head p {
+  margin: 0;
+  color: rgba(221,235,255,.64);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ps-ticket-head > span {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(10,115,255,.14);
+  color: #8fc5ff;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ps-output-cart {
   display: grid;
-  grid-template-columns: minmax(230px, .34fr) minmax(0, 1fr);
-  gap: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(66,153,255,.24);
+  border-radius: 14px;
+  background: rgba(13,45,78,.34);
+  padding: 12px;
+}
+
+.ps-output-cart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ps-output-cart-head div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ps-output-cart-head strong {
+  color: #f7fbff;
+  font-size: 13px;
+}
+
+.ps-output-cart-head small {
+  color: rgba(221,235,255,.58);
+  font-size: 11px;
+}
+
+.ps-output-cart-head em {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(48,209,88,.12);
+  color: #55e483;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.ps-language-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ps-language-chips button,
+.ps-language-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  gap: 6px;
+  border: 1px solid rgba(142,183,237,.16);
+  border-radius: 999px;
+  background: rgba(4,10,18,.52);
+  color: rgba(238,246,255,.88);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ps-language-chips button {
+  cursor: pointer;
+}
+
+.ps-language-chips button:hover {
+  border-color: rgba(77,171,255,.46);
+  background: rgba(14,64,113,.58);
+}
+
+.ps-language-chips button span {
+  color: rgba(238,246,255,.58);
+}
+
+.ps-language-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.ps-language-add input {
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid rgba(142,183,237,.18);
+  border-radius: 8px;
+  background: rgba(4,10,18,.70);
+  color: #f6fbff;
+  padding: 0 10px;
+  outline: 0;
+}
+
+.ps-cart-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ps-cart-stats span {
+  display: grid;
+  gap: 2px;
+  border-radius: 9px;
+  background: rgba(4,10,18,.40);
+  color: rgba(221,235,255,.56);
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+.ps-cart-stats b {
+  color: #f7fbff;
+  font-size: 15px;
 }
 
 .ps-ticket-list,
@@ -265,13 +471,27 @@
 }
 
 .ps-ticket {
-  display: grid;
-  gap: 4px;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
   width: 100%;
   border: 1px solid rgba(142,183,237,.14);
   border-radius: 12px;
   background: rgba(5,13,23,.52);
   color: #eef6ff;
+  padding: 0;
+  text-align: left;
+}
+
+.ps-ticket-main {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: inherit;
   padding: 11px 12px;
   text-align: left;
   cursor: pointer;
@@ -382,19 +602,56 @@
   align-items: stretch;
 }
 
-.ps-task-preview span {
+.ps-task-preview label {
   min-width: 0;
   display: grid;
   gap: 3px;
   border: 1px solid rgba(142,183,237,.12);
   border-radius: 10px;
   background: rgba(255,255,255,.035);
-  padding: 8px 9px;
+  padding: 7px 9px;
   overflow: hidden;
   color: rgba(238,246,255,.88);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.ps-ticket-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ps-ticket-delete {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(238,246,255,.42);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  transition: color .14s ease, opacity .14s ease;
+}
+
+.ps-ticket:hover .ps-ticket-delete,
+.ps-ticket--active .ps-ticket-delete,
+.ps-ticket-delete:focus-visible {
+  opacity: 1;
+}
+
+.ps-ticket-delete:hover,
+.ps-ticket-delete:focus-visible {
+  color: rgba(238,246,255,.92);
+  outline: 0;
 }
 
 .ps-task-preview b {
@@ -402,10 +659,43 @@
   font-size: 10px;
 }
 
+.ps-task-preview input,
+.ps-task-preview select,
+.ps-task-preview textarea {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  color: rgba(238,246,255,.94);
+  font: inherit;
+}
+
+.ps-task-preview select {
+  cursor: pointer;
+}
+
+.ps-task-preview textarea {
+  min-height: 34px;
+  max-height: 96px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.ps-task-preview input::placeholder,
+.ps-task-preview textarea::placeholder {
+  color: rgba(221,235,255,.42);
+}
+
 .ps-result-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.ps-execute-panel {
+  grid-area: execute;
 }
 
 .ps-app .mt-result {
@@ -439,12 +729,22 @@
 }
 
 @media (max-width: 1150px) {
+  .ps-app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hero"
+      "metrics"
+      "source"
+      "tickets"
+      "tasks"
+      "execute";
+  }
+
   .ps-metrics,
   .ps-task-preview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ps-workspace,
   .ps-result-grid,
   .ps-form-grid {
     grid-template-columns: 1fr;

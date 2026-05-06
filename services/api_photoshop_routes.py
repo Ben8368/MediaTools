@@ -133,6 +133,18 @@ def create_router(
         except Exception as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
+    @router.delete("/api/photoshop/tickets/{ticket_id}")
+    async def photoshop_ticket_delete(ticket_id: str):
+        from modules.adobe.photoshop import delete_photoshop_ticket
+
+        try:
+            result = delete_photoshop_ticket(ticket_id, get_current_workspace())
+            return JSONResponse({"ok": True, **result})
+        except FileNotFoundError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+        except ValueError as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
     @router.post("/api/photoshop/tickets/{ticket_id}/execute")
     async def photoshop_execute(ticket_id: str, body: PhotoshopExecuteBody):
         workspace = get_current_workspace()

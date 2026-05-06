@@ -5,6 +5,7 @@ import {
   addAERenderQueue,
   cancelAEExecution,
   createAECheckpoint,
+  deleteAETicket,
   executeAETicket,
   fetchAECheckpoints,
   fetchAEExecution,
@@ -105,6 +106,17 @@ export function AEApp() {
     setProjectPath((current) => current || sourceProject)
     setSelected(automationTaskIndexes(nextTasks))
     setResult(data)
+  }
+
+  async function deleteTicket(nextId: string) {
+    const data = await deleteAETicket(nextId)
+    if (ticketId === nextId) {
+      setTicketId('')
+      setTicketText('')
+      setSelected([])
+    }
+    setResult(data)
+    await refresh()
   }
 
   async function scan() {
@@ -227,7 +239,7 @@ export function AEApp() {
           <div className="ae-metric"><span>已选择</span><strong>{selectedExecutableCount}</strong></div>
         </div>
 
-        <section className="ae-panel">
+        <section className="ae-panel ae-scan-panel">
           <div className="ae-section-head">
             <div>
               <h3>1. 选择来源</h3>
@@ -261,7 +273,7 @@ export function AEApp() {
         </section>
 
         <div className="ae-workspace">
-          <section className="ae-panel">
+          <section className="ae-panel ae-ticket-panel">
             <div className="ae-section-head">
               <div>
                 <h3>2. 选择工单</h3>
@@ -271,20 +283,36 @@ export function AEApp() {
             </div>
             <div className="ae-ticket-list">
               {tickets.length ? tickets.map((ticket) => (
-                <button
+                <div
                   className={`ae-ticket ${ticket.ticket_id === ticketId ? 'ae-ticket--active' : ''}`}
                   key={ticket.ticket_id}
-                  onClick={() => void loadTicket(ticket.ticket_id)}
                 >
-                  <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
-                  <span>{ticket.source_project || '未记录工程'}</span>
-                  <small>{ticket.task_count || 0} 个任务 · {ticket.confirmed_count || 0} 已确认</small>
-                </button>
+                  <button type="button" className="ae-ticket-main" onClick={() => void loadTicket(ticket.ticket_id)}>
+                    <span className="ae-ticket-top">
+                      <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
+                      <small>{ticket.task_count || 0} 个任务</small>
+                    </span>
+                    <span>{ticket.source_project || '未记录工程'}</span>
+                    <small>{ticket.confirmed_count || 0} 已确认</small>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`删除工单 ${ticket.ticket_id?.slice(0, 8) || '未命名'}`}
+                    className="ae-ticket-delete"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      void deleteTicket(ticket.ticket_id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               )) : <div className="ae-empty">暂无工单，请先扫描 AE 工程。</div>}
             </div>
           </section>
 
-          <section className="ae-panel">
+          <section className="ae-panel ae-task-panel">
             <div className="ae-section-head">
               <div>
                 <h3>3. 确认任务</h3>

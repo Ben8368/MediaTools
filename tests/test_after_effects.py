@@ -16,6 +16,7 @@ from modules.adobe.after_effects.service import (
     _save_ticket_payload,
     _should_execute_task,
     _ticket_summary,
+    delete_ae_ticket,
     get_ae_status,
     get_ae_ticket,
     list_ae_fonts,
@@ -175,6 +176,18 @@ def test_save_and_list_ae_ticket(tmp_workspace: dict) -> None:
     tickets = list_ae_tickets(tmp_workspace)
     assert len(tickets) == 1
     assert tickets[0]["ticket_id"] == "ticket-001"
+
+
+def test_delete_ae_ticket(tmp_workspace: dict) -> None:
+    payload = {"meta": {"source_project": "test.aep"}, "tasks": []}
+    save_ae_ticket("ticket-delete", payload, tmp_workspace)
+
+    result = delete_ae_ticket("ticket-delete", tmp_workspace)
+    assert result["deleted"] is True
+    assert list_ae_tickets(tmp_workspace) == []
+
+    with pytest.raises(FileNotFoundError):
+        delete_ae_ticket("ticket-delete", tmp_workspace)
 
 
 def test_get_ae_ticket_not_found(tmp_workspace: dict) -> None:

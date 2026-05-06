@@ -138,6 +138,14 @@ def save_photoshop_ticket(ticket_id: str, ticket_payload: dict[str, Any], worksp
     return {"ticket_id": ticket_id, "path": str(path), "ticket": _load_ticket_payload(path)}
 
 
+def delete_photoshop_ticket(ticket_id: str, workspace: dict | None = None) -> dict[str, Any]:
+    path = _ticket_path(ticket_id, workspace)
+    if not path.exists():
+        raise FileNotFoundError(f"Ticket not found: {ticket_id}")
+    path.unlink()
+    return {"ticket_id": ticket_id, "path": str(path), "deleted": True}
+
+
 def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str, languages: list[str]) -> Any:
     ticket_tasks = []
     expanded_languages = [item for item in languages if item] if languages else []

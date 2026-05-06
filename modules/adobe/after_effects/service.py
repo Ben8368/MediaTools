@@ -137,6 +137,14 @@ def save_ae_ticket(ticket_id: str, ticket_payload: dict[str, Any], workspace: di
     return {"ticket_id": ticket_id, "path": str(path), "ticket": _load_ticket_payload(path)}
 
 
+def delete_ae_ticket(ticket_id: str, workspace: dict | None = None) -> dict[str, Any]:
+    path = _ticket_path(ticket_id, workspace)
+    if not path.exists():
+        raise FileNotFoundError(f"Ticket not found: {ticket_id}")
+    path.unlink()
+    return {"ticket_id": ticket_id, "path": str(path), "deleted": True}
+
+
 def _build_ticket_from_layers(layers: list[dict[str, Any]], source_project: str) -> dict[str, Any]:
     return {
         "meta": {
