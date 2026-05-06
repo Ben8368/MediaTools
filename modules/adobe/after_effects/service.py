@@ -13,6 +13,8 @@ from adapters.after_effects_runtime import AfterEffectsAutomationAdapter
 from modules.adobe.common.execution import (
     _executions,
     _executions_guard,
+    cancel_execution,
+    get_execution_state,
 )
 
 ProgressCallback = Callable[[str, float], None]

@@ -13,6 +13,8 @@ from typing import Any
 from adapters.photoshop_runtime import PhotoshopAutomationAdapter
 from modules.adobe.common.execution import (
     _executions,
+    cancel_execution,
+    get_execution_state,
 )
 
 ProgressCallback = Callable[[str, float], None]
