@@ -17,7 +17,7 @@ import uvicorn
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import API_SECRET_KEY, GUI_SERVER_NAME, GUI_SERVER_PORT
+from backend.config import API_SECRET_KEY, GUI_SERVER_NAME, GUI_SERVER_PORT
 
 
 def configure_windows_event_loop() -> None:
@@ -69,11 +69,11 @@ def main():
     print(f"API 文档: http://{args.host}:{args.port}/docs")
 
     uvicorn.run(
-        "api_server:app",
+        "backend.api.server:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
-        app_dir=str(root_dir / "services"),
+        
         reload_dirs=[str(root_dir)] if args.reload else None,
         access_log=False,
     )

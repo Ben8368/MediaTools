@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.photoshop import (
+from backend.services.photoshop import (
     cancel_execution,
     get_execution_state,
     get_photoshop_status,

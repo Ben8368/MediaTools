@@ -18,12 +18,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from adapters import FFmpegAdapter, YtdlpAdapter
-from config import DEFAULT_NAMING_TEMPLATE
+from backend.config import DEFAULT_NAMING_TEMPLATE
 from modules.fetcher.analyzer import SubtitleAnalyzer
 from modules.fetcher.csv_manager import CSVManager
 from modules.fetcher.subtitle import SubtitleProcessor
-from services.fetcher import fetch_video_info, run_fetch_batch
-from services.workspace import get_current_workspace
+from backend.services.fetcher import fetch_video_info, run_fetch_batch
+from backend.services.workspace import get_current_workspace
 
 
 def main():

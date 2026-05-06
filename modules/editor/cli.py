@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from config import CAPCUT_MATE_BASE_URL
+from backend.config import CAPCUT_MATE_BASE_URL
 from modules.editor.adapter import CapcutAdapter
 
 

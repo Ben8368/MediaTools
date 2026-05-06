@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from modules.assets.library import AssetLibrary
-from services.workspace import get_current_workspace
+from backend.services.workspace import get_current_workspace
 
 
 def main():

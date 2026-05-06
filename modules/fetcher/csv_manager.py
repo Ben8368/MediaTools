@@ -6,7 +6,7 @@ import csv
 from datetime import datetime
 from pathlib import Path
 
-from config import BASE_DIR, CSV_FIELDS
+from backend.config import BASE_DIR, CSV_FIELDS
 
 
 def _safe_int(value, default=0):

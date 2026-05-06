@@ -5,7 +5,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from config import ANALYSIS_MODEL, ANALYSIS_PROMPT, API_BASE_URL, API_KEY
+from backend.config import ANALYSIS_MODEL, ANALYSIS_PROMPT, API_BASE_URL, API_KEY
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -51,7 +51,7 @@ class SubtitleAnalyzer:
         model: str | None = None,
         client: Any | None = None,
     ):
-        from config import get_api_config
+        from backend.config import get_api_config
 
         cfg = get_api_config()
         self.api_key = api_key or cfg["api_key"] or API_KEY

@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.auditor import get_auditor_config, get_auditor_status, run_auditor_scan_once
+from backend.services.auditor import get_auditor_config, get_auditor_status, run_auditor_scan_once
 
 
 def main() -> None:

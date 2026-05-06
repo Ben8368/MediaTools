@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.workbench import analyze_subtitle_for_workbench, export_clips_from_workbench, list_workspace_media
+from backend.services.workbench import analyze_subtitle_for_workbench, export_clips_from_workbench, list_workspace_media
 
 
 def _load_clips_json(clips_file: str | None, clips_json: str | None) -> str:
