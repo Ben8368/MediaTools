@@ -1,232 +1,91 @@
-# MediaTools 工具派系对比
+# 工具路线和集成状态
 
-## 概述
+本文说明 MediaTools 中几条外部工具路线的定位。它不是产品路线承诺，只用于判断当前应该优先依赖哪条链路。
 
-MediaTools 支持两大视频制作工具派系，分别代表专业创作和大众剪辑两种不同的工作流。
+## 总览
 
-## 派系对比
+| 路线 | 当前定位 | 稳定性 | 主要入口 |
+|---|---|---|---|
+| FFmpeg + yt-dlp | 核心生产主线 | 高 | `fetcher`, `encoder`, `workbench` |
+| AI 字幕分析 | 核心增强能力 | 中高，取决于模型和字幕 | `services/agent*`, `modules/fetcher/analyzer.py` |
+| Adobe / Photoshop / After Effects | 专业软件自动化扩展 | 环境相关 | `modules/adobe`, `services/api_adobe_routes.py`, `services/api_photoshop_routes.py` |
+| capcut-mate / CapCut | 实验剪辑联动 | 中低 | `modules/editor`, `services/editor_runtime.py` |
+| auditor | 素材审核扩展 | 环境相关 | `modules/auditor`, `services/auditor.py` |
+| filebrowser | 文件管理扩展 | 中 | `modules/filebrowser`, `services/filebrowser_runtime.py` |
 
-### Adobe 派系 🎨
+## 推荐主线
 
-**位置**: `vendor/adobe/`
+日常可稳定依赖的链路是：
 
-**包含工具**:
-- **After Effects** - 专业动效制作
-- **Photoshop** - 平面设计和图像处理
-
-**技术架构**:
-- CEP (Common Extensibility Platform) 扩展
-- Python + pywin32 自动化
-- ExtendScript 脚本
-
-**适用场景**:
-- 专业动效制作
-- 高质量平面设计
-- 复杂图层处理
-- 精细化控制
-
-**优势**:
-- 行业标准工具
-- 功能强大完整
-- 输出质量高
-- 生态系统成熟
-
-**劣势**:
-- 学习曲线陡峭
-- 软件价格昂贵
-- 渲染速度较慢
-- 需要专业知识
-
----
-
-### 剪映派系 🎬
-
-**位置**: `vendor/capcut-mate/`
-
-**包含工具**:
-- **CapCut (剪映)** - 智能视频剪辑
-
-**技术架构**:
-- Python API 集成
-- 需要追新（跟随剪映更新）
-
-**适用场景**:
-- 快速视频剪辑
-- 自动化特效
-- 批量视频处理
-- AI 辅助功能
-
-**优势**:
-- 上手简单快速
-- AI 功能强大
-- 渲染速度快
-- 免费或低成本
-
-**劣势**:
-- 功能相对有限
-- 专业性不足
-- 需要追新维护
-- API 可能变化
-
----
-
-## 详细对比
-
-| 维度 | Adobe 派系 | 剪映派系 |
-|------|-----------|---------|
-| **厂商** | Adobe | 字节跳动 |
-| **定位** | 专业创作工具 | 大众剪辑工具 |
-| **价格** | 订阅制（较贵） | 免费/低价 |
-| **学习曲线** | 陡峭 | 平缓 |
-| **功能完整度** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **易用性** | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **AI 能力** | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **输出质量** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **渲染速度** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **自动化能力** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **维护成本** | 低（稳定） | 中（需追新） |
-
----
-
-## 使用建议
-
-### 何时选择 Adobe 派系
-
-✅ **推荐场景**:
-- 需要专业级动效（AE）
-- 需要精细化图像处理（PS）
-- 输出质量要求高
-- 团队熟悉 Adobe 生态
-- 预算充足
-- 有专业设计师
-
-❌ **不推荐场景**:
-- 快速出片需求
-- 预算有限
-- 团队无 Adobe 经验
-- 简单剪辑任务
-
-### 何时选择剪映派系
-
-✅ **推荐场景**:
-- 快速视频剪辑
-- 批量视频处理
-- 需要 AI 辅助（字幕、特效）
-- 预算有限
-- 团队无专业背景
-- 追求效率
-
-❌ **不推荐场景**:
-- 需要复杂动效
-- 需要精细化控制
-- 输出质量要求极高
-- 需要稳定的 API
-
----
-
-## 集成状态
-
-### Adobe 派系
-
-#### After Effects (atom)
-- **状态**: ✅ 已集成
-- **类型**: CEP 扩展（独立运行）
-- **Agent**: ❌ 未集成
-- **前端**: ❌ 未提供
-- **优先级**: 低（可选）
-
-#### Photoshop
-- **状态**: ✅ 已集成
-- **类型**: Python 自动化
-- **Agent**: ❌ 未集成
-- **前端**: ✅ 已提供（完整）
-- **优先级**: 中
-
-### 剪映派系
-
-#### CapCut (capcut-mate)
-- **状态**: ⚠️ 实验性
-- **类型**: Python API
-- **Agent**: ❌ 未集成
-- **前端**: ❌ 未提供
-- **优先级**: 中
-- **维护**: 需要追新
-
----
-
-## 工作流示例
-
-### Adobe 工作流
-
-```
-1. MediaTools 下载视频素材
-   ↓
-2. After Effects 制作动效
-   ↓
-3. Photoshop 处理图像
-   ↓
-4. 输出回 MediaTools 素材库
+```text
+yt-dlp 下载
+-> 字幕清洗/分析
+-> FFmpeg 切片或转码
+-> 工作台复核
+-> 工作区素材管理
 ```
 
-### 剪映工作流
+这条路线的优点：
 
-```
-1. MediaTools 下载视频素材
-   ↓
-2. CapCut 自动剪辑
-   ↓
-3. AI 添加字幕和特效
-   ↓
-4. 输出回 MediaTools 素材库
-```
+- 不依赖大型桌面软件
+- 容易测试和排查
+- CLI 和 Web 都能复用
+- 失败时通常能通过日志和命令行复现
 
-### 混合工作流
+## Adobe 路线
 
-```
-1. MediaTools 下载素材
-   ↓
-2. CapCut 快速剪辑
-   ↓
-3. After Effects 精细化动效
-   ↓
-4. Photoshop 最终调色
-   ↓
-5. 输出成品
-```
+适合：
 
----
+- Photoshop 批量处理
+- After Effects 工程扫描、票据化修改和执行
+- 本机已安装并配置 Adobe 软件的专业工作流
 
-## 未来规划
+特点：
 
-### Adobe 派系
-- [ ] 完善 Agent 集成
-- [ ] 统一 CEP 架构
-- [ ] 支持更多 Adobe 软件（Premiere Pro, Illustrator）
-- [ ] 完整的工作流自动化
+- 能力强，但强依赖本机软件、权限、插件和版本。
+- COM/ExtendScript/CEP 的细节应隔离在 Adobe 模块和 runtime 里。
+- 相关专题见 `docs/adobe/`。
 
-### 剪映派系
-- [ ] 完成 API 集成
-- [ ] Agent 工具集成
-- [ ] 前端界面
-- [ ] 稳定性优化
+当前主要代码：
 
-### 跨派系
-- [ ] 统一的素材管理
-- [ ] 工作流编排
-- [ ] 自动选择最佳工具
-- [ ] 混合工作流支持
+- `modules/adobe/`
+- `modules/photoshop/`
+- `services/api_adobe_routes.py`
+- `services/api_photoshop_routes.py`
+- `adapters/adobe_runtime.py`
+- `adapters/photoshop_runtime.py`
+- `adapters/after_effects_runtime.py`
 
----
+## CapCut / capcut-mate 路线
 
-## 相关文档
+适合：
 
-- [Adobe 工具集](../vendor/adobe/README.md)
-- [剪映工具](../vendor/capcut-mate/README.md)
-- [后端能力分析](./BACKEND_CAPABILITIES.md)
-- [目录结构说明](./DIRECTORY_STRUCTURE.md)
+- 快速剪辑实验
+- 研究 CapCut/剪映自动化
+- 非核心生产链路的辅助导出
 
----
+当前限制：
 
-**维护者**: MediaTools Team  
-**最后更新**: 2026-04-24  
-**版本**: v1.0
+- 上游接口和本机环境变化较多。
+- 自动化稳定性不如 FFmpeg 主线。
+- 不建议作为唯一导出路径。
+
+当前主要代码：
+
+- `modules/editor/`
+- `services/editor_runtime.py`
+- `vendor/capcut-mate/`
+
+## 选择建议
+
+- 只需要下载、分析、切片：选 FFmpeg + yt-dlp。
+- 需要专业图像或 AE 工程处理：选 Adobe 路线。
+- 需要探索剪映联动：使用 capcut-mate，但保留 FFmpeg 备选。
+- 需要审查素材合规或质量：使用 auditor。
+- 需要浏览、预览和整理工作区文件：使用内置文件管理和 filebrowser。
+
+## 文档边界
+
+- 当前实现状态以 `ARCHITECTURE.md` 和代码为准。
+- 第三方工具自身能力以 `vendor/` 中上游文档为准。
+- 本文只说明 MediaTools 对这些工具的集成定位。

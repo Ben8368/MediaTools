@@ -176,8 +176,11 @@ MediaTools/
 - [工作流说明](./WORKFLOW.md)
 - [当前架构](./ARCHITECTURE.md)
 - [文档索引](./docs/README.md)
+- [API 概览](./docs/API_OVERVIEW.md)
+- [前端结构](./docs/FRONTEND_OVERVIEW.md)
 - [目录结构](./docs/DIRECTORY_STRUCTURE.md)
 - [外部工具管理](./docs/EXTERNAL_TOOLS.md)
+- [任务中心](./docs/TASK_QUEUE.md)
 - [补丁系统](./docs/PATCH_SYSTEM.md)
 - [vendor 组织规范](./docs/VENDOR_ORGANIZATION.md)
 

@@ -11,12 +11,17 @@
 - 重写 `ARCHITECTURE.md`，按当前 FastAPI + React + services/modules 结构说明维护边界。
 - 重写 `docs/README.md`，把自有文档、专题文档和第三方文档分开。
 - 清理并重写核心专题文档：
+  - `docs/API_OVERVIEW.md`
   - `docs/DIRECTORY_STRUCTURE.md`
   - `docs/MODULE_DEPENDENCIES.md`
   - `docs/NAMING_CONVENTIONS.md`
   - `docs/EXTERNAL_TOOLS.md`
+  - `docs/FRONTEND_OVERVIEW.md`
   - `docs/VENDOR_ORGANIZATION.md`
   - `docs/PATCH_SYSTEM.md`
+  - `docs/TASK_QUEUE.md`
+  - `docs/TOOL_FACTIONS.md`
+- 重写 `docs/adobe/` 下 Atom、AE、COM/CEP 专题，标明当前集成状态和参考边界。
 
 ## 2026-04-24
 

@@ -1,237 +1,83 @@
-# 任务队列设计方案
+# 任务中心和长任务
 
-## 背景
+本文取代早期 Celery/RQ 方案草稿，描述当前代码库中的实际任务机制。
 
-当前项目的长时间运行任务（视频下载、转码、切片等）都是同步执行的，存在以下问题：
+## 当前状态
 
-1. **阻塞问题**：长任务会阻塞API响应
-2. **并发限制**：无法并发处理多个任务
-3. **资源管理**：缺少任务优先级和资源限制
-4. **状态持久化**：重启后任务状态丢失
+MediaTools 当前使用内置任务中心，而不是 Celery、RQ 或外部 Redis 队列。
 
-## 方案选择
+核心文件：
 
-### 方案1: Celery（推荐）
+- `services/task_center.py`
+- `services/api_task_center.py`
+- `services/api_server_runtime.py`
+- `services/task_resumers/`
+- `frontend/src/apps/mediatools/automation.ts`
+- `frontend/src/apps/mediatools/AutomationTaskDialog.tsx`
 
-**优点**：
-- 成熟稳定，生态完善
-- 支持多种消息队列（Redis、RabbitMQ）
-- 内置任务调度、重试、监控
-- 支持任务优先级和速率限制
+API 前缀：
 
-**缺点**：
-- 需要额外的消息队列服务
-- 配置相对复杂
-
-### 方案2: RQ (Redis Queue)
-
-**优点**：
-- 轻量级，易于配置
-- 仅依赖Redis
-- API简单直观
-
-**缺点**：
-- 功能相对简单
-- 仅支持Redis
-
-### 方案3: 内置线程池
-
-**优点**：
-- 无外部依赖
-- 部署简单
-
-**缺点**：
-- 功能有限
-- 无法跨进程
-- 状态不持久化
-
-## 推荐实现：Celery + Redis
-
-### 1. 安装依赖
-
-```bash
-pip install celery[redis] redis
+```text
+/api/tasks
 ```
 
-### 2. 目录结构
+## 职责
 
-```
-MediaTools/
-├── celery_app.py          # Celery应用配置
-├── tasks/                 # 任务定义
-│   ├── __init__.py
-│   ├── media_tasks.py     # 媒体处理任务
-│   ├── analysis_tasks.py  # 分析任务
-│   └── export_tasks.py    # 导出任务
-└── workers/               # Worker配置
-    └── config.py
-```
+任务中心负责：
 
-### 3. 配置示例
+- 为长任务分配任务 ID
+- 记录任务状态、进度和日志
+- 支持前端轮询任务列表和单个任务详情
+- 支持取消、删除、清理历史
+- 为部分任务提供恢复/续跑入口
 
-```python
-# celery_app.py
-from celery import Celery
+适合纳入任务中心的能力：
 
-app = Celery(
-    'mediatools',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/1',
-)
+- 视频下载
+- 转码和切片
+- AI 分析和自动导出
+- 解密
+- Adobe/Photoshop 执行
+- 审核和批处理
 
-app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='Asia/Shanghai',
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=3600,  # 1小时超时
-    worker_prefetch_multiplier=1,
-    worker_max_tasks_per_child=50,
-)
-```
+## API 概览
 
-### 4. 任务定义
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| `GET` | `/api/tasks/list` | 任务列表 |
+| `GET` | `/api/tasks/active` | 活跃任务 |
+| `GET` | `/api/tasks/history/week` | 最近一周历史 |
+| `GET` | `/api/tasks/{task_id}` | 单个任务详情 |
+| `POST` | `/api/tasks/{task_id}/cancel` | 取消任务 |
+| `DELETE` | `/api/tasks/{task_id}` | 删除任务记录 |
+| `POST` | `/api/tasks/clear` | 清理任务 |
+| `DELETE` | `/api/tasks/history/cleanup` | 清理历史 |
 
-```python
-# tasks/media_tasks.py
-from celery_app import app
-from services.media import run_transcode_job
+## 和早期 Celery 方案的关系
 
-@app.task(bind=True, name='media.transcode')
-def transcode_task(self, input_path, output_path, codec, **options):
-    """转码任务"""
-    # 更新任务状态
-    self.update_state(state='PROGRESS', meta={'stage': '开始转码'})
-    
-    result = run_transcode_job(input_path, output_path, codec, **options)
-    
-    return result
-```
+早期文档建议过 `Celery + Redis`，但当前项目已经选择内置任务中心作为本地桌面式工作台的默认方案。
 
-### 5. API集成
+保留外部队列的适用场景：
 
-```python
-# services/api_server.py
-from tasks.media_tasks import transcode_task
+- 多机器 worker
+- 需要持久化分布式队列
+- 需要严格优先级和重试策略
+- 需要把媒体处理从 Web 服务进程彻底拆出
 
-@app.post("/api/encoder/transcode-async")
-async def transcode_async(request: TranscodeRequest):
-    """异步转码"""
-    task = transcode_task.delay(
-        request.input_path,
-        request.output_path,
-        request.codec,
-    )
-    return {"task_id": task.id, "status": "queued"}
+在这些需求出现前，不建议引入 Celery/RQ，避免提高本地部署成本。
 
-@app.get("/api/tasks/{task_id}")
-async def get_task_status(task_id: str):
-    """查询任务状态"""
-    task = transcode_task.AsyncResult(task_id)
-    return {
-        "task_id": task_id,
-        "state": task.state,
-        "result": task.result if task.ready() else None,
-        "info": task.info,
-    }
-```
+## 新增长任务的建议
 
-### 6. 启动Worker
+1. 服务函数放在 `services/`，不要把长逻辑写在 API 路由里。
+2. 任务启动时登记到 `task_center`。
+3. 执行过程中写入阶段、进度和日志。
+4. 失败时返回可读错误和可排查的日志。
+5. 前端通过 `/api/tasks` 轮询状态。
+6. 如果任务可恢复，把恢复逻辑放到 `services/task_resumers/`。
 
-```bash
-# 启动Celery Worker
-celery -A celery_app worker --loglevel=info --concurrency=2
+## 设计边界
 
-# 启动Flower监控（可选）
-celery -A celery_app flower
-```
-
-## 任务优先级
-
-```python
-# 高优先级任务
-task.apply_async(priority=9)
-
-# 普通优先级
-task.apply_async(priority=5)
-
-# 低优先级
-task.apply_async(priority=1)
-```
-
-## 任务重试
-
-```python
-@app.task(bind=True, max_retries=3, default_retry_delay=60)
-def download_task(self, url):
-    try:
-        return download_video(url)
-    except Exception as exc:
-        # 60秒后重试
-        raise self.retry(exc=exc, countdown=60)
-```
-
-## 监控和管理
-
-### Flower Web界面
-
-```bash
-celery -A celery_app flower --port=5555
-# 访问 http://localhost:5555
-```
-
-### 命令行工具
-
-```bash
-# 查看活跃任务
-celery -A celery_app inspect active
-
-# 查看已注册任务
-celery -A celery_app inspect registered
-
-# 撤销任务
-celery -A celery_app control revoke <task_id>
-```
-
-## 部署建议
-
-### Docker Compose
-
-```yaml
-version: '3.8'
-services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-  
-  worker:
-    build: .
-    command: celery -A celery_app worker --loglevel=info
-    depends_on:
-      - redis
-    volumes:
-      - ./projects:/app/projects
-  
-  api:
-    build: .
-    command: python app.py
-    ports:
-      - "7860:7860"
-    depends_on:
-      - redis
-```
-
-## 迁移路径
-
-1. **阶段1**：保持现有同步API，添加异步API端点
-2. **阶段2**：前端逐步切换到异步API
-3. **阶段3**：废弃同步API（保留向后兼容）
-
-## 成本估算
-
-- Redis内存：约100MB（小规模）
-- Worker进程：每个约200-500MB
-- 建议配置：1个Redis + 2-4个Worker进程
+- 当前任务中心主要服务单机本地工作台。
+- 任务状态不等同于完整的分布式作业系统。
+- 重启后的恢复能力取决于具体任务是否实现 resumer。
+- 涉及外部进程的任务仍要在对应 runtime service 中处理 PID、日志和异常。

@@ -13,12 +13,15 @@
 
 | 文档 | 内容 |
 |---|---|
+| [API_OVERVIEW.md](./API_OVERVIEW.md) | FastAPI 路由分组和维护边界 |
 | [DIRECTORY_STRUCTURE.md](./DIRECTORY_STRUCTURE.md) | 目录结构和职责边界 |
+| [FRONTEND_OVERVIEW.md](./FRONTEND_OVERVIEW.md) | React 前端应用结构 |
 | [MODULE_DEPENDENCIES.md](./MODULE_DEPENDENCIES.md) | 模块分层和依赖关系 |
 | [NAMING_CONVENTIONS.md](./NAMING_CONVENTIONS.md) | 命名约定 |
 | [EXTERNAL_TOOLS.md](./EXTERNAL_TOOLS.md) | yt-dlp、FFmpeg、um-cli 等外部工具管理 |
 | [VENDOR_ORGANIZATION.md](./VENDOR_ORGANIZATION.md) | `vendor/` 目录组织规范 |
 | [PATCH_SYSTEM.md](./PATCH_SYSTEM.md) | 外部工具补丁系统 |
+| [TASK_QUEUE.md](./TASK_QUEUE.md) | 当前内置任务中心和长任务机制 |
 
 ## 设计和专题文档
 
@@ -26,7 +29,6 @@
 
 | 文档 | 状态 |
 |---|---|
-| [TASK_QUEUE.md](./TASK_QUEUE.md) | 任务队列设计资料，当前实现以 `services/task_center.py` 为准 |
 | [TOOL_FACTIONS.md](./TOOL_FACTIONS.md) | Adobe/剪映等工具路线对比资料 |
 
 ## Adobe 专题
