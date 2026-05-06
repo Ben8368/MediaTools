@@ -1,148 +1,120 @@
-# MediaTools Naming Conventions
+# 命名规范
 
-This file defines the naming rules for MediaTools so new modules can be merged
-without introducing mixed case, ambiguous aliases, or upstream names into the
-main project surface.
+本文记录项目内推荐命名，保持 CLI、API、服务和前端概念一致。
 
-## 1. Core rule
+## 模块名
 
-MediaTools uses two distinct naming domains:
+使用小写单词，必要时用下划线。CLI 顶层模块保持稳定：
 
-1. Internal product names
-2. Upstream vendor names
+- `fetcher`
+- `encoder`
+- `decryptor`
+- `assets`
+- `workbench`
+- `editor`
+- `photoshop`
+- `auditor`
+- `generator`
 
-These two domains must not be mixed.
+旧别名仅用于兼容：
 
-## 2. Internal product naming
+- `fetch`
+- `encode`
+- `decrypt`
+- `edit`
 
-Use internal names for all first-party project surfaces:
+新文档和新代码应使用规范模块名。
 
-- module ids
-- API routes
-- Python service files
-- adapter filenames
-- frontend app ids
-- workspace manifests
+## Python
 
-Rules:
+- 文件名：`snake_case.py`
+- 函数名：`snake_case`
+- 类名：`PascalCase`
+- 常量：`UPPER_SNAKE_CASE`
+- API 路由文件：`api_<domain>_routes.py`
+- 服务文件：按业务域命名，例如 `media_fetch.py`、`task_center.py`
 
-- Use lowercase words for module ids: `fetcher`, `encoder`, `photoshop`
-- Use `snake_case` for Python files when more than one word is needed:
-  `editor_runtime.py`, `photoshop_runtime.py`
-- Use lowercase route segments:
-  `/api/photoshop/...`
-- Use PascalCase only for Vue component filenames:
-  `PhotoshopApp.vue`
-- Use human-readable titles only in UI labels:
-  `Photoshop 自动化`
+示例：
 
-## 3. Vendor naming
+```python
+def run_fetch_analyze_slice_job(...):
+    ...
 
-Third-party or upstream source bundles live under `vendor/`.
+class MediaAgentService:
+    ...
+```
 
-Rules:
+## 前端
 
-- Vendor directory names use lowercase canonical slugs
-- Preserve upstream identity in documentation, not in first-party module ids
-- Version numbers should not appear in top-level project paths
+- React 组件：`PascalCase.tsx`
+- hooks：`useSomething.ts`
+- 普通工具：`camelCase.ts`
+- 测试：与被测文件同名，后缀 `.test.ts` 或 `.test.tsx`
+- 应用窗口组件：`<Name>App.tsx`
 
-Current vendor examples:
+示例：
 
-- `vendor/photoshop_auto`
-- `vendor/capcut-mate`
-- `vendor/unlock-music`
-- `vendor/atom`
-- `vendor/wechat_moments_source`
-- `vendor/auditor_source`
+```text
+DownloaderApp.tsx
+WorkbenchApp.tsx
+useDownloaderTaskData.ts
+DownloaderTaskTable.tsx
+```
 
-## 4. Recommended naming by layer
+## API
 
-### Modules
+REST 路径使用短横线或清晰的业务名，避免暴露内部文件名。响应字段使用 JSON 常见的 `snake_case`，与后端模型保持一致。
 
-- Directory: `modules/photoshop`
-- Public id: `photoshop`
-- Do not use: `PhotoshopAuto`, `PhotoshopAuto-v2.0.1`
+建议：
 
-### Services
+- `/api/media/...`
+- `/api/workspace/...`
+- `/api/task-center/...`
+- `/api/filebrowser/...`
 
-- File: `services/photoshop.py`
-- File: `services/workspace.py`
-- Prefer module-aligned facades when exposing shared module behavior:
-  - `services/fetcher.py`
-  - `services/encoder.py`
-  - `services/decryptor.py`
-- Legacy aggregator names should be treated as transitional and documented
+## 工作区目录
 
-### Adapters
+工作区子目录使用小写复数名：
 
-- File: `adapters/photoshop_runtime.py`
-- File: `adapters/external_tools.py`
-- Adapter names should describe the capability boundary, not just the source repo
+- `inputs`
+- `downloads`
+- `decrypted`
+- `transcoded`
+- `clips`
+- `subtitles`
+- `analysis`
+- `assets`
+- `imports`
+- `cache`
+- `logs`
+- `manifests`
+- `exports`
 
-### Frontend
+## 外部工具
 
-- App id: `photoshop`
-- Component: `PhotoshopApp.vue`
-- Registry title: `Photoshop 自动化`
+工具名按上游官方写法：
 
-### Launchers
+- `yt-dlp`
+- `FFmpeg`
+- `ffmpeg`
+- `ffprobe`
+- `um-cli`
+- `capcut-mate`
+- `filebrowser`
 
-- Canonical launcher script: `start_mediatools.bat`
-- Do not add parallel launcher aliases unless they provide genuinely different behavior
+代码中的变量名使用安全形式：
 
-### Executables in `bin/`
+```python
+ytdlp_path
+ffmpeg_path
+umcli_path
+capcut_mate_base_url
+```
 
-- Keep upstream executable names as-is:
-  - `yt-dlp.exe`
-  - `ffmpeg.exe`
-  - `ffprobe.exe`
-  - `um-cli.exe`
-- Do not rename upstream binaries to internal module ids
+## 文档
 
-## 5. Transitional exceptions
-
-The following names still exist for backward-compatibility or legacy reasons and
-should not be used as naming templates for new code:
-
-- `services/media.py`
-- `services/fetch.py`
-- `modules/editor`
-- `vendor/capcut-mate`
-- `vendor/unlock-music`
-
-These are tolerated for compatibility, but new modules should follow the rules
-above.
-
-## 6. Practical checklist for new modules
-
-Before merging a new capability, verify:
-
-1. The module id is lowercase and stable
-2. The module directory matches the module id
-3. The service filename uses lowercase or `snake_case`
-4. The adapter filename describes runtime or integration responsibility
-5. The vendor source lives under `vendor/`
-6. Upstream names do not leak into API route names or frontend app ids
-
-## 7. Current normalized examples
-
-- Photoshop module:
-  - internal id: `photoshop`
-  - vendor source: `vendor/photoshop_auto`
-  - adapter: `adapters/photoshop_runtime.py`
-
-- WeChat moments module:
-  - internal id: `wechat_moments`
-  - vendor source: `vendor/wechat_moments_source`
-  - adapter: `adapters/wechat_moments_runtime.py`
-
-- Auditor module:
-  - internal id: `auditor`
-  - vendor source: `vendor/auditor_source`
-  - adapter: `adapters/auditor_runtime.py`
-
-- Atom bundle:
-  - internal future integration id should be something like `aftereffects`
-  - vendor source: `vendor/atom`
-  - do not expose `Atom` as a first-party module id unless product naming is
-    intentionally decided that way
+- 根入口：`README.md`
+- 当前工作流：`WORKFLOW.md`
+- 当前架构：`ARCHITECTURE.md`
+- 专题文档：放在 `docs/`，文件名使用大写下划线或清晰小写目录。
+- 第三方原文：保留在 `vendor/`，不改名以便跟随上游。

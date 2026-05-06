@@ -1,309 +1,117 @@
-# MediaTools 目录结构说明
+# 目录结构
 
-## 📁 项目根目录
+本文说明 MediaTools 当前目录职责。第三方项目自己的目录结构以 `vendor/` 内上游文档为准。
 
-```
+## 根目录
+
+```text
 MediaTools/
-├── adapters/           # 外部工具适配器
-├── bin/                # 可执行文件（统一入口）
-├── core/               # 核心功能（日志、验证、认证等）
-├── docs/               # 项目文档
-├── frontend/           # Vue 前端
-├── gui/                # Gradio GUI（待废弃）
-├── modules/            # 功能模块（9个）
-├── patches/            # 全局补丁配置
-├── projects/           # 工作区目录
-├── runtime/            # 运行时状态
-├── scripts/            # 工具脚本
-├── services/           # 服务层
-├── vendor/             # 外部工具和依赖
-├── app.py              # FastAPI 服务入口
-├── main.py             # CLI 入口
-├── config.py           # 配置文件
-└── requirements.txt    # Python 依赖
+├── app.py                    # Web 服务入口
+├── main.py                   # CLI 统一入口
+├── config.py                 # 配置读取和默认值
+├── frontend/                 # React + TypeScript 前端
+├── services/                 # FastAPI 路由和业务服务
+├── modules/                  # 可 CLI 调用的功能模块
+├── adapters/                 # 外部工具和本机软件适配
+├── core/                     # 通用基础能力
+├── patches/                  # 工具补丁配置和加载逻辑
+├── scripts/                  # 开发、构建、维护脚本
+├── tests/                    # Python 测试
+├── docs/                     # 项目自有文档
+├── LICENSES/                 # 第三方许可文件
+├── vendor/                   # 第三方源码或嵌入工具
+├── bin/                      # 本地二进制工具，通常不提交
+├── runtime/                  # 运行时状态，通常不提交
+└── projects/                 # 用户工作区和产物，通常不提交
 ```
 
-## 🔧 核心目录详解
+## 入口文件
 
-### 1. adapters/ - 适配器层
+- `app.py`：启动 uvicorn，加载 `services/api_server.py`。
+- `main.py`：分发 CLI 命令到 `modules/*/cli.py`。
+- `config.py`：集中读取 `.env` 和环境变量。
 
-隔离外部工具的实现细节。
+## `frontend/`
 
-```
-adapters/
-├── external_tools.py       # 外部工具基础适配器
-├── ytdlp_adapter.py        # yt-dlp 适配器
-├── ffmpeg_adapter.py       # FFmpeg 适配器
-├── umcli_adapter.py        # um-cli 适配器
-├── photoshop_runtime.py    # Photoshop 适配器
-├── auditor_runtime.py      # Auditor 适配器
-└── editor_runtime.py       # CapCut 适配器
-```
+前端工作台，技术栈为 React、TypeScript、Vite。
 
-### 2. modules/ - 功能模块（9个）
+常用子目录：
 
-每个模块都是独立的功能单元。
+- `frontend/src/apps/`：桌面式应用窗口，例如下载器、工作台、文件管理、AI 助手。
+- `frontend/src/apps/mediatools/`：MediaTools 内部通用组件和自动化任务 UI。
+- `frontend/src/apps/downloader/`：下载器拆分组件。
+- `frontend/src/apps/file-manager/`：文件管理器拆分组件。
+- `frontend/public/`：静态资源和多语言文本。
+- `frontend/dist/`：生产构建产物，由后端服务。
 
-```
-modules/
-├── fetcher/            # 媒体获取
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── downloader.py
-│   ├── subtitle_handler.py
-│   └── ytdlp_manager.py
-│
-├── encoder/            # 媒体编码
-│   ├── __init__.py
-│   ├── cli.py
-│   └── transcoder.py
-│
-├── decryptor/          # 音乐解密
-│   ├── __init__.py
-│   ├── cli.py
-│   └── wrapper.py
-│
-├── assets/             # 素材管理
-│   ├── __init__.py
-│   ├── cli.py
-│   └── library.py
-│
-├── workbench/          # 剪辑工作台
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── analyzer.py
-│   └── timeline.py
-│
-├── generator/          # 素材生成
-│   ├── __init__.py
-│   ├── cli.py
-│   ├── screenshot.py
-│   └── wechat_moments.py
-│
-├── photoshop/          # PSD 处理
-│   ├── __init__.py
-│   ├── cli.py
-│   └── automation.py
-│
-├── auditor/            # 素材审核
-│   ├── __init__.py
-│   ├── cli.py
-│   └── wrapper.py
-│
-└── editor/             # 剪映集成（实验性）
-    ├── __init__.py
-    ├── cli.py
-    └── capcut_wrapper.py
-```
+## `services/`
 
-### 3. vendor/ - 外部工具
+后端主维护层。
 
-#### 需要追新的工具（4个）
+常见分类：
 
-```
-vendor/
-├── yt-dlp/             # 视频下载引擎
-│   ├── source/         # 官方源码（git clone）
-│   ├── bin/            # 可执行文件
-│   ├── patches/        # 我们的补丁
-│   └── README.md
-│
-├── ffmpeg/             # 媒体处理引擎
-│   ├── bin/            # 可执行文件
-│   ├── patches/        # 我们的补丁
-│   └── README.md
-│
-├── um-cli/             # 音乐解密工具
-│   ├── source/         # Go 源码
-│   ├── bin/            # 可执行文件
-│   ├── patches/        # 我们的补丁
-│   └── README.md
-│
-└── capcut-mate/        # 剪映自动化
-    ├── (Python 源码)
-    ├── patches/        # 我们的补丁
-    └── README.md
-```
+- `api_*_routes.py`：FastAPI 路由拆分。
+- `api_server.py`：FastAPI 应用创建、静态资源、路由挂载。
+- `media*.py`：下载、转码、解密、组合工作流。
+- `agent*.py`：AI 助手、工具定义和执行路由。
+- `task_center.py`：长任务状态和日志。
+- `workspace.py`、`workbench.py`：工作区和剪辑工作台。
+- `*_runtime.py`：外部进程或工具运行时管理。
 
-#### 自维护工具（2个）
+## `modules/`
 
-```
-vendor/
-├── auditor/            # 素材审核
-│   ├── src/            # 源码
-│   └── README.md
-│
-├── photoshop/          # PSD 处理
-│   ├── src/            # 源码
-│   └── README.md
-│
-└── atom/               # After Effects 自动化
-    ├── Atom/           # CEP 扩展
-    └── README.md
-```
+底层能力模块，通常有自己的 `cli.py`。
 
-#### 归档目录
+| 模块 | 职责 |
+|---|---|
+| `fetcher` | 视频下载、字幕下载、字幕处理、yt-dlp 管理 |
+| `encoder` | FFmpeg 转码、音频提取、切片 |
+| `decryptor` | 解密工具封装 |
+| `assets` | 素材扫描、搜索、预览、文件操作 |
+| `workbench` | 字幕分析和片段导出 CLI |
+| `editor` | capcut-mate 适配 |
+| `adobe` | Adobe 通用、Photoshop、After Effects 自动化 |
+| `photoshop` | Photoshop CLI 入口 |
+| `auditor` | 素材审核入口 |
+| `generator` | 截图、朋友圈图片等生成 |
+| `filebrowser` | filebrowser 服务封装 |
 
-```
-vendor/
-└── _archived/          # 废弃模块
-    ├── wechat-moments/ # 已整合到 generator
-    ├── atom/           # 用途不明
-    └── README.md
-```
+## `adapters/`
 
-### 4. scripts/ - 工具脚本
+隔离外部工具、本机软件和第三方运行时差异。服务层应通过 adapter 或 runtime service 调用外部能力，避免把平台细节散落在路由里。
 
-```
-scripts/
-├── apply_patches.py        # 补丁管理
-├── reorganize_vendor.py    # Vendor 重组
-├── normalize_project.py    # 项目规范化
-├── update_tools.py         # 工具更新
-├── dev.py                  # 开发工具
-└── build/                  # 构建脚本
-    ├── build_um.ps1        # 构建 um-cli (Windows)
-    ├── build_um.sh         # 构建 um-cli (Linux/Mac)
-    └── README.md
-```
+## `core/`
 
-### 5. docs/ - 文档
+通用基础能力，例如：
 
-```
-docs/
-├── NAMING_CONVENTIONS.md       # 命名规范
-├── DIRECTORY_STRUCTURE.md      # 本文档
-├── VENDOR_ORGANIZATION.md      # Vendor 组织规范
-├── PATCH_SYSTEM.md             # 补丁系统
-├── EXTERNAL_TOOLS.md           # 外部工具管理
-├── MODULE_DEPENDENCIES.md      # 模块依赖
-├── ARCHITECTURE_OPTIMIZATION.md # 架构优化
-├── PROJECT_EVALUATION.md       # 项目评估
-└── IMPROVEMENTS_SUMMARY.md     # 改进总结
-```
+- `ffmpeg.py`
+- `logger.py`
+- `auth.py`
+- `validation.py`
 
-### 6. services/ - 服务层
+## `patches/`
 
-```
-services/
-├── media.py            # 媒体工作流
-├── agent.py            # AI Agent
-├── workspace.py        # 工作区管理
-├── workbench.py        # 剪辑工作台服务
-└── api_server.py       # FastAPI 路由
-```
+维护外部工具补丁规则。全局规则放这里，运行时覆盖规则放 `runtime/` 或工作区 `manifests/`。
 
-### 7. core/ - 核心功能
+## `vendor/`
 
-```
-core/
-├── logger.py           # 日志系统
-├── validation.py       # 输入验证
-└── auth.py             # API 认证
-```
+第三方项目和嵌入工具目录。这里的 README、CHANGELOG、LICENSE 多数属于上游项目，不视为 MediaTools 主文档。
 
-## 📊 目录统计
+## `bin/`
 
-### 模块数量
-- **功能模块**: 9个
-- **外部工具（追新）**: 4个
-- **外部工具（自维护）**: 3个
-- **归档模块**: 1个
+本地可执行工具目录。常见文件包括 `ffmpeg`、`ffprobe`、`yt-dlp`、`um-cli`。该目录属于本机环境配置，不应假设每个开发者完全一致。
 
-### 文件类型
-- **Python 模块**: ~50个
-- **文档文件**: 9个
-- **脚本文件**: 6个
-- **配置文件**: 3个
+## `runtime/`
 
-## 🎯 命名规范
+运行状态目录。常见内容包括：
 
-### Python 模块/包
-- 使用 `snake_case`（小写+下划线）
-- 例如: `fetcher`, `encoder`, `workbench`
+- 当前工作区配置
+- 外部进程 PID
+- 运行日志
+- 临时状态文件
 
-### 外部工具目录
-- 追新工具: 使用 `kebab-case`（小写+连字符）
-  - 例如: `yt-dlp`, `capcut-mate`, `um-cli`
-- 自维护工具: 使用 `snake_case`
-  - 例如: `auditor`, `photoshop`
+## `projects/`
 
-### 文档文件
-- 使用 `UPPER_SNAKE_CASE.md`
-- 例如: `NAMING_CONVENTIONS.md`, `PATCH_SYSTEM.md`
+用户工作区目录，保存下载、字幕、分析、切片、解密和导出产物。
 
-### 脚本文件
-- 使用 `snake_case.py` 或 `kebab-case.sh`
-- 例如: `apply_patches.py`, `build_um.ps1`
-
-## 🔍 目录用途说明
-
-### adapters/
-**用途**: 隔离外部工具的实现细节  
-**原则**: 所有外部工具调用必须通过适配器  
-**好处**: 便于替换工具、统一错误处理、应用补丁
-
-### modules/
-**用途**: 功能模块，每个模块负责一个核心功能  
-**原则**: 模块间低耦合、高内聚  
-**结构**: 每个模块都有 `__init__.py` 和 `cli.py`
-
-### vendor/
-**用途**: 存放外部工具和依赖  
-**分类**:
-- 追新工具: 需要定期更新以跟进上游
-- 自维护工具: 稳定版本，不需要追新
-- 归档: 废弃或不再使用的模块
-
-### scripts/
-**用途**: 开发和维护工具  
-**分类**:
-- 补丁管理: `apply_patches.py`
-- 工具更新: `update_tools.py`
-- 开发工具: `dev.py`
-- 构建脚本: `build/`
-
-### services/
-**用途**: 业务逻辑层，协调多个模块  
-**原则**: 模块不直接相互调用，通过服务层协调  
-**好处**: 降低模块间耦合度
-
-### docs/
-**用途**: 项目文档  
-**分类**:
-- 规范文档: 命名、目录结构
-- 技术文档: 补丁系统、外部工具管理
-- 评估文档: 项目评估、改进总结
-
-## 📝 维护指南
-
-### 添加新模块
-1. 在 `modules/` 下创建新目录
-2. 添加 `__init__.py` 和 `cli.py`
-3. 在 `main.py` 中注册模块
-4. 更新 `MODULE_DEPENDENCIES.md`
-
-### 添加新的外部工具
-1. 确定是否需要追新
-2. 在 `vendor/` 下创建目录
-3. 按照规范组织 `source/`, `bin/`, `patches/`
-4. 创建适配器在 `adapters/`
-5. 更新 `EXTERNAL_TOOLS.md`
-
-### 更新文档
-1. 修改后更新"最后更新"日期
-2. 保持文档间的一致性
-3. 使用 `UPPER_SNAKE_CASE.md` 命名
-
-## 🔗 相关文档
-
-- [NAMING_CONVENTIONS.md](./NAMING_CONVENTIONS.md) - 命名规范
-- [VENDOR_ORGANIZATION.md](./VENDOR_ORGANIZATION.md) - Vendor 组织
-- [MODULE_DEPENDENCIES.md](./MODULE_DEPENDENCIES.md) - 模块依赖
-- [PATCH_SYSTEM.md](./PATCH_SYSTEM.md) - 补丁系统
-
----
-
-**维护者**: MediaTools Team  
-**最后更新**: 2026-04-24  
-**文档版本**: v1.0
+推荐结构见 [WORKFLOW.md](../WORKFLOW.md)。

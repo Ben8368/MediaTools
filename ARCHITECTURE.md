@@ -1,498 +1,354 @@
-# MediaTools 架构说明
+# MediaTools 当前架构
 
-这份文档描述**当前真实项目结构**，重点解释：
+本文只描述当前代码库中的真实结构。历史方案、第三方工具原始文档和实验设计从 `docs/README.md` 进入。
 
-1. 入口层
-2. 共享服务层
-3. 功能模块层
-4. GUI 页面与后端 service 的映射关系
-5. 当前主工作流如何串起来
-
-本文档不描述早期方案、废弃路径或理想化设计稿，只描述现在代码中已经存在的真实结构。
-
----
-
-## 一、总体架构
-
-当前项目可以理解成 4 层：
+## 总览
 
 ```text
 用户入口
-  ├─ CLI: main.py
-  └─ GUI: app.py -> gui/interface.py
+├── Web: app.py -> services/api_server.py -> frontend/dist
+└── CLI: main.py -> modules/*/cli.py
 
-共享服务层 (services/)
-  ├─ 媒体工作流
-  ├─ AI Agent
-  ├─ 工作区管理
-  ├─ 剪辑工作台服务
-  └─ capcut-mate 运行时管理
+后端服务层
+├── services/api_*_routes.py
+├── services/media_*.py
+├── services/task_center.py
+├── services/agent*.py
+├── services/workspace.py
+└── services/*_runtime.py
 
-模块能力层 (modules/)
-  ├─ fetcher
-  ├─ encoder
-  ├─ decryptor
-  ├─ assets
-  └─ editor
+能力模块层
+├── modules/fetcher
+├── modules/encoder
+├── modules/decryptor
+├── modules/assets
+├── modules/workbench
+├── modules/adobe
+├── modules/photoshop
+├── modules/auditor
+├── modules/generator
+└── modules/editor
 
-基础与外部依赖层
-  ├─ core/
-  ├─ vendor/
-  ├─ bin/
-  └─ runtime/
+基础和外部依赖
+├── core
+├── adapters
+├── patches
+├── vendor
+├── bin
+├── runtime
+└── projects
 ```
 
-关键原则：
+设计原则：
 
-1. `modules/` 负责底层功能能力
-2. `services/` 负责跨模块串工作流
-3. GUI 和 CLI 应尽量调用 `services/`，而不是各自复制业务逻辑
+- `services/` 是 Web API 和跨模块业务流程的主层。
+- `modules/` 保持可 CLI 调用的底层能力。
+- `adapters/` 隔离外部软件、第三方工具和本机运行时差异。
+- `vendor/` 放第三方源码或嵌入工具，不作为自有业务代码入口。
+- `runtime/` 和 `projects/` 保存运行状态与工作产物，通常不提交。
 
----
+## 入口层
 
-## 二、入口层
+### Web 服务
 
-### 1. CLI 入口
-文件：`main.py`
+入口文件：`app.py`
 
 职责：
 
-1. 解析一级模块名：
-   - `fetch`
-   - `encode`
-   - `decrypt`
-   - `assets`
-   - `edit`
-2. 把参数转发到对应模块 CLI
+- 读取 `GUI_SERVER_NAME`、`GUI_SERVER_PORT`、`API_SECRET_KEY`
+- 配置 Windows 事件循环兼容处理
+- 通过 uvicorn 启动 `services/api_server.py`
+- 默认服务地址为 `http://127.0.0.1:7860`
 
-路由关系：
+非本机绑定时，如果未设置 `API_SECRET_KEY`，启动会拒绝继续，避免无认证暴露 API。
 
-```text
-main.py
-  -> modules.fetcher.cli
-  -> modules.encoder.cli
-  -> modules.decryptor.cli
-  -> modules.assets.cli
-  -> modules.editor.cli
-```
+### API 应用
 
-说明：
-
-当前 CLI 仍可用，但它不是项目能力最完整的入口。很多最新链路优先在 GUI + services 中体现。
-
-### 2. GUI 入口
-文件：`app.py`
+核心文件：`services/api_server.py`
 
 职责：
 
-1. 解析 `host / port / share`
-2. 创建 Gradio 界面
-3. 启动 Web 服务
+- 创建 FastAPI 应用
+- 挂载 API 路由
+- 服务前端静态资源
+- 管理运行时、任务中心、日志和错误响应
 
-调用关系：
+路由主要拆分在：
 
-```text
-app.py -> gui.interface.create_interface()
+- `services/api_media_routes.py`
+- `services/api_assets_routes.py`
+- `services/api_files_routes.py`
+- `services/api_filebrowser_routes.py`
+- `services/api_workbench_routes.py`
+- `services/api_workspace_routes.py`
+- `services/api_task_center.py`
+- `services/api_photoshop_routes.py`
+- `services/api_adobe_routes.py`
+- `services/api_auditor_routes.py`
+- `services/api_system_routes.py`
+- `services/agent_direct_routes.py`
+
+### 前端
+
+目录：`frontend/`
+
+技术栈：
+
+- React 18
+- TypeScript
+- Vite
+- Zustand
+- i18next
+
+当前界面是桌面式 Web 工作台，主要应用包括下载器、工作台、文件管理、AI 助手、Photoshop、AE、审核、设置等。
+
+生产构建输出在 `frontend/dist/`，由后端服务。开发时运行：
+
+```powershell
+cd frontend
+npm run dev
 ```
 
-说明：
+### CLI
 
-GUI 是当前项目最完整的产品入口。
+入口文件：`main.py`
 
----
+规范模块：
 
-## 三、共享服务层
+- `fetcher`
+- `encoder`
+- `decryptor`
+- `assets`
+- `workbench`
+- `editor`
+- `photoshop`
+- `auditor`
+- `generator`
 
-目录：`services/`
+兼容旧别名：
 
-这是当前项目真正的后端核心层。
+- `fetch` -> `fetcher`
+- `encode` -> `encoder`
+- `decrypt` -> `decryptor`
+- `edit` -> `editor`
 
-### 1. `services/media.py`
-职责：媒体工作流核心服务
+CLI 负责把命令分发到 `modules/*/cli.py`，适合批处理和调试。
 
-主要能力：
+## 服务层
 
-1. 获取视频信息
-   - `fetch_video_info(...)`
+`services/` 是当前后端的主要维护边界。
 
-2. 批量下载
-   - `run_fetch_batch(...)`
-   - `run_fetch_batch_stream(...)`
+### 媒体流程
 
-3. 转码
-   - `run_transcode_job(...)`
+核心文件：
 
-4. 单段切片
-   - `run_slice_job(...)`
+- `services/media.py`
+- `services/media_fetch.py`
+- `services/media_encoding.py`
+- `services/media_decrypt.py`
+- `services/media_workflows.py`
+- `services/media_helpers.py`
 
-5. 批量切片
-   - `run_batch_slice_job(...)`
-
-6. 下载 + 分析 + 自动切片
-   - `run_fetch_analyze_slice_job(...)`
-
-7. 解密
-   - `run_decrypt_job(...)`
-
-8. 工具状态
-   - `get_ytdlp_status_text()`
-   - `get_ffmpeg_status_text()`
-   - `get_um_status_text()`
-
-9. 构建 um-cli
-   - `build_umcli()`
-
-这是当前最重要的服务文件。
-
-### 2. `services/agent.py`
-职责：执行型 AI Agent
-
-主要职责：
-
-1. OpenAI 兼容 client 封装
-2. 定义可调用工具
-3. 处理工具调用轨迹
-4. 对高频任务做本地直连路由
-
-当前重点支持的直连任务：
-
-1. 下载并自动切片
-2. 扫描当前项目素材
-3. 解密并加入素材库
-
-### 3. `services/workspace.py`
-职责：单项目工作区管理
-
-主要能力：
-
-1. 获取当前工作区
-   - `get_current_workspace()`
-2. 设置当前工作区
-   - `set_current_workspace(...)`
-3. 格式化工作区显示文本
-   - `format_workspace_text(...)`
-
-当前工作区持久化到：
-
-```text
-runtime/workspace.json
-```
-
-### 4. `services/workbench.py`
-职责：剪辑工作台服务
-
-主要能力：
-
-1. 列当前工作区素材
-   - `list_workspace_media()`
-2. 分析字幕生成片段建议
-   - `analyze_subtitle_for_workbench(...)`
-3. 从工作台批量导出 clips
-   - `export_clips_from_workbench(...)`
-
-### 5. `services/editor_runtime.py`
-职责：`capcut-mate` 服务运行时管理
-
-主要能力：
-
-1. 检查状态
-2. 启动 / 停止 / 重启
-3. 读取日志
-4. 维护 PID
-
-说明：
-
-这个 service 解决的是 `capcut-mate` 进程管理问题，不代表 editor 主链路已经完全稳定。
-
----
-
-## 四、模块层
-
-目录：`modules/`
-
-### 1. `modules/fetcher/`
-职责：媒体获取与字幕处理
-
-关键文件：
-
-1. `downloader.py`
-   - 下载视频
-   - 下载原语言字幕
-   - 支持视频编码偏好
-   - 支持字幕格式
-
-2. `subtitle.py`
-   - VTT 解析
-   - VTT -> SRT
-   - 字幕清洗与保守去重
-
-3. `analyzer.py`
-   - 调用 LLM 分析字幕亮点
-   - 输出结构化片段与中文简介
-
-4. `csv_manager.py`
-   - 下载记录 CSV 管理
-
-5. `ytdlp_manager.py`
-   - `yt-dlp` 下载 / 更新 / 状态
-
-### 2. `modules/encoder/`
-职责：FFmpeg 媒体处理
-
-关键文件：
-
-1. `transcoder.py`
-   - H.264 / H.265 转码
-   - 音频提取
-   - 单段切片
-   - 字幕烧录切片
-
-### 3. `modules/decryptor/`
-职责：解密加密音频
-
-关键文件：
-
-1. `wrapper.py`
-   - 单文件解密
-   - 批量目录解密
-   - 状态检测
-
-### 4. `modules/assets/`
-职责：素材扫描与索引
-
-关键文件：
-
-1. `library.py`
-   - 扫描媒体文件
-   - 搜索
-   - 统计
-
-说明：
-
-当前更像“工作区扫描器”，不是完整数据库型素材库。
-
-### 5. `modules/editor/`
-职责：`capcut-mate` 适配
-
-关键文件：
-
-1. `adapter.py`
-   - HTTP 调用 `capcut-mate`
-
-说明：
-
-这是实验链路，当前不是项目最稳定的主生产链路。
-
----
-
-## 五、基础与依赖层
-
-### 1. `core/`
-
-#### `core/ffmpeg.py`
 职责：
 
-1. FFmpeg 路径管理
-2. 版本读取
-3. 通用 FFmpeg 命令执行
+- 视频信息探测
+- 下载和字幕获取
+- 转码、切片、音频提取
+- 下载 -> 字幕分析 -> 自动切片的组合流程
+- 解密任务封装
+- 输出摘要和日志组织
 
-#### `core/logger.py`
+### 工作区和工作台
+
+核心文件：
+
+- `services/workspace.py`
+- `services/workbench.py`
+- `services/path_picker.py`
+
 职责：
 
-1. 简单日志配置
+- 当前工作区读取和设置
+- 工作区目录展示
+- 视频/字幕/导出结果枚举
+- 字幕分析和片段建议
+- clips 批量导出
+- 路径选择和安全校验
 
-### 2. `vendor/`
+### 任务中心和系统状态
 
-1. `vendor/capcut-mate/`
-2. `vendor/unlock-music/`
+核心文件：
 
-说明：
+- `services/task_center.py`
+- `services/api_task_center.py`
+- `services/system_monitor.py`
+- `services/log_buffer.py`
 
-这些是第三方源码，不是项目自有后端核心。
+职责：
 
-### 3. `bin/`
+- 长任务状态跟踪
+- 任务日志输出
+- 系统状态和工具状态检查
+- 前端轮询数据模型
 
-存放外部二进制：
+### AI 助手
 
-1. `ffmpeg`
-2. `ffprobe`
-3. `yt-dlp`
-4. `um-cli`
+核心文件：
 
-### 4. `runtime/`
+- `services/agent.py`
+- `services/agent_tools.py`
+- `services/agent_tool_specs.py`
+- `services/agent_helpers.py`
+- `services/agent_direct_routes.py`
 
-存放运行时状态：
+职责：
 
-1. `workspace.json`
-2. `capcut-mate.pid`
-3. `capcut-mate.log`
-4. `youtube_videos.csv`
+- OpenAI 兼容接口封装
+- 工具定义和工具调用
+- 常见媒体任务的本地直连路由
+- 下载、分析、切片、解密、扫描等执行型任务编排
 
----
+### 外部运行时
 
-## 六、GUI 页面与后端映射
+核心文件：
 
-### 1. 总览页
-文件：`gui/tabs/dashboard.py`
+- `services/editor_runtime.py`
+- `services/filebrowser_runtime.py`
+- `services/photoshop.py`
+- `services/photoshop_state.py`
+- `services/auditor.py`
+- `services/wechat_moments.py`
 
-对应服务：
+职责：
 
-1. `services.editor_runtime`
-2. `services.media` 工具状态接口
-3. `services.workspace`
+- 管理 capcut-mate/filebrowser 等外部进程
+- 封装 Photoshop/审核/生成类能力
+- 维护运行状态、PID、日志和健康检查
 
-### 2. 媒体获取
-文件：`gui/tabs/fetcher.py`
+## 模块层
 
-对应服务：
+`modules/` 中的模块应尽量保持可独立 CLI 调用。
 
-1. `run_fetch_batch_stream(...)`
-2. `fetch_video_info(...)`
-3. `CSVManager`
+| 模块 | 职责 |
+|---|---|
+| `modules/fetcher` | yt-dlp 管理、视频下载、字幕处理、字幕分析 |
+| `modules/encoder` | FFmpeg 转码、音频提取、单段切片 |
+| `modules/decryptor` | 解密工具封装 |
+| `modules/assets` | 素材扫描、搜索、预览、文件管理 |
+| `modules/workbench` | 字幕分析和 clips 导出 CLI |
+| `modules/editor` | capcut-mate HTTP 适配 |
+| `modules/adobe` | Adobe 通用、Photoshop、After Effects 自动化 |
+| `modules/photoshop` | Photoshop CLI 入口 |
+| `modules/auditor` | 素材审核 CLI 入口 |
+| `modules/generator` | 截图、朋友圈图片等素材生成 |
+| `modules/filebrowser` | filebrowser 服务封装 |
 
-### 3. 媒体编码
-文件：`gui/tabs/encoder.py`
+## 外部工具和目录
 
-对应服务：
+### `adapters/`
 
-1. `run_transcode_job(...)`
-2. `run_slice_job(...)`
+封装外部工具和本机软件运行时，例如：
 
-### 4. 音乐解密
-文件：`gui/tabs/decryptor.py`
+- Adobe Runtime
+- Photoshop Runtime
+- After Effects Runtime
+- Auditor Runtime
+- WeChat Moments Runtime
+- external tools
 
-对应服务：
+### `core/`
 
-1. `run_decrypt_job(...)`
-2. `build_umcli()`
+通用基础能力：
 
-### 5. 素材管理
-文件：`gui/tabs/assets.py`
+- FFmpeg 路径和执行封装
+- 日志
+- 鉴权
+- 输入校验
 
-对应服务：
+### `patches/`
 
-1. `get_current_workspace()`
-2. `set_current_workspace(...)`
-3. `AssetLibrary`
+维护外部工具补丁规则和加载逻辑。补丁配置加载顺序通常是：
 
-### 6. 剪辑工作台
-文件：`gui/tabs/workbench.py`
+1. `patches/tool_patches.json`
+2. `runtime/tool_patches.json`
+3. 当前工作区的 `manifests/tool_patches.json`
 
-对应服务：
+后加载规则可覆盖先加载规则。
 
-1. `list_workspace_media()`
-2. `analyze_subtitle_for_workbench(...)`
-3. `export_clips_from_workbench(...)`
+### `vendor/`
 
-### 7. 剪映剪辑
-文件：`gui/tabs/editor.py`
+第三方项目和嵌入工具，例如 yt-dlp、filebrowser、capcut-mate、Adobe 相关桥接代码等。这里的 README 和 LICENSE 主要属于上游项目。
 
-对应服务：
+### `bin/`
 
-1. `services.editor_runtime`
-2. `modules.editor.adapter`
-3. `run_slice_job(...)`（FFmpeg 备选切片）
+本地二进制工具目录，例如：
 
-### 8. AI 助手
-文件：`gui/tabs/agent.py`
+- `ffmpeg`
+- `ffprobe`
+- `yt-dlp`
+- `um-cli`
 
-对应服务：
+### `runtime/`
 
-1. `MediaAgentService`
+运行时状态目录，例如：
 
-说明：
+- 当前工作区配置
+- PID 文件
+- 运行日志
+- 临时数据库或 CSV
 
-AI 助手是全局浮窗，不是单独 tab。
+### `projects/`
 
----
+工作区和用户产物目录。
 
-## 七、当前主工作流
+## 主要数据流
 
-### 主工作流 1：下载 -> 分析 -> 自动切片
-
-```text
-媒体获取 / AI 助手
-  -> 下载视频
-  -> 下载原语言字幕
-  -> 转换成可分析字幕
-  -> LLM 分析亮点
-  -> 生成片段建议
-  -> 自动扩边
-  -> FFmpeg 精确切片
-  -> 导出带原字幕 clips
-```
-
-关键函数：
-
-```text
-run_fetch_analyze_slice_job(...)
-```
-
-这是当前最关键、最稳定的自动化生产链路。
-
-### 主工作流 2：工作台编辑
-
-```text
-剪辑工作台
-  -> 查看当前工作区视频/字幕
-  -> 分析字幕
-  -> 得到片段建议
-  -> 时间轴概览查看
-  -> 微调开始/结束/中文简介/原文
-  -> 批量导出 clips
-```
-
-关键函数：
+### 下载到切片
 
 ```text
-analyze_subtitle_for_workbench(...)
-export_clips_from_workbench(...)
+Frontend / AI Assistant / CLI
+-> services/api_media_routes.py
+-> services/media_workflows.py
+-> services/media_fetch.py
+-> modules/fetcher
+-> services/media_encoding.py
+-> modules/encoder
+-> projects/<workspace>/clips or exports
 ```
 
-### 主工作流 3：解密并入素材库
+### 工作台复核
 
 ```text
-音乐解密 / AI 助手
-  -> run_decrypt_job(...)
-  -> 识别输出产物
-  -> 加入当前项目素材库
+Frontend Workbench
+-> services/api_workbench_routes.py
+-> services/workbench.py
+-> modules/fetcher/analyzer.py
+-> modules/encoder/transcoder.py
+-> projects/<workspace>/clips
 ```
 
----
+### AI 助手执行任务
 
-## 八、当前最重要的真实能力
+```text
+Frontend AI Assistant
+-> services/agent_direct_routes.py
+-> services/agent.py
+-> services/agent_tools.py
+-> services/media_* / workspace / assets
+```
 
-当前项目后端已经具备：
+## 开发建议
 
-1. 视频下载
-2. 原语言字幕下载
-3. 字幕分析
-4. 批量切片
-5. 自动扩边
-6. 原字幕烧录导出
-7. 工作区管理
-8. 素材扫描
-9. 解密并入素材库
-10. AI 助手执行链路
-11. 剪辑工作台支撑
+- 新的跨模块业务流程优先放到 `services/`。
+- 底层可复用能力放到 `modules/`，并保持 CLI 可测。
+- 外部软件差异放到 `adapters/` 或 `services/*_runtime.py`。
+- Web 路由只做请求解析、校验和响应组织，避免塞入复杂业务逻辑。
+- 新增长任务时接入 `task_center`，让前端能展示状态和日志。
+- 修改工作区路径相关逻辑时同步检查安全校验和测试。
 
----
+## 当前边界
 
-## 九、当前主要限制
-
-1. `capcut-mate` 仍属实验链路
-2. CLI 和 GUI 的能力同步还没完全收口
-3. 素材库更像工作区扫描器，不是数据库型资产系统
-4. 工作台已具备简化时间轴，但还不是完整 NLE
-5. 项目仍缺自动化测试
-
----
-
-## 十、维护建议
-
-后续若继续扩展，请优先遵守：
-
-1. 先把新能力做进 `services/`
-2. 再分别接 GUI 和 CLI
-3. 避免在 GUI 事件函数里复制业务逻辑
-4. 所有新的“下载 -> 分析 -> 切片 -> 导出”流程优先走工作区模型
+- Web 服务是能力最完整的入口，CLI 是辅助和批处理入口。
+- 素材管理是工作区索引器，不是完整资产数据库。
+- capcut-mate、Adobe 自动化和审核工具依赖本机环境。
+- `vendor/` 中的第三方代码不应被当作项目自有业务层维护。

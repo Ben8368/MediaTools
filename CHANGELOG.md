@@ -1,59 +1,43 @@
-# MediaTools 更新日志
+# Changelog
 
-## 2026-04-24 - 重大更新
+所有重要变更记录在这里。历史上游工具变更请查看 `vendor/` 下对应项目的 CHANGELOG。
 
-### 安全性改进
-- ✅ 修改默认服务绑定地址为 127.0.0.1（原 0.0.0.0）
-- ✅ 添加 API_SECRET_KEY 配置支持（可选认证）
-- ✅ 增强输入验证和错误处理
+## 2026-05-06
 
-### 日志系统增强
-- ✅ 重构 core/logger.py，支持文件日志和控制台日志
-- ✅ 统一错误处理，替换 print 为结构化日志
-- ✅ 添加日志级别配置
+### 文档整理
 
-### 新增功能模块
-- ✅ **素材生成模块** (modules/generator)
-  - 支持视频截图提取
-  - 批量截图生成
-  - CLI: `python main.py generator screenshot`
+- 重写根 `README.md`，去掉失效徽章、乱码文本和旧 Gradio 入口说明。
+- 重写 `WORKFLOW.md`，明确当前推荐主线：工作区、下载、字幕分析、FFmpeg 切片、工作台复核。
+- 重写 `ARCHITECTURE.md`，按当前 FastAPI + React + services/modules 结构说明维护边界。
+- 重写 `docs/README.md`，把自有文档、专题文档和第三方文档分开。
+- 清理并重写核心专题文档：
+  - `docs/DIRECTORY_STRUCTURE.md`
+  - `docs/MODULE_DEPENDENCIES.md`
+  - `docs/NAMING_CONVENTIONS.md`
+  - `docs/EXTERNAL_TOOLS.md`
+  - `docs/VENDOR_ORGANIZATION.md`
+  - `docs/PATCH_SYSTEM.md`
 
-### 已有模块确认
-- ✅ **PSD批量处理** (modules/photoshop) - 已存在
-- ✅ **素材审核** (modules/auditor) - 已存在
-- ✅ **微信朋友圈** (modules/wechat_moments) - 已存在
+## 2026-04-24
 
-### 字幕下载增强
-- ✅ 确认支持中文翻译字幕下载（zh-Hans）
-- ✅ 支持原语言 + 中文双语字幕
+### 安全和服务入口
 
-### 测试覆盖
-- ✅ 添加 tests/ 目录
-- ✅ 添加 services/media 测试
-- ✅ 添加 modules/encoder/transcoder 测试
+- 默认服务绑定调整为本机地址。
+- 增加 `API_SECRET_KEY` 配置，用于非本机绑定时的 API 保护。
+- 增强输入校验、错误处理和日志输出。
 
-### 待办事项
-- ⏳ 更新 vendor/capcut-mate 到最新版本
-- ⏳ 添加 API 认证中间件实现
-- ⏳ 扩展测试覆盖率
-- ⏳ 添加 CI/CD 配置
+### 功能模块
 
-## 后端能力清单
+- 增加 `modules/generator`，支持视频截图和图片生成类能力。
+- 确认并整理 Photoshop、auditor、wechat moments 等扩展能力入口。
+- 扩展媒体下载、字幕处理、分析和切片链路。
 
-### ✅ 已实现
-1. 视频下载（YouTube + 多平台）
-2. 字幕下载（原语言 + 中文翻译）
-3. 字幕分析切片（LLM驱动）
-4. 音乐解密（unlock-music）
-5. PSD批量处理（Photoshop自动化）
-6. 素材生成（视频截图）
-7. 素材审核（Auditor集成）
+### 测试
 
-### 🔄 实验性
-- capcut-mate 集成（需更新到最新版本）
+- 增加 `tests/` 下的 API、媒体服务、工作区、转码、工具补丁等测试覆盖。
 
-## 技术债务
-- 添加更多单元测试
-- 实现任务队列（Celery/RQ）
-- 添加进度持久化
-- 统一前端框架（移除Gradio）
+### 持续维护方向
+
+- 继续收敛 Web 和 CLI 的能力边界。
+- 保持 FFmpeg 主线稳定，实验性 CapCut/capcut-mate 联动作为扩展能力维护。
+- 持续补齐外部工具状态检查、任务中心和自动化测试。
