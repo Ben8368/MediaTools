@@ -1,0 +1,2 @@
+"use strict";Object.defineProperties(exports,{__esModule:{value:!0},[Symbol.toStringTag]:{value:"Module"}});const n=require("react"),u=e=>e&&typeof e=="object"&&"default"in e?e:{default:e},t=u(n),a=()=>t.default.createElement("div",null,"Btn"),c=()=>t.default.createElement("div",null,"C-ccc");function l(e){return console.log("props",e),t.default.createElement("div",null,"test - app",t.default.createElement(a,null),t.default.createElement(c,null))}exports.App=l;exports.default=l;
+//# sourceMappingURL=index.js.map

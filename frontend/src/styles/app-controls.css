@@ -1,0 +1,89 @@
+/* Shared application chrome: sizes and control rhythm used inside app windows. */
+:root {
+  --app-control-height: 32px;
+  --app-input-height: 34px;
+  --app-control-radius: 6px;
+  --app-control-font-size: 12px;
+  --app-control-padding-x: 12px;
+  --app-sidebar-width: 200px;
+  --app-sidebar-row-height: 32px;
+  --app-sidebar-row-radius: 6px;
+  --app-sidebar-row-gap: 10px;
+  --app-sidebar-row-padding-x: 11px;
+  --app-sidebar-font-size: 12.5px;
+  --app-list-header-height: 40px;
+  --app-list-row-height: 46px;
+  --app-list-font-size: 13px;
+  --app-list-folder-icon-width: 28px;
+  --app-list-folder-icon-height: 24px;
+}
+
+.mt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--app-control-height);
+  gap: 6px;
+  border: 1px solid var(--fnos-border);
+  border-radius: var(--app-control-radius);
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+  padding: 0 var(--app-control-padding-x);
+  cursor: pointer;
+  font-size: var(--app-control-font-size);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mt-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.09);
+  color: #fff;
+}
+
+.mt-btn--primary {
+  border-color: rgba(0,102,255,.4);
+  background: var(--fnos-brand);
+  color: #fff;
+}
+
+.mt-btn:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.mt-field {
+  display: grid;
+  gap: 5px;
+  color: var(--fnos-text-1);
+  font-size: 12px;
+}
+
+.mt-field input,
+.mt-field select,
+.mt-field textarea,
+.mt-path-input input,
+.mt-picker__tools select {
+  width: 100%;
+  min-height: var(--app-input-height);
+  border: 1px solid var(--fnos-border);
+  border-radius: var(--app-control-radius);
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+  padding: 0 10px;
+  outline: none;
+  font-size: var(--app-control-font-size);
+}
+
+.mt-field textarea {
+  min-height: 120px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.mt-path-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}

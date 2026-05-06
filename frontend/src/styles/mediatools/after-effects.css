@@ -1,0 +1,513 @@
+/* ===== After Effects automation workspace ===== */
+.ae-app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 20px;
+  color: #f2f3ff;
+  background: rgba(8, 10, 20, .98);
+}
+
+.ae-hero,
+.ae-panel,
+.ae-metric {
+  border: 1px solid rgba(174, 154, 255, .17);
+  background: rgba(18, 19, 36, .80);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+.ae-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.ae-eyebrow {
+  color: #b5a7ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ae-hero h2 {
+  margin: 5px 0 6px;
+  color: #fbfaff;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.ae-hero p,
+.ae-section-head p,
+.ae-ticket span,
+.ae-ticket small,
+.ae-task-title small,
+.ae-empty,
+.ae-checkpoint span {
+  color: rgba(229, 226, 255, .64);
+}
+
+.ae-hero p {
+  margin: 0;
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ae-ready {
+  min-width: 172px;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+}
+
+.ae-ready-line {
+  display: grid;
+  gap: 2px;
+}
+
+.ae-ready-line + .ae-ready-line {
+  padding-top: 8px;
+  border-top: 1px solid rgba(229,226,255,.12);
+}
+
+.ae-ready span {
+  color: #fbfaff;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.ae-ready small {
+  max-width: 220px;
+  overflow: hidden;
+  color: rgba(229,226,255,.68);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ae-ready--online {
+  border-color: rgba(48,209,88,.34);
+  background: rgba(48,209,88,.10);
+}
+
+.ae-ready--online span {
+  color: #54e685;
+}
+
+.ae-ready--offline {
+  border-color: rgba(174,154,255,.32);
+  background: rgba(122,90,255,.12);
+}
+
+.ae-ready--offline span {
+  color: #c6bbff;
+}
+
+.ae-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ae-metric {
+  display: grid;
+  gap: 6px;
+  border-radius: 14px;
+  padding: 13px 14px;
+}
+
+.ae-metric span {
+  color: rgba(229,226,255,.62);
+  font-size: 12px;
+}
+
+.ae-metric strong {
+  color: #fbfaff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ae-panel {
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.ae-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ae-section-head h3 {
+  margin: 0 0 4px;
+  color: #fbfaff;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.ae-section-head p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ae-section-head > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(122,90,255,.16);
+  color: #c6bbff;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ae-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ae-actions--bottom {
+  align-items: end;
+}
+
+.ae-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ae-source-tabs {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  gap: 3px;
+  border: 1px solid rgba(174,154,255,.18);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 12px;
+  background: rgba(6,8,18,.46);
+}
+
+.ae-source-tab {
+  min-width: 88px;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: transparent;
+  color: rgba(229,226,255,.68);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.ae-source-tab--active {
+  background: #7657ff;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(118,87,255,.24);
+}
+
+.ae-inline-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.ae-render-grid {
+  display: grid;
+  grid-template-columns: 120px minmax(160px, .42fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ae-app .mt-field {
+  color: rgba(229,226,255,.72);
+}
+
+.ae-app .mt-field input,
+.ae-app .mt-field textarea,
+.ae-app .mt-field select,
+.ae-app .mt-path-input input,
+.ae-task-fields input,
+.ae-task-fields select,
+.ae-json textarea {
+  border-color: rgba(174,154,255,.18);
+  background: rgba(6,8,18,.72);
+  color: #fbfaff;
+}
+
+.ae-app .mt-field input::placeholder,
+.ae-app .mt-path-input input::placeholder {
+  color: rgba(229,226,255,.36);
+}
+
+.ae-app .mt-btn {
+  border-color: rgba(183,169,244,.19);
+  background: rgba(255,255,255,.055);
+  color: #f2f3ff;
+}
+
+.ae-app .mt-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.09);
+}
+
+.ae-app .mt-btn--primary {
+  border-color: rgba(148,119,255,.68);
+  background: #7657ff;
+  color: #fff;
+}
+
+.ae-workspace,
+.ae-tools {
+  display: grid;
+  grid-template-columns: minmax(230px, .34fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.ae-tools {
+  grid-template-columns: minmax(300px, .42fr) minmax(0, 1fr);
+}
+
+.ae-ticket-list,
+.ae-task-list {
+  display: grid;
+  gap: 10px;
+  max-height: 372px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.ae-ticket {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid rgba(174,154,255,.14);
+  border-radius: 12px;
+  background: rgba(6,8,18,.54);
+  color: #f2f3ff;
+  padding: 11px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ae-ticket:hover {
+  border-color: rgba(148,119,255,.50);
+  background: rgba(46,36,94,.56);
+}
+
+.ae-ticket--active {
+  border-color: rgba(148,119,255,.74);
+  background: rgba(83,56,180,.34);
+}
+
+.ae-ticket strong,
+.ae-ticket span,
+.ae-ticket small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ae-ticket strong {
+  font-size: 13px;
+}
+
+.ae-ticket span,
+.ae-ticket small {
+  font-size: 12px;
+}
+
+.ae-empty {
+  border: 1px dashed rgba(174,154,255,.18);
+  border-radius: 12px;
+  padding: 18px;
+  background: rgba(6,8,18,.36);
+  text-align: center;
+}
+
+.ae-task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid rgba(174,154,255,.14);
+  border-radius: 14px;
+  background: rgba(6,8,18,.54);
+  padding: 12px;
+}
+
+.ae-task--selected {
+  border-color: rgba(148,119,255,.58);
+  background: rgba(68,49,137,.38);
+}
+
+.ae-task-check {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: rgba(229,226,255,.58);
+  font-size: 11px;
+}
+
+.ae-task-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #7657ff;
+}
+
+.ae-task-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ae-task-title strong {
+  display: block;
+  color: #fbfaff;
+  font-size: 14px;
+}
+
+.ae-task-title small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.ae-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(255,159,10,.12);
+  color: #ffbd5a;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.ae-badge--ready {
+  background: rgba(48,209,88,.12);
+  color: #55e483;
+}
+
+.ae-task-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.ae-task-preview span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(174,154,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+  padding: 8px 9px;
+  overflow: hidden;
+  color: rgba(242,243,255,.88);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ae-task-preview b {
+  color: rgba(229,226,255,.48);
+  font-size: 10px;
+}
+
+.ae-checkpoints {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ae-checkpoint {
+  display: grid;
+  gap: 3px;
+  border-radius: 10px;
+  background: rgba(6,8,18,.46);
+  padding: 9px 10px;
+}
+
+.ae-checkpoint strong,
+.ae-checkpoint span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ae-checkpoint strong {
+  color: #fbfaff;
+  font-size: 12px;
+}
+
+.ae-checkpoint span {
+  font-size: 11px;
+}
+
+.ae-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ae-app .mt-result {
+  min-height: 118px;
+  border: 1px solid rgba(174,154,255,.14);
+  background: rgba(6,8,18,.62);
+  color: rgba(238,237,255,.84);
+}
+
+.ae-json {
+  margin-top: 12px;
+  border-top: 1px solid rgba(174,154,255,.12);
+  padding-top: 12px;
+}
+
+.ae-json summary {
+  width: fit-content;
+  color: #c6bbff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ae-json textarea {
+  width: 100%;
+  min-height: 160px;
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 10px;
+  resize: vertical;
+}
+
+@media (max-width: 1150px) {
+  .ae-metrics,
+  .ae-task-preview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ae-workspace,
+  .ae-tools,
+  .ae-result-grid,
+  .ae-form-grid,
+  .ae-inline-grid,
+  .ae-render-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

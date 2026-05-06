@@ -1,0 +1,117 @@
+English Version – Fygo System End User License Agreement (EULA)
+
+F'y'go System End User License Agreement
+
+Guangzhou Tieren Intelligent Manufacturing Technology Co., Ltd. (“Tieren”, “Fygo”, or “we”) provides software (including the fnOS operating system, Fygo System App, and any other software labeled “Fygo”, as well as any other software we may provide to you in the future, collectively referred to as “Licensed Software”). This includes software initially installed on Tieren products (“Products”) and any software provided by Tieren or obtained from any legally authorized channel, whether directly or indirectly, and whether current or updated versions. All such software is subject to this End User License Agreement (“Agreement”), unless such software is governed by another standalone end-user license agreement or other agreement.
+
+If you are a business entity or educational institution, Tieren may enter into a separate end-user license agreement or other agreement with you, and your relationship with Tieren will be governed by that separate agreement.
+
+By accepting this Agreement, Tieren grants rights to any recipient or original purchaser of any Product or Licensed Software (“Users”).
+
+By downloading, installing, accessing, or otherwise using the Licensed Software, you acknowledge that you have read and accepted this Agreement and agree to be bound by its terms. If you do not agree to this Agreement, do not download, install, access, or use the Licensed Software.
+
+Section 1 – Limited Software License
+
+Tieren grants the User a limited, personal, non-commercial, non-exclusive, non-distributable, non-transferable, and non-sublicensable license.
+
+Section 2 – Copies
+
+Users may not copy the Licensed Software, except for making a single software component backup. The number of copies must be reasonable.
+
+Section 3 – License Restrictions
+
+Unless expressly permitted by Tieren in writing or by the Licensed Software itself, Users may not:
+
+Sublicense, distribute, rent, lend, lease, transfer, or sell the Licensed Software;
+
+Modify, adapt, translate, alter, or create derivative works based on the Licensed Software;
+
+Remove, alter, or obscure any intellectual property notices or rights notices on the Product or Licensed Software, or modify, remove, or bypass technical measures protecting such rights;
+
+Use the Licensed Software for purposes other than those intended for the Product;
+
+Use the Licensed Software with any product or service not provided or authorized by Tieren, such as pre-installation or bundling;
+
+Circumvent or attempt to circumvent any measures implemented by Tieren to control access to the components, features, or functionality of the Product or Licensed Software;
+
+Disassemble, decompile, reverse-engineer, or attempt to obtain the source code or trade secrets of the Licensed Software.
+
+Violation of these provisions gives Tieren the right to terminate the User’s access to the Licensed Software and pursue legal action within applicable laws.
+
+Section 4 – Data Processing
+
+When Users operate the Licensed Software through hardware devices, Tieren collects hardware information for statistical analysis and product improvement. This hardware information is not personal information. If Tieren associates this information with a specific individual in the future, it will be treated as personal information and protected accordingly.
+
+Users may refer to the Privacy Policy accompanying this Agreement for details on how personal information is processed.
+
+Except with User consent, to provide Licensed Software functions, or as required by law, Tieren does not collect or access data stored on Users’ devices.
+
+Section 5 – Cloud Services
+
+Licensed Software provided by Fygo may include cloud services. Using cloud services requires internet access and may incur additional fees. Cloud services are governed by the FN Connect User Agreement or other publicly released agreements or rules.
+
+Section 6 – Open-Source Software
+
+Licensed Software may include open-source components (e.g., GPL, LGPL, MIT). If this Agreement conflicts with the open-source license terms, the open-source license terms prevail. Use of open-source components is governed by their respective licenses.
+
+Section 7 – Audit
+
+Tieren may audit whether Users are using the Product or Licensed Software in accordance with this Agreement. Users agree that Tieren may inspect their usage for this purpose.
+
+Section 8 – Intellectual Property
+
+All intellectual property rights, ownership, and interests in the Licensed Software belong to Tieren or its licensors. Use of the Licensed Software does not transfer any rights to the User. All ungranted rights are reserved by Tieren.
+
+Section 9 – Software Updates
+
+Tieren periodically releases security advisories and updates to address known vulnerabilities and improve user experience. Unless otherwise specified, any updates or patches provided by Tieren are governed by this Agreement. If such updates contain a separate license, that license takes precedence.
+
+Users acknowledge the importance of timely updates and agree to update to the latest recommended version. Tieren does not guarantee the continued availability of older versions.
+
+To prevent significant losses, Users agree that Tieren may take necessary actions, including suspending or interrupting the Licensed Software or related services.
+
+Section 10 – Maintenance Period
+
+The Licensed Software will be maintained according to the maintenance cycle published on the Tieren website. Tieren does not guarantee permanent maintenance of any version and reserves the right to adjust the software and pricing (if applicable).
+
+Section 11 – Disclaimer
+
+To the extent permitted by law, Tieren makes no warranties regarding the suitability, reliability, availability, timeliness, security, or accuracy of the Licensed Software or related products and services. All materials are provided “as is” without warranties of any kind.
+
+Tieren is not liable for any direct or indirect damages arising from use or inability to use the Licensed Software.
+
+Users acknowledge that the Licensed Software is intended only for specific hardware. Tieren is not responsible for any damages resulting from using the Licensed Software on unsupported hardware.
+
+Tieren does not access or collect local device data except under lawful conditions. Users must ensure compliance with laws when sharing data with third parties; Tieren is not responsible for such violations.
+
+Section 12 – Liability Limitation
+
+To the extent permitted by law, Tieren is not liable for injury or incidental, special, indirect, or consequential damages arising from the use of the Licensed Software.
+
+In any case, Tieren’s liability is limited to the amount paid by the User for the Licensed Software (if any).
+
+Section 13 – Third-Party Software
+
+The Licensed Software may provide access to third-party services. Tieren offers no support for such third-party services. Users must contact third-party providers directly. Use is governed by third-party agreements.
+
+Section 14 – Termination
+
+This Agreement remains effective until terminated. If the User violates any provision, rights automatically terminate without notice. Tieren may immediately terminate this Agreement and revoke the license. Users must cease use and delete all copies.
+
+Section 15 – Modifications
+
+This Agreement constitutes the entire agreement. Users agree that Tieren may revise this Agreement. The latest version is available on the Tieren website.
+
+Section 16 – Governing Law & Dispute Resolution
+
+Unless otherwise required by law, this Agreement is governed by the laws of Mainland China. Disputes shall be resolved through negotiation or submitted to the court where Tieren is located.
+
+Section 17 – Miscellaneous
+
+If any provision is deemed invalid, the remainder remains effective.
+
+Tieren's failure to enforce any provision is not a waiver.
+
+Tieren may transfer rights under this Agreement; it is binding on successors and Users.
+
+In case of discrepancies between language versions, the Chinese version prevails unless otherwise stated.

@@ -1,0 +1,42 @@
+{
+  "tools": {
+    "ytdlp": [
+      {
+        "name": "force-ipv4",
+        "match": {
+          "operation": [
+            "download",
+            "subtitle"
+          ]
+        },
+        "prepend_args": [
+          "--force-ipv4"
+        ]
+      }
+    ],
+    "ffmpeg": [
+      {
+        "name": "faststart-for-transcode",
+        "match": {
+          "operation": "transcode"
+        },
+        "append_args": [
+          "-movflags",
+          "+faststart"
+        ]
+      }
+    ],
+    "umcli": [
+      {
+        "name": "custom-binary",
+        "match": {
+          "operation": [
+            "decrypt",
+            "decrypt_batch"
+          ]
+        },
+        "replace_binary": "D:/Tools/um-cli.exe"
+      }
+    ]
+  }
+}

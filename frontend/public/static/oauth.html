@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OAUTH</title>
+</head>
+
+<body>
+  <script>
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    const payload = {};
+    for (const [key, value] of params) {
+      payload[key] = value;
+    }
+
+    window.opener.postMessage({
+      source: 'nas-oauth-result',
+      payload,
+    });
+
+    window.close();
+  </script>
+</body>
+
+</html>

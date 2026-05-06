@@ -1,0 +1,15 @@
+:root {
+  --app-window-min-width: 400px;
+  --app-window-min-height: 300px;
+  --app-window-radius: 20px;
+  --app-window-header-height: 50px;
+  --app-window-header-padding-x: 16px;
+  --app-window-brand-gap: 10px;
+  --app-window-brand-icon-size: 26px;
+  --app-window-brand-icon-radius: 7px;
+  --app-window-title-font-size: 14px;
+  --app-window-control-gap: 12px;
+  --app-window-control-size: 32px;
+  --app-window-control-radius: 6px;
+  --app-window-control-icon-size: 14px;
+}

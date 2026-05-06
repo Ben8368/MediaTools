@@ -1,0 +1,364 @@
+/* ===== Workbench and auditor consoles ===== */
+.wb-app,
+.au-app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 20px;
+  color: #f2f7ff;
+  background: rgba(7, 12, 19, .98);
+}
+
+.wb-hero,
+.wb-panel,
+.wb-metric,
+.au-hero,
+.au-panel,
+.au-metric {
+  border: 1px solid rgba(130, 184, 255, .16);
+  background: rgba(13, 23, 36, .80);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+.wb-hero,
+.au-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+
+.wb-eyebrow,
+.au-eyebrow {
+  color: #75d2ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wb-hero h2,
+.au-hero h2 {
+  margin: 5px 0 6px;
+  color: #fbfdff;
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.wb-hero p,
+.wb-section-head p,
+.wb-media-list span,
+.au-hero p,
+.au-section-head p,
+.au-path-list span {
+  color: rgba(225, 238, 255, .64);
+}
+
+.wb-hero p,
+.au-hero p {
+  margin: 0;
+  max-width: 700px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wb-ready,
+.au-ready {
+  min-width: 132px;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.04);
+}
+
+.wb-ready span,
+.au-ready span {
+  color: #fbfdff;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.wb-ready small,
+.au-ready small {
+  color: rgba(225,238,255,.68);
+  font-size: 12px;
+}
+
+.au-ready--online {
+  border-color: rgba(48,209,88,.34);
+  background: rgba(48,209,88,.10);
+}
+
+.au-ready--online span {
+  color: #54e685;
+}
+
+.au-ready--offline {
+  border-color: rgba(255,159,10,.34);
+  background: rgba(255,159,10,.10);
+}
+
+.au-ready--offline span {
+  color: #ffbd5a;
+}
+
+.wb-metrics,
+.au-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wb-metric,
+.au-metric {
+  display: grid;
+  gap: 6px;
+  border-radius: 14px;
+  padding: 13px 14px;
+}
+
+.wb-metric span,
+.au-metric span {
+  color: rgba(225,238,255,.62);
+  font-size: 12px;
+}
+
+.wb-metric strong,
+.au-metric strong {
+  overflow: hidden;
+  color: #fbfdff;
+  font-size: 20px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-panel,
+.au-panel {
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.wb-section-head,
+.au-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wb-section-head h3,
+.au-section-head h3 {
+  margin: 0 0 4px;
+  color: #fbfdff;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.wb-section-head p,
+.au-section-head p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.wb-app .mt-field,
+.au-app .mt-field {
+  color: rgba(225,238,255,.72);
+}
+
+.wb-app .mt-field input,
+.wb-app .mt-field textarea,
+.wb-app .mt-field select,
+.wb-app .mt-path-input input,
+.wb-clips-json,
+.au-app .mt-field input,
+.au-app .mt-field textarea,
+.au-app .mt-field select,
+.au-app .mt-path-input input {
+  border-color: rgba(130,184,255,.18);
+  background: rgba(4,10,18,.70);
+  color: #fbfdff;
+}
+
+.wb-app .mt-btn,
+.au-app .mt-btn {
+  border-color: rgba(159,194,240,.18);
+  background: rgba(255,255,255,.055);
+  color: #edf6ff;
+}
+
+.wb-app .mt-btn--primary,
+.au-app .mt-btn--primary {
+  border-color: rgba(42,140,255,.72);
+  background: #0a73ff;
+  color: #fff;
+}
+
+.wb-workspace,
+.au-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, .38fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.wb-inline,
+.au-inline,
+.au-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.wb-inline {
+  grid-template-columns: 130px auto;
+  align-items: end;
+}
+
+.au-inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.au-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wb-check,
+.au-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  color: rgba(225,238,255,.78);
+  font-size: 13px;
+}
+
+.wb-check input,
+.au-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #0a73ff;
+}
+
+.wb-actions,
+.au-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wb-media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wb-media-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.wb-media-list h4 {
+  margin: 0 0 2px;
+  color: rgba(225,238,255,.72);
+  font-size: 12px;
+}
+
+.wb-media-list button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 1px solid rgba(130,184,255,.14);
+  border-radius: 11px;
+  background: rgba(4,10,18,.54);
+  color: #fbfdff;
+  padding: 10px 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-media-list button:hover {
+  border-color: rgba(66,153,255,.5);
+  background: rgba(14,45,82,.62);
+}
+
+.wb-media-list strong,
+.wb-media-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-media-list strong {
+  font-size: 13px;
+}
+
+.wb-media-list span {
+  font-size: 12px;
+}
+
+.wb-clips-json {
+  width: 100%;
+  min-height: 180px;
+  border-radius: 12px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.wb-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.wb-app .mt-result,
+.au-app .mt-result {
+  min-height: 132px;
+  border: 1px solid rgba(130,184,255,.14);
+  background: rgba(4,10,18,.62);
+  color: rgba(232,242,255,.84);
+}
+
+.au-path-list {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.au-path-list div {
+  display: grid;
+  gap: 4px;
+  border-radius: 11px;
+  background: rgba(4,10,18,.46);
+  padding: 10px 11px;
+}
+
+.au-path-list strong {
+  overflow: hidden;
+  color: #fbfdff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1150px) {
+  .wb-metrics,
+  .au-metrics,
+  .wb-workspace,
+  .au-workspace,
+  .wb-media-grid,
+  .wb-result-grid,
+  .wb-inline,
+  .au-inline,
+  .au-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

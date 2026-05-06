@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp README_NEW.md README.md)",
+      "Bash(rm README_NEW.md)",
+      "Bash(rm QUICKSTART.md)",
+      "Bash(mv NAMING.md docs/NAMING_CONVENTIONS.md)",
+      "Bash(rm COMPLETION_REPORT.md)",
+      "Bash(rm *)",
+      "Bash(mkdir -p docs/adobe)",
+      "Bash(mv docs/ae_capability_comparison.md docs/com_vs_cep_technical_proof.md docs/atom_plugin_capabilities.md docs/ATOM_INTEGRATION.md docs/adobe/)"
+    ]
+  }
+}

@@ -1,0 +1,342 @@
+@import './styles/shell.css';
+@import './styles/file-manager.css';
+@import './styles/log-viewer.css';
+@import './styles/downloader.css';
+
+/* ===== MediaTools app panels inside the FnOS-style window shell ===== */
+.mt-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  color: var(--fnos-text-0);
+}
+
+.mt-stats,
+.mt-form-row,
+.mt-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mt-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mt-card,
+.mt-result {
+  border-radius: 12px;
+  background: var(--fnos-surface);
+  padding: 14px;
+}
+
+.mt-card-title {
+  margin-bottom: 10px;
+  color: var(--fnos-text-0);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mt-result {
+  min-height: 140px;
+  margin: 0;
+  overflow: auto;
+  color: var(--fnos-text-1);
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.mt-field {
+  display: grid;
+  gap: 7px;
+  color: var(--fnos-text-1);
+  font-size: 12px;
+}
+
+.mt-field input,
+.mt-field select,
+.mt-field textarea,
+.mt-path-input input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--fnos-border);
+  border-radius: 8px;
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+  padding: 8px 10px;
+  outline: none;
+}
+
+.mt-field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.mt-path-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.mt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mt-btn {
+  min-height: 34px;
+  border: 1px solid var(--fnos-border);
+  border-radius: 8px;
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.mt-btn--primary {
+  border-color: rgba(0,102,255,.4);
+  background: var(--fnos-brand);
+  color: #fff;
+}
+
+.mt-btn:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.mt-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fnos-text-1);
+  font-size: 13px;
+}
+
+.mt-list,
+.mt-task-list,
+.mt-ticket-grid,
+.mt-module-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.mt-list-row,
+.mt-module,
+.mt-ticket,
+.mt-task-row {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--fnos-divider);
+  border-radius: 10px;
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.mt-list-row span,
+.mt-module span,
+.mt-ticket span,
+.mt-ticket small,
+.mt-task-row small {
+  overflow: hidden;
+  color: var(--fnos-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mt-ticket {
+  cursor: pointer;
+}
+
+.mt-ticket--active {
+  border-color: var(--fnos-brand);
+  background: var(--fnos-brand-light);
+}
+
+.mt-task-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mt-task-row em {
+  border-radius: 999px;
+  background: rgba(0,102,255,.12);
+  color: var(--fnos-brand);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.mt-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,.44);
+  backdrop-filter: blur(12px);
+}
+
+.mt-picker__panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(280px, 56vh) auto;
+  width: min(820px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  background: rgba(20,22,28,.96);
+  box-shadow: 0 24px 80px rgba(0,0,0,.4);
+}
+
+.mt-picker__head,
+.mt-picker__tools,
+.mt-picker__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.mt-picker__head {
+  justify-content: space-between;
+}
+
+.mt-picker__head span,
+.mt-picker__foot span,
+.mt-picker__row small {
+  overflow: hidden;
+  color: var(--fnos-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mt-picker__tools select {
+  flex: 1;
+  min-height: 34px;
+  border: 1px solid var(--fnos-border);
+  border-radius: 8px;
+  background: var(--fnos-fill);
+  color: var(--fnos-text-0);
+}
+
+.mt-picker__list {
+  overflow: auto;
+  padding: 10px;
+}
+
+.mt-picker__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+  border: 1px solid var(--fnos-divider);
+  border-radius: 10px;
+  background: var(--fnos-fill);
+  padding: 8px 10px;
+}
+
+.mt-picker__row--current {
+  border-color: var(--fnos-brand);
+}
+
+.mt-picker__row button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mt-picker__foot {
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-bottom: 0;
+}
+
+.mt-picker__foot span {
+  flex: 1;
+}
+
+.mt-empty {
+  padding: 18px;
+  color: var(--fnos-text-2);
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .lv-window {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .lv-head,
+  .lv-row {
+    grid-template-columns: 86px 120px 170px minmax(220px, 1fr);
+  }
+
+  .lv-head span:nth-child(4),
+  .lv-row span:nth-child(4) {
+    display: none;
+  }
+
+  .lv-filters {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 980px) {
+  .fm-app {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .fm-brand strong,
+  .fm-sidebar-title,
+  .fm-nav-item span,
+  .fm-disk span,
+  .fm-disk small,
+  .fm-settings {
+    display: none;
+  }
+
+  .fm-nav-item,
+  .fm-disk {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .fm-head,
+  .fm-row {
+    grid-template-columns: 36px minmax(160px, 1fr) minmax(120px, .55fr) 86px;
+  }
+
+  .fm-head span:nth-child(4),
+  .fm-head span:nth-child(6),
+  .fm-row > span:nth-child(4),
+  .fm-row > span:nth-child(6) {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .mt-stats,
+  .mt-form-row,
+  .mt-split {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,161 @@
+
+.rp-error,
+.rp-empty {
+  margin-top: 8px;
+  color: rgba(255,255,255,.45);
+  font-size: 11px;
+}
+
+.rp-error {
+  color: #ff9f0a;
+}
+
+.rp-service-list {
+  display: grid;
+  gap: 7px;
+}
+
+.rp-service-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,.72);
+  font-size: 11px;
+}
+
+.rp-service-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255,159,10,.9);
+  box-shadow: 0 0 8px rgba(255,159,10,.32);
+}
+
+.rp-service-dot--online {
+  background: rgba(84,255,183,.95);
+  box-shadow: 0 0 8px rgba(84,255,183,.38);
+}
+
+.rp-service-name,
+.rp-task-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-service-ok {
+  color: #54FFB7;
+}
+
+.rp-service-off {
+  color: #ff9f0a;
+}
+
+.rp-task-name {
+  min-width: 0;
+  color: rgba(255,255,255,.88);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rp-task-item {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255,255,255,.04);
+  overflow: hidden;
+}
+
+.rp-task-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rp-task-head,
+.rp-task-main,
+.rp-task-actions,
+.rp-task-progress-row {
+  display: flex;
+  align-items: center;
+}
+
+.rp-task-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.rp-task-main {
+  min-width: 0;
+  overflow: hidden;
+  gap: 7px;
+}
+
+.rp-task-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: rgba(255,255,255,.45);
+}
+
+.rp-task-status--running {
+  color: #54FFB7;
+}
+
+.rp-task-status--pending,
+.rp-task-status--paused {
+  color: #ffcc66;
+}
+
+.rp-task-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.38);
+  font-size: 10px;
+}
+
+.rp-task-actions {
+  flex-shrink: 0;
+  gap: 5px;
+  min-width: max-content;
+}
+
+.rp-task-btn {
+  height: 22px;
+  min-width: 42px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,.07);
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rp-task-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.92);
+}
+
+.rp-task-btn:disabled {
+  cursor: not-allowed;
+  opacity: .38;
+}
+
+.rp-task-btn--stop {
+  color: rgba(255,255,255,.72);
+}
+
+.rp-task-btn--resume,
+.rp-task-btn--resume:disabled {
+  color: #54FFB7;
+}
+
+.rp-task-progress-row {
+  gap: 8px;
+  min-width: 0;
+}

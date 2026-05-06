@@ -1,0 +1,1 @@
+"""Photoshop module package."""

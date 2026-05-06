@@ -1,0 +1,6 @@
+python-dotenv
+openpyxl
+openai
+apscheduler
+loguru
+requests

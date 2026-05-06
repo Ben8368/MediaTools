@@ -1,0 +1,280 @@
+/* ===== Right Panel ===== */
+.fnos-right-panel {
+  position: fixed;
+  right: 12px;
+  top: 12px;
+  bottom: 12px;
+  width: 344px;
+  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 8px;
+  background: rgba(10,12,18,.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.05);
+  scrollbar-width: none;
+}
+
+.fnos-right-panel::-webkit-scrollbar { display: none; }
+
+.rp-card {
+  background: rgba(0,0,0,.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  contain: layout paint;
+}
+
+.rp-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rp-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  margin-bottom: 8px;
+}
+
+.rp-card-head .rp-card-title {
+  margin-bottom: 0;
+}
+
+.rp-card-meta {
+  color: rgba(255,255,255,.48);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.rp-card-hint {
+  margin: 6px 0 8px;
+  color: rgba(255,255,255,.42);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.rp-back-btn,
+.rp-task-group {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.82);
+}
+
+.rp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.rp-back-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rp-task-group-detail {
+  display: grid;
+  gap: 8px;
+}
+
+.rp-task-group-title strong {
+  display: block;
+  color: rgba(255,255,255,.9);
+  font-size: 12px;
+}
+
+.rp-task-group-title small {
+  color: rgba(255,255,255,.45);
+  font-size: 10.5px;
+}
+
+.rp-task-group {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  background: rgba(6, 13, 24, .72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.rp-task-group:hover,
+.rp-back-btn:hover {
+  background: rgba(10, 22, 38, .88);
+  color: rgba(255,255,255,.95);
+}
+
+.rp-task-group-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rp-task-group-title {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.rp-task-group-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255,255,255,.88);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-task-group-title small {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255,255,255,.42);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-task-group-count {
+  flex: 0 0 auto;
+  color: rgba(255,255,255,.45);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.rp-task-group-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.rp-task-group-kind,
+.rp-task-group-percent {
+  color: rgba(255,255,255,.44);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.rp-device-name {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 10px;
+}
+
+.rp-gauges {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 8px;
+}
+
+.rp-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rp-gauge svg {
+  width: 64px;
+  height: 64px;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.rp-uptime {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+}
+
+.rp-uptime span {
+  color: rgba(255,255,255,.8);
+}
+
+.rp-net {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rp-net-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.rp-net-up { color: #54FFB7; }
+.rp-net-down { color: #4AA3FF; }
+
+.rp-net-chart {
+  height: 36px;
+  margin-top: 4px;
+}
+
+.rp-net-chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rp-diskio-chart {
+  height: 36px;
+  margin-top: 4px;
+}
+
+.rp-diskio-chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.rp-storage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 11px;
+  color: rgba(255,255,255,.7);
+}
+
+.rp-storage-item + .rp-storage-item {
+  border-top: 1px solid rgba(255,255,255,.04);
+  padding-top: 8px;
+}
+
+.rp-storage-icon {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+}
+
+.rp-storage-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.rp-storage-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4A8FFF, #5B9BFF);
+  border-radius: 2px;
+}
+
+.rp-storage-sizes {
+  white-space: nowrap;
+  color: rgba(255,255,255,.45);
+  font-size: 10px;
+}

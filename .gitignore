@@ -1,0 +1,90 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.env
+.venv/
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.tmp-tests*/
+.tmp-pip*/
+.tmp-pip2*/
+.tmp-pip3*/
+.tmp-testspytest/
+.tmp-pytest-run/
+.tmp-temp-probe*/
+pytest-single-temp/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.json
+
+# ===== Go =====
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/unlock-music/dist/
+
+# ===== MediaTools runtime =====
+# 外部二进制（手动放置或脚本下载）
+bin/ffmpeg
+bin/ffmpeg.exe
+bin/ffprobe
+bin/ffprobe.exe
+bin/yt-dlp
+bin/yt-dlp.exe
+bin/um-cli
+bin/um-cli.exe
+
+# 运行时数据
+downloads/
+data/*.db
+data/*.db-*
+runtime/
+frontend/node_modules/
+frontend/dist/
+projects/*/inputs/
+projects/*/downloads/
+projects/*/decrypted/
+projects/*/transcoded/
+projects/*/clips/
+projects/*/subtitles/
+projects/*/analysis/
+projects/*/cache/
+projects/*/logs/
+projects/*/manifests/
+projects/*/exports/
+*.csv
+
+# capcut-mate 运行时
+vendor/capcut-mate/.env
+vendor/capcut-mate/__pycache__/
+vendor/auditor_source/.env
+vendor/auditor_source/__pycache__/
+vendor/auditor_source/data/
+vendor/auditor_source/logs/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo

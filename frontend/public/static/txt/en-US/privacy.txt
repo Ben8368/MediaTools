@@ -1,0 +1,123 @@
+Fygo System End User License Agreement (EULA)
+
+Guangzhou Tieren Intelligent Manufacturing Technology Co., Ltd. (“Tieren,” “Fygo,” or “we”) provides software (including the Fygo operating system fnOS, Fygo system apps, and any software labeled as “Fygo,” as well as any future software we provide, collectively referred to as the “Licensed Software”). This includes software originally installed on Tieren products (“Products”) and any software provided or authorized through any legitimate channels, whether directly or indirectly, whether current versions or future updates. All such software is governed by this End User License Agreement (“License Agreement”), unless that software is subject to a separate EULA or other agreement.
+
+If you are a business or educational organization, Tieren may enter into a separate EULA or other agreement with you, and such relationship shall be governed by that separate agreement.
+
+By accepting this License Agreement, Tieren grants rights to any recipient or original purchaser of a Product or Licensed Software (“User”).
+
+By downloading, installing, accessing, or otherwise using the Licensed Software, you acknowledge that you have read and accepted this License Agreement, and you agree to be bound by it. If you do not agree to this License Agreement, do not download, install, access, or use the Licensed Software.
+
+----------------------------------------
+SECTION 1 — LIMITED SOFTWARE LICENSE
+----------------------------------------
+Tieren grants Users a limited, personal, non-commercial, non-exclusive, non-distributable, non-transferable, and non-sublicensable right to use the Licensed Software.
+
+----------------------------------------
+SECTION 2 — COPYING
+----------------------------------------
+Users may not copy the Licensed Software except for making a reasonable number of backup copies of individual software components.
+
+----------------------------------------
+SECTION 3 — LICENSE RESTRICTIONS
+----------------------------------------
+Unless expressly permitted by Tieren in writing or explicitly allowed within the Licensed Software, Users may not:
+1. Sublicense, distribute, rent, lend, lease, transfer, or sell the Licensed Software;
+2. Modify, adapt, translate, alter, or create derivative works of the Licensed Software;
+3. Remove, modify, or obscure any intellectual property notices or other rights statements on the Product or Licensed Software, or bypass any technical measures designed to protect such rights;
+4. Use the Licensed Software for purposes beyond the functions of the Product;
+5. Use the Licensed Software with any product or service not provided or authorized by Tieren, including software preinstallation and bundling;
+6. Circumvent or attempt to circumvent any methods or actions Tieren uses to control access to components, features, or functionality of the Product or Licensed Software;
+7. Disassemble, decompile, reverse engineer, or attempt to obtain source code or trade secrets of the Licensed Software.
+
+If Users violate the above restrictions, Tieren reserves the right to terminate access to the Licensed Software and pursue legal action to the extent permitted by law.
+
+----------------------------------------
+SECTION 4 — DATA PROCESSING
+----------------------------------------
+When Users utilize the Licensed Software through their hardware devices, Tieren collects hardware information for statistical analysis and product improvement. Such hardware information does not constitute personal information. If Tieren subsequently associates this information with specific Users, it will be treated as personal information and protected accordingly.
+
+Users may refer to the Privacy Policy provided with this License Agreement to learn how personal information is processed.
+
+Except with User consent, to provide software functionality, or under other conditions permitted by law, Tieren does not collect or access data stored on the hardware device on which the Licensed Software is installed.
+
+----------------------------------------
+SECTION 5 — CLOUD SERVICES
+----------------------------------------
+Some Licensed Software includes cloud services. Using cloud services requires an internet connection and may incur additional fees. Such services are also governed by the FN Connect User Agreement or other agreements or rules published by us.
+
+----------------------------------------
+SECTION 6 — OPEN-SOURCE SOFTWARE
+----------------------------------------
+The Licensed Software may include open-source components licensed under GPL, LGPL, MIT, or other licenses (“Open-Source Components”). In case of conflict between this agreement and an open-source license, the open-source license prevails. Users agree that all Open-Source Components are governed by their respective licenses.
+
+----------------------------------------
+SECTION 7 — AUDIT
+----------------------------------------
+Tieren has the right to audit Users to verify compliance with this License Agreement. Users agree to allow Tieren to inspect usage of the Product or Licensed Software for audit purposes.
+
+----------------------------------------
+SECTION 8 — INTELLECTUAL PROPERTY RIGHTS
+----------------------------------------
+All intellectual property rights, ownership, and interests related to the Licensed Software belong to Tieren or its licensors. Authorization to use the Licensed Software does not constitute a transfer of such rights. All rights not expressly granted remain reserved.
+
+----------------------------------------
+SECTION 9 — SOFTWARE UPDATES
+----------------------------------------
+Tieren periodically releases security advisories and updated versions of the Licensed Software. Unless otherwise specified, updates and patches provided by Tieren or downloaded from the official website are governed by this License Agreement. If a separate license applies, it prevails.
+
+Users acknowledge the importance of timely updates to prevent security risks. Tieren recommends installing updates promptly. Tieren does not guarantee continued availability of older versions after new versions are released.
+
+Tieren may take necessary actions, including suspension or discontinuation of the Licensed Software or related services, to avoid significant harm to Users.
+
+----------------------------------------
+SECTION 10 — MAINTENANCE PERIOD
+----------------------------------------
+The Licensed Software will be maintained according to cycles and conditions published on Tieren’s official website. Tieren does not guarantee perpetual maintenance and may adjust maintenance or payment plans as needed.
+
+----------------------------------------
+SECTION 11 — DISCLAIMER
+----------------------------------------
+To the extent permitted by law, Tieren makes no warranties regarding suitability, reliability, availability, timeliness, virus-free operation, or accuracy of the Licensed Software, its products, services, or related graphics. All are provided “as is,” without warranty of any kind, express or implied, including merchantability, fitness for a particular purpose, expertise, proprietary rights, or noninfringement.
+
+Tieren is not liable for any direct, indirect, punitive, incidental, special, or consequential damages—including loss of use, data, profits, or other losses—even if foreseeable.
+
+Users understand that the Licensed Software is intended only for compatible hardware. Tieren is not responsible for damages resulting from use on incompatible hardware.
+
+----------------------------------------
+SECTION 12 — LIMITATION OF LIABILITY
+----------------------------------------
+In any case, Tieren is not liable for any indirect, incidental, special, or consequential damages arising from the use or inability to use the Licensed Software. Tieren’s liability is limited to the amount paid for the Licensed Software, if any.
+
+----------------------------------------
+SECTION 13 — THIRD-PARTY SOFTWARE
+----------------------------------------
+The Licensed Software may provide access to third-party software or services. Tieren offers no support for such third-party content. Users must contact third-party providers directly. Such content is governed by their respective agreements.
+
+----------------------------------------
+SECTION 14 — EXPORT CONTROL
+----------------------------------------
+This agreement is subject to applicable export control laws of all relevant countries or regions.
+
+----------------------------------------
+SECTION 15 — TERMINATION
+----------------------------------------
+This License Agreement remains in effect until terminated. If the User breaches any provision, rights granted herein terminate automatically without notice. Tieren may terminate this Agreement and revoke the license immediately. Users must cease use and delete all copies of the Licensed Software.
+
+----------------------------------------
+SECTION 16 — AMENDMENTS
+----------------------------------------
+This License Agreement constitutes the complete agreement between Tieren and the User. Tieren reserves the right to modify it. The latest version will be available on the official website.
+
+----------------------------------------
+SECTION 17 — GOVERNING LAW & DISPUTE RESOLUTION
+----------------------------------------
+This License Agreement is governed by the laws of mainland China, excluding conflict-of-law principles. Disputes shall first be resolved through negotiation; failing that, Users may bring claims to the court located where Tieren is based.
+
+----------------------------------------
+SECTION 18 — MISCELLANEOUS
+----------------------------------------
+1. If any provision is ruled invalid or unenforceable, the remaining provisions remain in effect.
+2. Waiver of any provision does not constitute a future waiver.
+3. Tieren may assign its rights under this Agreement without condition.
+4. If discrepancies exist between language versions, the Chinese version prevails unless a region-specific agreement applies.

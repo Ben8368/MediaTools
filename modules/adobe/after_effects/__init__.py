@@ -1,0 +1,37 @@
+"""After Effects 自动化子模块"""
+
+from .service import (
+    add_ae_to_render_queue,
+    cancel_execution,
+    create_ae_checkpoint,
+    get_ae_render_queue_status,
+    get_ae_status,
+    get_ae_ticket,
+    get_execution_state,
+    list_ae_checkpoints,
+    list_ae_fonts,
+    list_ae_tickets,
+    revert_ae_checkpoint,
+    save_ae_ticket,
+    scan_ae_project,
+    start_ae_render,
+    start_ae_ticket_execution,
+)
+
+__all__ = [
+    "add_ae_to_render_queue",
+    "cancel_execution",
+    "create_ae_checkpoint",
+    "get_ae_render_queue_status",
+    "get_ae_status",
+    "get_ae_ticket",
+    "get_execution_state",
+    "list_ae_checkpoints",
+    "list_ae_fonts",
+    "list_ae_tickets",
+    "revert_ae_checkpoint",
+    "save_ae_ticket",
+    "scan_ae_project",
+    "start_ae_render",
+    "start_ae_ticket_execution",
+]

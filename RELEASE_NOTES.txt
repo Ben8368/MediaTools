@@ -1,0 +1,13 @@
+﻿MediaTools release: MediaTools-release-20260424-154928
+Build date: 2026-04-24
+
+Included:
+- Backend services, adapters, modules, patches and vendor source snapshots.
+- Frontend source plus prebuilt frontend/dist assets.
+- Empty normalized workspace directories under projects/default.
+
+Excluded:
+- frontend/node_modules
+- runtime state, downloads, exports, logs, generated project artifacts
+- Python bytecode/cache folders
+- nested .git folders and local .env files

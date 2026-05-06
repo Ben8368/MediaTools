@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionList>
+    <Extension Id="com.mediatools.photoshop.panel">
+        <HostList>
+            <Host Name="PHXS" Port="9201"/>
+        </HostList>
+    </Extension>
+    <Extension Id="com.mediatools.photoshop.settings">
+        <HostList>
+            <Host Name="PHXS" Port="9203"/>
+        </HostList>
+    </Extension>
+</ExtensionList>

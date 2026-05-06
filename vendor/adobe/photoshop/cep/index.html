@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MediaTools Photoshop</title>
+  <style>
+    html, body, iframe {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      overflow: hidden;
+    }
+    body {
+      background: #1e1e1e;
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #f3f4f6;
+      font-family: "Segoe UI", Arial, sans-serif;
+      text-align: center;
+    }
+    #error {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fecaca;
+      font-family: "Segoe UI", Arial, sans-serif;
+      text-align: center;
+      max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div>正在加载 MediaTools 前端...</div>
+    <div style="margin-top: 10px; color: #a1a1aa; font-size: 12px;">请确保 MediaTools API 已启动</div>
+  </div>
+  <div id="error">
+    <div style="font-size: 16px; margin-bottom: 10px;">❌ 加载失败</div>
+    <div id="error-message" style="font-size: 13px; color: #a1a1aa;"></div>
+  </div>
+  <iframe id="frontend" style="display: none;"></iframe>
+
+  <script src="./polyfills.js"></script>
+  <script src="./CSInterface.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var CONFIG_KEY = 'mediatools.photoshop.cep.settings';
+      var loading = document.getElementById('loading');
+      var error = document.getElementById('error');
+      var errorMessage = document.getElementById('error-message');
+      var iframe = document.getElementById('frontend');
+
+      function loadSettings() {
+        try {
+          var raw = localStorage.getItem(CONFIG_KEY);
+          if (!raw) return { baseUrl: 'http://127.0.0.1:8000', apiKey: '' };
+          var saved = JSON.parse(raw);
+          return {
+            baseUrl: (saved.baseUrl || 'http://127.0.0.1:8000').replace(/\/+$/, ''),
+            apiKey: String(saved.apiKey || '')
+          };
+        } catch (err) {
+          return { baseUrl: 'http://127.0.0.1:8000', apiKey: '' };
+        }
+      }
+
+      function showError(message) {
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        errorMessage.textContent = message;
+      }
+
+      function loadFrontend() {
+        var settings = loadSettings();
+        var frontendUrl = settings.baseUrl + '/?cep=photoshop';
+
+        iframe.onload = function () {
+          loading.style.display = 'none';
+          iframe.style.display = 'block';
+        };
+
+        iframe.onerror = function () {
+          showError('无法连接到 MediaTools API (' + settings.baseUrl + ')。请确保 MediaTools 服务已启动。');
+        };
+
+        // 设置 iframe src，加载前端
+        iframe.src = frontendUrl;
+
+        // 5秒超时检测
+        setTimeout(function () {
+          if (iframe.style.display === 'none') {
+            showError('前端加载超时。请检查 MediaTools API 是否正常运行。');
+          }
+        }, 5000);
+      }
+
+      // 页面加载完成后立即加载前端
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadFrontend);
+      } else {
+        loadFrontend();
+      }
+    })();
+  </script>
+</body>
+</html>

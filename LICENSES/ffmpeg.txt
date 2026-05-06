@@ -1,0 +1,10 @@
+FFmpeg is licensed under the GNU Lesser General Public License (LGPL) version 2.1
+or later, with portions licensed under the GNU General Public License (GPL) version 2.
+
+The binaries included in this project (ffmpeg.exe, ffprobe.exe) are built from
+the official FFmpeg source code.
+
+For full license details, see:
+https://ffmpeg.org/legal.html
+
+Source code: https://ffmpeg.org/

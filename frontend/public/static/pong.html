@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRIM CONNECT</title>
+</head>
+
+<body>
+  <script>
+    const domains = ['5ddd.com', 'fnos.me', 'trzznas.com', 'fynas.net'];
+    function getCookie(name) {
+      const nameEQ = encodeURIComponent(name) + '=';
+      const cookie = document.cookie.split('; ').find((row) => row.startsWith(nameEQ));
+      return cookie ? decodeURIComponent(cookie.split('=')[1]) : null;
+    }
+
+    function getRootDomain(referrerUrl) {
+      if (!referrerUrl) return '';
+      const url = new URL(referrerUrl);
+      const hostname = url.hostname;
+      const domainParts = hostname.split('.').slice(-2).join('.');
+      return domainParts;
+    }
+
+    const networkValue = getCookie('mode');
+    if (networkValue !== null && networkValue === 'relay') {
+    } else {
+      // 获取跳转过来的 URL
+      try {
+        const referrer = document.referrer;
+        const rootDomain = getRootDomain(referrer);
+        //直接打开 则重定向
+        if (!domains.includes(rootDomain)) {
+          //检查是否有query
+          const queryString = window.location.search;
+          const urlParams = new URLSearchParams(queryString);
+          const name = urlParams.get('d');
+          if (name) {
+            window.location.href = 'https://' + name;
+          } else {
+            window.location.href = window.location.protocol + '//' + domains[0];
+          }
+        } else if (referrer && domains.includes(rootDomain)) {
+          document.cookie = 'mode=relay';
+          window.location.reload();
+        } else {
+          //重定向到原来的跳转页面
+          window.location.href = referrer;
+        }
+      } catch (error) {
+        console.log(JSON.stringify(error));
+      }
+    }
+  </script>
+</body>
+
+</html>

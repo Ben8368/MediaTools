@@ -1,0 +1,186 @@
+.dl-table {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dl-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.dl-body--detail-open {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dl-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dl-head,
+.dl-row {
+  display: grid;
+  grid-template-columns: 34px minmax(220px, 1fr) minmax(170px, .42fr) 126px;
+  align-items: center;
+  column-gap: 14px;
+  padding-right: 10px;
+}
+
+.dl-head {
+  min-height: 40px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.42);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dl-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 18px;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.dl-list::-webkit-scrollbar { width: 4px; }
+.dl-list::-webkit-scrollbar-track { background: transparent; }
+.dl-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+.dl-row {
+  min-height: 46px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  cursor: default;
+  font-size: 13px;
+}
+
+.dl-row:hover {
+  background: rgba(255,255,255,.035);
+}
+
+.dl-row--selected {
+  background: rgba(28,126,255,.12);
+}
+
+.dl-row--focused {
+  box-shadow: inset 0 0 0 1px rgba(77,171,255,.4);
+}
+
+.dl-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #2f8cff;
+  cursor: pointer;
+}
+
+.dl-col-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dl-status-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.dl-status-icon--running { color: #54ffb7; }
+.dl-status-icon--pending { color: #ffcc66; }
+.dl-status-icon--completed { color: #4dabff; }
+.dl-status-icon--failed { color: #ff8a82; }
+.dl-status-icon--cancelled { color: rgba(255,255,255,.35); }
+
+.dl-col-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dl-col-name strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dl-col-name small {
+  color: rgba(255,255,255,.38);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dl-col-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dl-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.dl-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a8fff, #5b9bff);
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+.dl-progress-text {
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.dl-col-time {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  color: rgba(255,255,255,.35);
+  text-align: center;
+}
+
+.dl-empty-icon {
+  width: 100px;
+  height: 80px;
+  margin-bottom: 16px;
+  opacity: .6;
+}
+
+.dl-empty p {
+  font-size: 16px;
+  font-weight: 600;
+}

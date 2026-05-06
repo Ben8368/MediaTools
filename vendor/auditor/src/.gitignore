@@ -1,0 +1,7 @@
+.env
+*.pyc
+__pycache__/
+logs/
+data/snapshot.json
+*.xlsx
+!arkclaw_config.xlsx

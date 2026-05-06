@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title></title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+  <script>
+    function xhrRequest({ url, method = 'GET', data = null, headers = {}, timeout = 5000 }) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, url, true);
+
+        // 设置超时
+        xhr.timeout = timeout;
+
+        // 设置请求头
+        for (const key in headers) {
+          if (headers.hasOwnProperty(key)) {
+            xhr.setRequestHeader(key, headers[key]);
+          }
+        }
+
+        // 设置响应数据处理
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({
+              status: xhr.status,
+              statusText: xhr.statusText,
+              data: xhr.response,
+            });
+          } else {
+            reject({
+              status: xhr.status,
+              statusText: xhr.statusText,
+              data: xhr.response,
+            });
+          }
+        };
+
+        // 错误处理
+        xhr.onerror = function () {
+          reject({
+            status: xhr.status,
+            statusText: xhr.statusText,
+          });
+        };
+
+        // 超时处理
+        xhr.ontimeout = function () {
+          reject({
+            status: xhr.status,
+            statusText: 'Request timed out',
+          });
+        };
+
+        // 发送请求
+        if (method === 'POST' && data) {
+          if (typeof data === 'object' && !(data instanceof FormData)) {
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify(data));
+          } else {
+            xhr.send(data);
+          }
+        } else {
+          xhr.send();
+        }
+      });
+    }
+
+  </script>
+  <script>
+    let origin = "";
+    window.addEventListener('message', async (e) => {
+      origin = e.origin;
+      e = e || event;
+      let data = e.data || {};
+      const res = await xhrRequest({
+        url: "/trimfn",
+      })
+      send({
+        ...data,
+        fn: res?.data || ''
+      })
+    }, false);
+    function send(data = {}) {
+      parent.postMessage(JSON.stringify({ "ping": "ok", "status": "succ", ...data }), origin);
+    }
+    window.addEventListener('beforeunload', (event) => {
+      // 防止页面卸载或跳转
+      event.preventDefault();
+      event.returnValue = '';
+    });
+  </script>
+
+</html>

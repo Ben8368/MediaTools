@@ -1,0 +1,20 @@
+# MediaTools Python 依赖
+# 安装命令: pip install -r requirements.txt
+
+# 媒体获取模块 (fetcher)
+yt-dlp>=2026.3.17          # 视频下载引擎（pip 版本用于 import，实际运行推荐 bin/yt-dlp.exe）
+openai>=1.0.0               # LLM 字幕分析（兼容 OpenAI API 接口）
+python-dotenv>=1.0.0        # .env 环境变量加载
+
+# Web 服务模块 (FastAPI)
+fastapi>=0.110.0            # Web 框架
+pydantic>=2.0.0             # 数据模型
+uvicorn>=0.29.0             # ASGI 服务器
+websockets>=12.0            # WebSocket 支持
+passlib>=1.7.4              # 认证（capcut-mate 需要）
+requests>=2.31.0            # HTTP 客户端
+
+# 任务队列（可选，用于异步任务处理）
+# celery[redis]>=5.3.0      # 任务队列
+# redis>=5.0.0              # Redis客户端
+# flower>=2.0.0             # Celery监控（可选）

@@ -1,0 +1,1 @@
+"""Auditor module package."""
