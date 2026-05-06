@@ -6,8 +6,6 @@ import asyncio
 import json
 import logging
 import os
-import subprocess
-import sys
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -262,22 +260,16 @@ async def shutdown_server(request: Request):
 
 @app.post("/api/system/restart")
 async def restart_server(request: Request):
-    """Restart the server from a local browser session."""
+    """Request a restart by exiting with code 3. The supervising launcher
+    (start_mediatools*.bat watchdog in dev, Docker restart policy in prod)
+    is responsible for relaunching the process."""
     client_host = request.client.host if request.client else ""
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
-    import signal
-
     def _delayed_restart():
         time.sleep(0.5)
-        if os.name == "nt":
-            command = f'timeout /t 2 /nobreak > nul & "{sys.executable}" "{BASE_DIR / "app.py"}"'
-            subprocess.Popen(["cmd", "/c", command], cwd=str(BASE_DIR), close_fds=True)
-        else:
-            command = f'sleep 2; "{sys.executable}" "{BASE_DIR / "app.py"}"'
-            subprocess.Popen(["sh", "-c", command], cwd=str(BASE_DIR), close_fds=True)
-        os.kill(os.getpid(), signal.SIGTERM)
+        os._exit(3)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server restarting"})
