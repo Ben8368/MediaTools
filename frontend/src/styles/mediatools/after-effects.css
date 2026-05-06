@@ -12,7 +12,7 @@
 .ae-flow-sidebar {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   border-right: 1px solid rgba(255,255,255,.07);
   background: rgba(5,6,8,.96);
@@ -23,6 +23,7 @@
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   gap: 10px;
+  min-height: 72px;
   width: 100%;
   min-width: 0;
   border: 1px solid transparent;
@@ -382,16 +383,43 @@
   align-items: start;
 }
 
+.ae-workspace--hidden,
+.ae-tools--hidden {
+  display: none;
+}
+
 .ae-import-file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
   margin-bottom: 12px;
   border: 1px solid rgba(148,119,255,.18);
   border-radius: 12px;
   background: rgba(6,8,18,.34);
   padding: 12px;
+}
+
+.ae-import-file .mt-field,
+.ae-import-file input.ae-import-path {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.ae-import-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ae-import-actions .mt-btn--primary {
+  flex: 0 0 auto;
+}
+
+.ae-import-file > .mt-btn {
+  justify-self: end;
 }
 
 .ae-tools {
@@ -668,10 +696,12 @@
 
 .ae-execute-panel {
   grid-area: auto;
+  background:
+    linear-gradient(135deg, rgba(25,22,50,.88), rgba(14,14,32,.82));
 }
 
 .ae-app .mt-result {
-  min-height: 118px;
+  min-height: 180px;
   border: 1px solid rgba(174,154,255,.14);
   background: rgba(6,8,18,.62);
   color: rgba(238,237,255,.84);
@@ -707,7 +737,7 @@
   }
 
   .ae-flow-sidebar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     border-right: 0;
     border-bottom: 1px solid rgba(255,255,255,.07);
   }

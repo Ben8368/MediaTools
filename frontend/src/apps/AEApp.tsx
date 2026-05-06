@@ -38,7 +38,7 @@ type AnyRecord = Record<string, any>
 
 export function AEApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
-  const [activePanel, setActivePanel] = useState<'scan' | 'import'>('scan')
+  const [activePanel, setActivePanel] = useState<'scan' | 'import' | 'result'>('scan')
   const [tickets, setTickets] = useState<AnyRecord[]>([])
   const [ticketId, setTicketId] = useState('')
   const [ticketText, setTicketText] = useState('')
@@ -249,6 +249,13 @@ export function AEApp() {
               <strong>导入工单</strong>
               <small>{ticketId ? `${ticketId.slice(0, 8)} · ${tasks.length} 个任务` : '扫描后自动导入当前工单'}</small>
               {sourceProject ? <em>{sourceProject}</em> : null}
+            </div>
+          </button>
+          <button type="button" className={`ae-flow-step ${activePanel === 'result' ? 'ae-flow-step--active' : ''}`} onClick={() => setActivePanel('result')}>
+            <span>03</span>
+            <div>
+              <strong>执行结果</strong>
+              <small>{ticketId ? `${selectedExecutableCount} 个已选择` : '等待当前工单'}</small>
             </div>
           </button>
         </aside>

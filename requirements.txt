@@ -14,6 +14,10 @@ websockets>=12.0            # WebSocket 支持
 passlib>=1.7.4              # 认证（capcut-mate 需要）
 requests>=2.31.0            # HTTP 客户端
 
+# 浏览器自动化（用于远程浏览器显示和Cookie提取）
+playwright>=1.40.0          # 浏览器自动化框架
+aiohttp>=3.9.0              # 异步HTTP客户端（CDP代理）
+
 # 任务队列（可选，用于异步任务处理）
 # celery[redis]>=5.3.0      # 任务队列
 # redis>=5.0.0              # Redis客户端

@@ -46,6 +46,7 @@ def configure_application_routes(
     from services.api_adobe_routes import create_router as create_adobe_router
     from services.api_assets_routes import create_router as create_assets_router
     from services.api_auditor_routes import create_router as create_auditor_router
+    from services.api_browser_routes import router as browser_router
     from services.api_filebrowser_routes import router as filebrowser_router
     from services.api_files_routes import create_router as create_files_router
     from services.api_log_routes import router as log_router
@@ -127,6 +128,8 @@ def configure_application_routes(
     app.include_router(create_workbench_router(run_simple_job, list_workspace_media, analyze_subtitle_for_workbench, export_clips_from_workbench))
     app.include_router(filebrowser_router)
     app.include_router(task_center_router)
+
+    app.include_router(browser_router)
 
     install_log_buffer()
     app.include_router(log_router)

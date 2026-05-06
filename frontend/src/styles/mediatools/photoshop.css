@@ -12,7 +12,7 @@
 .ps-flow-sidebar {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   border-right: 1px solid rgba(255,255,255,.07);
   background: rgba(5,6,8,.96);
@@ -23,6 +23,7 @@
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   gap: 10px;
+  min-height: 72px;
   width: 100%;
   min-width: 0;
   border: 1px solid transparent;
@@ -394,6 +395,10 @@
   align-items: start;
 }
 
+.ps-workspace--hidden {
+  display: none;
+}
+
 .ps-scan-panel {
   grid-area: auto;
 }
@@ -452,14 +457,32 @@
 
 .ps-import-file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
   margin-bottom: 12px;
   border: 1px solid rgba(66,153,255,.18);
   border-radius: 12px;
   background: rgba(4,10,18,.34);
   padding: 12px;
+}
+
+.ps-import-file .mt-field,
+.ps-import-file input.ps-import-path {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.ps-import-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ps-import-actions .mt-btn--primary {
+  flex: 0 0 auto;
 }
 
 .ps-output-cart {
@@ -546,9 +569,27 @@
   gap: 12px;
 }
 
+.ps-scan-language-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
 .ps-language-add input {
   min-width: 0;
   min-height: 32px;
+  border: 1px solid rgba(142,183,237,.18);
+  border-radius: 8px;
+  background: rgba(4,10,18,.70);
+  color: #f6fbff;
+  padding: 0 10px;
+  outline: 0;
+}
+
+.ps-scan-language-row input {
+  min-width: 0;
+  min-height: 34px;
   border: 1px solid rgba(142,183,237,.18);
   border-radius: 8px;
   background: rgba(4,10,18,.70);
@@ -821,10 +862,12 @@
 
 .ps-execute-panel {
   grid-area: auto;
+  background:
+    linear-gradient(135deg, rgba(12,32,52,.88), rgba(9,20,34,.82));
 }
 
 .ps-app .mt-result {
-  min-height: 118px;
+  min-height: 180px;
   border: 1px solid rgba(142,183,237,.14);
   background: rgba(4,10,18,.62);
   color: rgba(232,242,255,.82);
@@ -860,7 +903,7 @@
   }
 
   .ps-flow-sidebar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     border-right: 0;
     border-bottom: 1px solid rgba(255,255,255,.07);
   }
@@ -878,6 +921,7 @@
   .ps-result-grid,
   .ps-workspace,
   .ps-import-file,
+  .ps-scan-language-row,
   .ps-form-grid {
     grid-template-columns: 1fr;
   }

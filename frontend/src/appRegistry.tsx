@@ -16,6 +16,7 @@ import {
 import { DownloaderApp } from '@/apps/DownloaderApp'
 import { SettingsApp } from '@/apps/SettingsApp'
 import { LogViewer } from '@/LogViewer'
+import { BrowserApp } from '@/apps/BrowserApp'
 import { APP_ICON_PATHS } from '@/icon-library'
 
 export type RegisteredApp = {
@@ -31,6 +32,7 @@ export const appRegistry: RegisteredApp[] = [
   { id: 'dashboard', label: '控制台', title: '控制台', icon: APP_ICON_PATHS.dashboard, component: DashboardApp, launcherVisible: false },
   { id: 'fetcher', label: '下载', title: '下载', icon: APP_ICON_PATHS.fetcher, component: DownloaderApp },
   { id: 'agent', label: 'AI助手', title: 'AI助手', icon: APP_ICON_PATHS.agent, component: AgentApp },
+  { id: 'chatgpt', label: 'ChatGPT', title: 'ChatGPT 登录', icon: APP_ICON_PATHS.chatgpt, component: BrowserApp },
   { id: 'ps', label: 'PS', title: 'Photoshop 自动化', icon: APP_ICON_PATHS.photoshop, component: PhotoshopApp },
   { id: 'photoshop', label: 'Photoshop', title: 'Photoshop 自动化', icon: APP_ICON_PATHS.photoshop, component: PhotoshopApp, launcherVisible: false },
   { id: 'ae', label: 'AE', title: 'After Effects 自动化', icon: APP_ICON_PATHS.ae, component: AEApp },

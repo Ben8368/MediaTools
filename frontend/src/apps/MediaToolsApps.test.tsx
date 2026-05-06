@@ -174,11 +174,11 @@ describe('MediaTools workflow apps', () => {
 
   it('renders Photoshop and AE workflow pages with status calls', async () => {
     render(<PhotoshopApp />)
-    expect(await screen.findByText('Photoshop 自动化')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /扫描工单/ })).toBeInTheDocument()
     expect(apiMocks.fetchPhotoshopStatus).toHaveBeenCalled()
 
     render(<AEApp />)
-    expect(await screen.findByText('After Effects 自动化')).toBeInTheDocument()
+    expect(await screen.findByRole('complementary', { name: 'After Effects 工单流程' })).toBeInTheDocument()
     expect(apiMocks.fetchAEStatus).toHaveBeenCalled()
   })
 
@@ -207,7 +207,7 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    await screen.findByText('Adobe Automation')
+    await screen.findByRole('button', { name: '扫描并生成工单' })
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
     await waitFor(() => {
@@ -265,11 +265,11 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    await screen.findByText('Adobe Automation')
+    await screen.findByRole('button', { name: '扫描并生成工单' })
     fireEvent.change(screen.getByPlaceholderText('输入 zh-CN,en-US'), {
       target: { value: 'zh-CN,en-US' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '添加' }))
+    fireEvent.click(screen.getAllByRole('button', { name: '添加' })[0])
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
     await waitFor(() => {
