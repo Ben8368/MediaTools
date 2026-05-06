@@ -23,9 +23,16 @@ echo [1/4] Stopping existing MediaTools dev processes...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $frontend=Join-Path $root 'frontend'; try { $targets=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { (($_.Name -eq 'python.exe') -or ($_.Name -eq 'pythonw.exe') -or ($_.Name -eq 'node.exe') -or ($_.Name -eq 'cmd.exe')) -and (($_.CommandLine -like \"*$root*app.py*\") -or ($_.CommandLine -like \"*$root*api_server*\") -or ($_.CommandLine -like \"*$frontend*\" -and $_.CommandLine -like '*vite*')) }); if ($targets.Count -gt 0) { $targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } } } catch { Write-Host \"Warning: could not stop existing dev processes: $($_.Exception.Message)\" }; Remove-Item -LiteralPath (Join-Path $root '%PID_FILE%') -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath (Join-Path $root '%VITE_PID_FILE%') -Force -ErrorAction SilentlyContinue; exit 0"
 if errorlevel 1 goto FAILED
 
-echo [2/4] Launching backend with reload...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $env:MEDIATOOLS_FRONTEND_DEV_URL='%VITE_URL%'; $pidFile=Join-Path $root '%PID_FILE%'; $logFile=Join-Path $root '%LOG_FILE%'; $errFile=Join-Path $root '%ERR_FILE%'; $proc=Start-Process -FilePath 'python' -ArgumentList 'app.py','--reload' -WorkingDirectory $root -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Start-Sleep -Seconds 2; if ($proc.HasExited) { Write-Host \"Backend failed to start. See %ERR_FILE%\"; exit 1 }; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"Backend started. PID=$($proc.Id)\""
-if errorlevel 1 goto FAILED
+echo [2/4] Launching backend with reload and watchdog...
+:WATCHDOG_LOOP
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $env:MEDIATOOLS_FRONTEND_DEV_URL='%VITE_URL%'; $pidFile=Join-Path $root '%PID_FILE%'; $logFile=Join-Path $root '%LOG_FILE%'; $errFile=Join-Path $root '%ERR_FILE%'; Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue; $proc=Start-Process -FilePath 'python' -ArgumentList 'app.py','--reload' -WorkingDirectory $root -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"Backend started. PID=$($proc.Id)\"; Start-Sleep -Seconds 2; if ($proc.HasExited) { Write-Host \"Backend failed to start. See %ERR_FILE%\"; exit 1 }; $proc.WaitForExit(); exit $proc.ExitCode"
+set BACKEND_EXIT_CODE=%ERRORLEVEL%
+if "%BACKEND_EXIT_CODE%"=="3" (
+    echo Backend requested restart. Restarting in 2 seconds...
+    timeout /t 2 /nobreak >nul
+    goto WATCHDOG_LOOP
+)
+if not "%BACKEND_EXIT_CODE%"=="0" goto FAILED
 
 echo [3/4] Launching Vite dev server...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $frontend=Join-Path $root 'frontend'; $pidFile=Join-Path $root '%VITE_PID_FILE%'; $logFile=Join-Path $root '%VITE_LOG_FILE%'; $errFile=Join-Path $root '%VITE_ERR_FILE%'; $proc=Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','npm run dev -- --host 127.0.0.1 --port 5173 --strictPort' -WorkingDirectory $frontend -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Start-Sleep -Seconds 3; if ($proc.HasExited) { Write-Host \"Vite failed to start. See %VITE_ERR_FILE%\"; exit 1 }; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"Vite started. PID=$($proc.Id)\""
@@ -38,6 +45,13 @@ echo.
 echo Dev mode started at %URL%
 echo Backend proxies frontend requests to %VITE_URL%
 echo.
+echo Press Ctrl+C to stop the server.
+pause >nul
+goto CLEANUP
+
+:CLEANUP
+echo Stopping dev processes...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $frontend=Join-Path $root 'frontend'; try { $targets=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { (($_.Name -eq 'python.exe') -or ($_.Name -eq 'pythonw.exe') -or ($_.Name -eq 'node.exe') -or ($_.Name -eq 'cmd.exe')) -and (($_.CommandLine -like \"*$root*app.py*\") -or ($_.CommandLine -like \"*$root*api_server*\") -or ($_.CommandLine -like \"*$frontend*\" -and $_.CommandLine -like '*vite*')) }); if ($targets.Count -gt 0) { $targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } } } catch { }"
 exit /b 0
 
 :FAILED
