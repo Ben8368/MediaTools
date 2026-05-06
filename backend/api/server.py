@@ -260,16 +260,19 @@ async def shutdown_server(request: Request):
 
 @app.post("/api/system/restart")
 async def restart_server(request: Request):
-    """Request a restart by exiting with code 3. The supervising launcher
-    (start_mediatools*.bat watchdog in dev, Docker restart policy in prod)
-    is responsible for relaunching the process."""
+    """Gracefully shutdown the server for restart. The frontend should poll
+    for the server to come back online. In dev mode with --reload, file changes
+    will trigger automatic restart. In production, use a process manager."""
     client_host = request.client.host if request.client else ""
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
+    import signal
+
     def _delayed_restart():
         time.sleep(0.5)
-        os._exit(3)
+        # Use SIGTERM for graceful shutdown to properly release ports
+        os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server restarting"})
