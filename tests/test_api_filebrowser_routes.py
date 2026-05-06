@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from services.api_server import app
+from backend.api.server import app
 
 
 class TestApiFilebrowserRoutes(unittest.TestCase):

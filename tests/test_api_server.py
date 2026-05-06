@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 class TestJobRegistry(unittest.TestCase):
     def _make_registry(self):
-        from services.api_server import JobRegistry
+        from backend.api.server import JobRegistry
         return JobRegistry()
 
     def test_register_job(self):
@@ -69,28 +69,28 @@ class TestJobRegistry(unittest.TestCase):
 
 class TestResultSuccess(unittest.TestCase):
     def test_result_success_with_ok_true(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertTrue(_result_success({"ok": True}))
 
     def test_result_success_with_ok_false(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertFalse(_result_success({"ok": False}))
 
     def test_result_success_with_output_path(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertTrue(_result_success({"output_path": "/some/path.mp4"}))
 
     def test_result_success_with_output_paths(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertTrue(_result_success({"output_paths": ["/path1.mp4"]}))
 
     def test_result_success_with_summary_rows(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertTrue(_result_success({"summary_rows": [["状态", "成功"]]}))
         self.assertFalse(_result_success({"summary_rows": [["状态", "失败"]]}))
 
     def test_result_success_non_dict(self):
-        from services.api_server import _result_success
+        from backend.api.server import _result_success
         self.assertTrue(_result_success(True))
         self.assertFalse(_result_success(False))
         self.assertFalse(_result_success(None))
@@ -98,7 +98,7 @@ class TestResultSuccess(unittest.TestCase):
 
 class TestLoopExceptionHandler(unittest.TestCase):
     def test_suppresses_windows_proactor_connection_reset_noise(self):
-        from services.api_server import _handle_loop_exception
+        from backend.api.server import _handle_loop_exception
 
         loop = Mock()
         exc = ConnectionResetError(10054, "connection reset")
@@ -114,7 +114,7 @@ class TestLoopExceptionHandler(unittest.TestCase):
         loop.default_exception_handler.assert_not_called()
 
     def test_delegates_other_loop_exceptions(self):
-        from services.api_server import _handle_loop_exception
+        from backend.api.server import _handle_loop_exception
 
         loop = Mock()
         context = {"exception": RuntimeError("boom"), "handle": "<Handle something_else>"}

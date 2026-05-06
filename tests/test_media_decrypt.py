@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import services.media_decrypt as media_decrypt
+import backend.services.media_decrypt as media_decrypt
 
 
 def workspace(tmp_path):

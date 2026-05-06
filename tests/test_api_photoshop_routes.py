@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.api_photoshop_routes import create_router
+from backend.services.api_photoshop_routes import create_router
 
 
 class FakeJobRegistry:

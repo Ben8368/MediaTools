@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import services.media_fetch as media_fetch
+import backend.services.media_fetch as media_fetch
 
 
 class FakeCSVManager:

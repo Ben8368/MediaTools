@@ -1,6 +1,6 @@
 import unittest
 
-from services.api_modules import build_module_catalog
+from backend.services.api_modules import build_module_catalog
 
 
 class TestApiModules(unittest.TestCase):

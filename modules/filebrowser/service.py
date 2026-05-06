@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from config import BASE_DIR
+from backend.config import BASE_DIR
 
 _WINDOWS_DRIVE_CACHE: list[dict[str, Any]] | None = None
 TRASH_DIR = BASE_DIR / "runtime" / "filebrowser-trash"

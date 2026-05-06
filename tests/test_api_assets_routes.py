@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.api_assets_routes import create_router
+from backend.services.api_assets_routes import create_router
 
 
 class FakeAssetLibrary:

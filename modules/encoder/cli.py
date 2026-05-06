@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from services.encoder import run_transcode_job
+from backend.services.encoder import run_transcode_job
 
 
 def main():

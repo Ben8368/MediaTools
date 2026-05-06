@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from config import CAPCUT_MATE_BASE_URL
+from backend.config import CAPCUT_MATE_BASE_URL
 
 
 class CapcutAdapter:
