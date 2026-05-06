@@ -260,9 +260,16 @@ async def shutdown_server(request: Request):
             import psutil
             parent = psutil.Process(parent_pid)
             if 'python' in parent.name().lower():
-                # In reload mode: terminate parent reloader to stop everything
-                parent.terminate()
-                parent.wait(timeout=5)
+                # In reload mode: force kill parent reloader and all children
+                # Kill all children first
+                children = parent.children(recursive=True)
+                for child in children:
+                    try:
+                        child.kill()
+                    except:
+                        pass
+                # Then kill parent
+                parent.kill()
             else:
                 # Not in reload mode: kill current process
                 os.kill(current_pid, signal.SIGTERM)
