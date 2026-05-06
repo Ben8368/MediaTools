@@ -249,12 +249,26 @@ async def shutdown_server(request: Request):
         return JSONResponse({"ok": False, "error": "shutdown only allowed from localhost"}, status_code=403)
 
     import signal
-    import sys
 
     def _delayed_shutdown():
         time.sleep(0.5)
-        # Force exit to stop both reloader and server
-        sys.exit(0)
+        parent_pid = os.getppid()
+        current_pid = os.getpid()
+
+        # Check if running under reloader (parent is also python)
+        try:
+            import psutil
+            parent = psutil.Process(parent_pid)
+            if 'python' in parent.name().lower():
+                # In reload mode: terminate parent reloader to stop everything
+                parent.terminate()
+                parent.wait(timeout=5)
+            else:
+                # Not in reload mode: kill current process
+                os.kill(current_pid, signal.SIGTERM)
+        except:
+            # Fallback: kill current process
+            os.kill(current_pid, signal.SIGTERM)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server shutting down"})
@@ -276,11 +290,22 @@ async def restart_server(request: Request):
         restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
         restart_trigger.parent.mkdir(exist_ok=True)
         restart_trigger.write_text(str(time.time()))
-        time.sleep(0.3)
-        # Set restart flag for production mode watchdog
+
+        # Check if running under reloader
+        parent_pid = os.getppid()
+        try:
+            import psutil
+            parent = psutil.Process(parent_pid)
+            if 'python' in parent.name().lower():
+                # In reload mode: file change will trigger restart automatically
+                # Don't send SIGTERM as it conflicts with the reload mechanism
+                return
+        except:
+            pass
+
+        # Not in reload mode: use watchdog restart
         import app
         app.request_restart()
-        # Graceful shutdown
         os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
