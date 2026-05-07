@@ -10,7 +10,13 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from backend.api.models import FolderScanBody, PhotoshopExecuteBody, PhotoshopScanBody, PhotoshopTicketBody, TicketImportBody
+from backend.api.models import (
+    FolderScanBody,
+    PhotoshopExecuteBody,
+    PhotoshopScanBody,
+    PhotoshopTicketBody,
+    TicketImportBody,
+)
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:
@@ -46,6 +52,24 @@ def create_router(
         workspace = get_current_workspace()
         job_id = job_registry.register(str(uuid.uuid4()), "photoshop_scan", body.psd_path or "Photoshop scan")
 
+        def _on_scan_progress(progress: dict[str, Any]) -> None:
+            layer_count = int(progress.get("layer_count", 0) or 0)
+            smart_object_count = int(progress.get("smart_object_count", 0) or 0)
+            percent = min(92.0, 18.0 + layer_count * 1.5 + smart_object_count * 0.5)
+            job_registry.update(
+                job_id,
+                str(progress.get("stage") or "Scanning Photoshop document..."),
+                percent,
+                extra={
+                    "scan_layer_count": layer_count,
+                    "scan_normal_text_layer_count": int(progress.get("normal_text_layer_count", 0) or 0),
+                    "scan_smart_text_layer_count": int(progress.get("smart_text_layer_count", 0) or 0),
+                    "scan_smart_object_count": smart_object_count,
+                    "scan_skipped_smart_object_count": int(progress.get("skipped_smart_object_count", 0) or 0),
+                    "scan_smart_object_name": str(progress.get("smart_object_name", "") or ""),
+                },
+            )
+
         def _run():
             job_registry.update(job_id, "Scanning Photoshop document...", 25.0)
             return scan_photoshop_document(
@@ -53,6 +77,7 @@ def create_router(
                 languages=body.languages,
                 timeout_sec=body.timeout_sec,
                 workspace=workspace,
+                progress_callback=_on_scan_progress,
             )
 
         loop = asyncio.get_running_loop()
@@ -74,7 +99,9 @@ def create_router(
         except ValueError as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
-        job_id = job_registry.register(str(uuid.uuid4()), "photoshop_scan_folder", body.directory or "Photoshop folder scan")
+        job_id = job_registry.register(
+            str(uuid.uuid4()), "photoshop_scan_folder", body.directory or "Photoshop folder scan"
+        )
 
         def _run():
             items: list[dict[str, Any]] = []
@@ -82,11 +109,41 @@ def create_router(
             for index, path in enumerate(files, start=1):
                 job_registry.update(job_id, f"Scanning {path.name}", min(95.0, index / total * 90.0))
                 try:
+
+                    def _on_scan_progress(
+                        progress: dict[str, Any],
+                        current_path: Path = path,
+                        current_index: int = index,
+                    ) -> None:
+                        layer_count = int(progress.get("layer_count", 0) or 0)
+                        smart_object_count = int(progress.get("smart_object_count", 0) or 0)
+                        base_percent = (current_index - 1) / total * 90.0
+                        file_percent = min(88.0 / total, (layer_count * 1.5 + smart_object_count * 0.5) / total)
+                        job_registry.update(
+                            job_id,
+                            f"{current_path.name}: {progress.get('stage') or 'Scanning Photoshop document...'}",
+                            min(95.0, base_percent + 5.0 + file_percent),
+                            extra={
+                                "scan_layer_count": layer_count,
+                                "scan_normal_text_layer_count": int(progress.get("normal_text_layer_count", 0) or 0),
+                                "scan_smart_text_layer_count": int(progress.get("smart_text_layer_count", 0) or 0),
+                                "scan_smart_object_count": smart_object_count,
+                                "scan_skipped_smart_object_count": int(
+                                    progress.get("skipped_smart_object_count", 0) or 0
+                                ),
+                                "scan_smart_object_name": str(progress.get("smart_object_name", "") or ""),
+                                "scan_current_file": current_path.name,
+                                "scan_file_index": current_index,
+                                "scan_file_total": total,
+                            },
+                        )
+
                     result = scan_photoshop_document(
                         psd_path=str(path),
                         languages=body.languages,
                         timeout_sec=body.timeout_sec,
                         workspace=workspace,
+                        progress_callback=_on_scan_progress,
                     )
                     items.append({"path": str(path), **result})
                 except Exception as exc:  # keep folder batches useful even when one PSD fails

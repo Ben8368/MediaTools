@@ -14,6 +14,7 @@ import {
   scanPhotoshopFolder,
   scanPhotoshopTicket,
   updatePhotoshopTicket,
+  wsUrl,
 } from '@/api'
 import {
   Field,
@@ -31,6 +32,7 @@ import {
 } from '@/apps/mediatools/automation'
 
 type AnyRecord = Record<string, any>
+type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
 
 export function PhotoshopApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
@@ -46,9 +48,16 @@ export function PhotoshopApp() {
   const [languageDraft, setLanguageDraft] = useState('')
   const [selected, setSelected] = useState<number[]>([])
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null)
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
+  const [taskSearch, setTaskSearch] = useState('')
+  const [bulkFont, setBulkFont] = useState('')
   const [fonts, setFonts] = useState<string[]>([])
   const [result, setResult] = useState<unknown>('等待扫描或选择工单')
   const [execution, setExecution] = useState<unknown>('等待执行')
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanStartedAt, setScanStartedAt] = useState<number | null>(null)
+  const [scanElapsedSec, setScanElapsedSec] = useState(0)
+  const [scanJob, setScanJob] = useState<AnyRecord | null>(null)
 
   const parsedTicket = useMemo(() => {
     try {
@@ -66,10 +75,32 @@ export function PhotoshopApp() {
   const sourceLayerCount = uniqueStrings(tasks.map(taskIdentityKey)).length
   const executableIndexes = automationTaskIndexes(tasks)
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
+  const smartTaskCount = tasks.filter(isSmartObjectTask).length
+  const normalTaskCount = tasks.length - smartTaskCount
+  const warningTaskCount = tasks.filter(hasTaskWarning).length
+  const filteredTaskEntries = useMemo(() => (
+    tasks
+      .map((task, index) => ({ task, index }))
+      .filter(({ task }) => matchesTaskFilter(task, taskFilter))
+      .filter(({ task }) => matchesTaskSearch(task, taskSearch))
+  ), [tasks, taskFilter, taskSearch])
+  const visibleIndexes = filteredTaskEntries.map(({ index }) => index)
 
   function updateTask(index: number, patch: AnyRecord) {
     const nextTicket = patchAutomationTask(parsedTicket, index, patch)
     if (!nextTicket) return
+    setTicketText(JSON.stringify(nextTicket, null, 2))
+  }
+
+  function updateTasks(indexes: number[], patch: AnyRecord) {
+    if (!parsedTicket || !Array.isArray(parsedTicket.tasks)) return
+    const indexSet = new Set(indexes)
+    const nextTicket = {
+      ...parsedTicket,
+      tasks: parsedTicket.tasks.map((task: AnyRecord, index: number) => (
+        indexSet.has(index) ? { ...task, ...patch } : task
+      )),
+    }
     setTicketText(JSON.stringify(nextTicket, null, 2))
   }
 
@@ -88,6 +119,18 @@ export function PhotoshopApp() {
   function confirmTask(index: number) {
     updateTask(index, { status: 'confirmed' })
     toggleTask(index, true)
+  }
+
+  function confirmVisibleTasks() {
+    if (!visibleIndexes.length) return
+    updateTasks(visibleIndexes, { status: 'confirmed' })
+    setSelected((items) => uniqueNumbers([...items, ...visibleIndexes]))
+  }
+
+  function applyBulkFontToVisibleTasks() {
+    const font = bulkFont.trim()
+    if (!font || !visibleIndexes.length) return
+    updateTasks(visibleIndexes, { target_font: font })
   }
 
   function addTargetLanguages(raw: string) {
@@ -142,27 +185,45 @@ export function PhotoshopApp() {
   }
 
   async function scan() {
-    const data = sourceMode === 'folder'
-      ? await scanPhotoshopFolder({
-          directory: psdFolder,
-          languages: targetLanguages,
-          recursive: true,
-          max_files: 30,
-        })
-      : await scanPhotoshopTicket({
-          psd_path: sourceMode === 'file' ? psdPath : '',
-          languages: targetLanguages,
-        })
-    setResult(data)
-    if (data.ok) {
-      const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
-      const returnedLanguages = uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean))
-      setTicketId(data.ticket_id)
-      setTicketText(JSON.stringify(data.ticket, null, 2))
-      setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
-      setSelected(automationTaskIndexes(nextTasks))
-      setActivePanel('import')
-      await refresh()
+    if (isScanning) return
+    setIsScanning(true)
+    setScanStartedAt(Date.now())
+    setScanElapsedSec(0)
+    setScanJob(null)
+    setResult({
+      ok: null,
+      status: 'scanning',
+      message: 'Photoshop 正在扫描文本图层，请保持 Photoshop 打开；智能对象较多时会逐个打开和关闭。',
+      source_mode: sourceMode,
+    })
+    try {
+      const data = sourceMode === 'folder'
+        ? await scanPhotoshopFolder({
+            directory: psdFolder,
+            languages: targetLanguages,
+            recursive: true,
+            max_files: 30,
+          })
+        : await scanPhotoshopTicket({
+            psd_path: sourceMode === 'file' ? psdPath : '',
+            languages: targetLanguages,
+          })
+      setResult(data)
+      if (data.ok) {
+        const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+        const returnedLanguages = uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean))
+        setTicketId(data.ticket_id)
+        setTicketText(JSON.stringify(data.ticket, null, 2))
+        setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
+        setSelected(automationTaskIndexes(nextTasks))
+        setActivePanel('import')
+        await refresh()
+      }
+    } catch (err: any) {
+      setResult({ ok: false, status: 'error', error: err?.message || 'Photoshop 扫描失败' })
+    } finally {
+      setIsScanning(false)
+      setScanStartedAt(null)
     }
   }
 
@@ -230,6 +291,35 @@ export function PhotoshopApp() {
   useEffect(() => { void refresh() }, [])
 
   useEffect(() => {
+    if (!isScanning || !scanStartedAt) return undefined
+    const timer = window.setInterval(() => {
+      setScanElapsedSec(Math.floor((Date.now() - scanStartedAt) / 1000))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [isScanning, scanStartedAt])
+
+  useEffect(() => {
+    if (!isScanning || typeof WebSocket === 'undefined') return undefined
+    const socket = new WebSocket(wsUrl('/ws/jobs'))
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data)
+        const jobs = Array.isArray(payload?.jobs) ? payload.jobs : []
+        const runningScan = jobs
+          .filter((job: AnyRecord) => (
+            ['photoshop_scan', 'photoshop_scan_folder'].includes(job.type)
+            && ['pending', 'running'].includes(job.status)
+          ))
+          .at(-1)
+        if (runningScan) setScanJob(runningScan)
+      } catch {
+        // Ignore malformed websocket frames; the local scan state still keeps the UI responsive.
+      }
+    }
+    return () => socket.close()
+  }, [isScanning])
+
+  useEffect(() => {
     void fetchSystemFonts({ limit: 700 }).then((data) => {
       const names = uniqueStrings((data.items || []).map((item: AnyRecord) => item.name).filter(Boolean))
       setFonts(names)
@@ -267,9 +357,9 @@ export function PhotoshopApp() {
         <main className="ps-operation">
         <div className={`ps-metrics ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
           <div className="ps-metric"><span>工单数量</span><strong>{tickets.length}</strong></div>
-          <div className="ps-metric"><span>内容项</span><strong>{tasks.length}</strong></div>
+          <div className="ps-metric"><span>普通文字</span><strong>{normalTaskCount}</strong></div>
+          <div className="ps-metric"><span>智能对象文字</span><strong>{smartTaskCount}</strong></div>
           <div className="ps-metric"><span>可执行</span><strong>{executableIndexes.length}</strong></div>
-          <div className="ps-metric"><span>已选择</span><strong>{selectedExecutableCount}</strong></div>
         </div>
 
         <section className={`ps-panel ps-scan-panel ${activePanel === 'scan' ? '' : 'ps-panel--hidden'}`}>
@@ -278,12 +368,12 @@ export function PhotoshopApp() {
               <h3>扫描工单</h3>
               <p>选择 PSD 来源并扫描文本图层，扫描成功后会自动导入为当前工单。</p>
             </div>
-            <ToolbarButton onClick={() => void refresh()}>刷新状态</ToolbarButton>
+            <ToolbarButton onClick={() => void refresh()} disabled={isScanning}>刷新状态</ToolbarButton>
           </div>
           <div className="ps-source-tabs" role="tablist" aria-label="Photoshop source mode">
-            <button className={`ps-source-tab ${sourceMode === 'active' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('active')}>当前文档</button>
-            <button className={`ps-source-tab ${sourceMode === 'file' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('file')}>单文件</button>
-            <button className={`ps-source-tab ${sourceMode === 'folder' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('folder')}>文件夹批量</button>
+            <button className={`ps-source-tab ${sourceMode === 'active' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('active')} disabled={isScanning}>当前文档</button>
+            <button className={`ps-source-tab ${sourceMode === 'file' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('file')} disabled={isScanning}>单文件</button>
+            <button className={`ps-source-tab ${sourceMode === 'folder' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('folder')} disabled={isScanning}>文件夹批量</button>
           </div>
           <div className="ps-form-grid">
             {sourceMode === 'file' ? (
@@ -305,7 +395,29 @@ export function PhotoshopApp() {
               <small>在下方输出购物车中添加语言；留空只生成原始任务。</small>
             </div>
           </div>
-          <PrimaryButton onClick={scan}>扫描并生成工单</PrimaryButton>
+          {isScanning ? (
+            <div className="ps-scan-progress" role="status" aria-live="polite">
+              <div className="ps-scan-progress-top">
+                <span>扫描进行中</span>
+                <strong>{formatDuration(scanElapsedSec)}</strong>
+              </div>
+              <div className="ps-scan-progress-bar" aria-hidden="true"><span /></div>
+              <div className="ps-scan-counts" aria-label="Photoshop 扫描计数">
+                <span><b>{Number(scanJob?.scan_layer_count || 0)}</b> 已发现文字层</span>
+                <span><b>{Number(scanJob?.scan_normal_text_layer_count || 0)}</b> 普通文字</span>
+                <span><b>{Number(scanJob?.scan_smart_text_layer_count || 0)}</b> 智能对象文字</span>
+                <span><b>{Number(scanJob?.scan_smart_object_count || 0)}</b> 已检查智能对象</span>
+              </div>
+              <p>{scanJob?.stage || scanProgressMessage(scanElapsedSec, sourceMode)}</p>
+              {scanJob?.scan_current_file ? (
+                <small>当前文件：{scanJob.scan_current_file}（{scanJob.scan_file_index || 1}/{scanJob.scan_file_total || 1}）</small>
+              ) : null}
+              <small>看到 Photoshop 打开/关闭智能对象属于正常扫描过程，请不要手动切换或关闭文档。</small>
+            </div>
+          ) : null}
+          <PrimaryButton onClick={() => void scan()} disabled={isScanning}>
+            {isScanning ? '扫描中，请稍候...' : '扫描并生成工单'}
+          </PrimaryButton>
         </section>
 
         <div className={`ps-workspace ${activePanel === 'import' ? '' : 'ps-workspace--hidden'}`}>
@@ -336,6 +448,7 @@ export function PhotoshopApp() {
                       <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
                       <small>{ticket.task_count || 0} 个任务</small>
                     </span>
+                    <span className="ps-ticket-time">建立：{formatTicketTime(ticket.created_at, ticket.updated_at)}</span>
                     <span>{ticket.source_psd || '未记录来源'}</span>
                   </button>
                   <button
@@ -407,6 +520,7 @@ export function PhotoshopApp() {
               </div>
               <div className="ps-actions">
                 <ToolbarButton onClick={() => setSelected(executableIndexes)} disabled={!tasks.length}>选择可执行</ToolbarButton>
+                <ToolbarButton onClick={() => setSelected(visibleIndexes.filter((index) => executableIndexes.includes(index)))} disabled={!visibleIndexes.length}>选择当前筛选</ToolbarButton>
                 <ToolbarButton onClick={() => setSelected([])} disabled={!tasks.length}>清空选择</ToolbarButton>
               </div>
             </div>
@@ -416,11 +530,45 @@ export function PhotoshopApp() {
               <span><b>3</b> 确认后执行</span>
               <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
+            <div className="ps-task-controls">
+              <input
+                aria-label="搜索 Photoshop 任务"
+                value={taskSearch}
+                onChange={(event) => setTaskSearch(event.target.value)}
+                placeholder="搜索原文、图层、智能对象或画板"
+              />
+              <div className="ps-task-filter" role="tablist" aria-label="Photoshop 任务分类">
+                {taskFilters.map((filter) => (
+                  <button
+                    type="button"
+                    key={filter.id}
+                    className={taskFilter === filter.id ? 'ps-filter--active' : ''}
+                    onClick={() => setTaskFilter(filter.id)}
+                  >
+                    {filter.label}
+                    <span>{filterCount(tasks, filter.id)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="ps-task-bulk">
+                <FontPicker
+                  ariaLabel="批量目标字体"
+                  value={bulkFont}
+                  sourceFont=""
+                  fonts={fonts}
+                  onChange={setBulkFont}
+                />
+                <ToolbarButton onClick={applyBulkFontToVisibleTasks} disabled={!bulkFont.trim() || !visibleIndexes.length}>批量设置字体</ToolbarButton>
+                <ToolbarButton onClick={confirmVisibleTasks} disabled={!visibleIndexes.length}>批量确认当前筛选</ToolbarButton>
+              </div>
+              {warningTaskCount ? <p className="ps-task-warning">有 {warningTaskCount} 个任务带错误或备注，建议筛选“有错误/警告”后复核。</p> : null}
+            </div>
             <div className="ps-task-list">
-              {tasks.length ? tasks.map((task, index) => {
+              {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => {
                 const ready = isAutomationTaskExecutable(task)
+                const smart = isSmartObjectTask(task)
                 return (
-                  <div className={`ps-task ${selected.includes(index) ? 'ps-task--selected' : ''}`} key={index}>
+                  <div className={`ps-task ${selected.includes(index) ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}`} key={index}>
                     <label className="ps-task-check">
                       <input
                         type="checkbox"
@@ -433,10 +581,23 @@ export function PhotoshopApp() {
                     <div className="ps-task-main">
                       <div className="ps-task-title">
                         <div>
-                          <strong>{task.layer_name || `任务 ${index + 1}`}</strong>
+                          <strong>{smart ? task.smart_object_inner_layer_name || task.layer_name || `任务 ${index + 1}` : task.layer_name || `任务 ${index + 1}`}</strong>
                           <small>{task.language || '未指定语言'} · {task.original_text || '未读取原文'}</small>
+                          <div className="ps-task-context">
+                            {smart ? (
+                              <>
+                                <span>智能对象：{task.smart_object_name || '未记录父层'}</span>
+                                <span>内部文字层：{task.smart_object_inner_layer_name || task.layer_name || '未记录内层'}</span>
+                              </>
+                            ) : <span>普通文字层：{task.layer_name || '未命名图层'}</span>}
+                            <span>画板：{task.artboard_name || '未记录画板'}</span>
+                            {task.notes ? <span>备注：{task.notes}</span> : null}
+                          </div>
                         </div>
-                        <em className={ready ? 'ps-badge ps-badge--ready' : 'ps-badge'}>{ready ? '可执行' : '待确认'}</em>
+                        <div className="ps-task-badges">
+                          <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
+                          <em className={hasTaskWarning(task) ? 'ps-badge ps-badge--warning' : ready ? 'ps-badge ps-badge--ready' : 'ps-badge'}>{hasTaskWarning(task) ? '有错误/警告' : ready ? '可执行' : '待确认'}</em>
+                        </div>
                       </div>
                       <div className="ps-task-preview">
                         <label>
@@ -469,7 +630,7 @@ export function PhotoshopApp() {
                     </div>
                   </div>
                 )
-              }) : <div className="ps-empty">等待扫描或选择工单。</div>}
+              }) : <div className="ps-empty">{tasks.length ? '当前筛选没有匹配任务。' : '等待扫描或选择工单。'}</div>}
             </div>
             <div className="ps-execute-dock" aria-label="工单执行操作">
               <div>
@@ -529,11 +690,88 @@ function uniqueStrings(items: unknown[]) {
   return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
+function uniqueNumbers(items: number[]) {
+  return Array.from(new Set(items))
+}
+
+const taskFilters: { id: TaskFilter, label: string }[] = [
+  { id: 'all', label: '全部' },
+  { id: 'text', label: '普通文字层' },
+  { id: 'smart_object_text', label: '智能对象内文字层' },
+  { id: 'pending', label: '待确认' },
+  { id: 'ready', label: '可执行' },
+  { id: 'warning', label: '有错误/警告' },
+]
+
+function isSmartObjectTask(task: AnyRecord) {
+  return task.layer_kind === 'smart_object_text' || Number(task.smart_object_layer_id || 0) > 0
+}
+
+function hasTaskWarning(task: AnyRecord) {
+  return task.status === 'error' || Boolean(String(task.notes || '').trim())
+}
+
+function matchesTaskFilter(task: AnyRecord, filter: TaskFilter) {
+  if (filter === 'all') return true
+  if (filter === 'text') return !isSmartObjectTask(task)
+  if (filter === 'smart_object_text') return isSmartObjectTask(task)
+  if (filter === 'pending') return !isAutomationTaskExecutable(task)
+  if (filter === 'ready') return isAutomationTaskExecutable(task)
+  return hasTaskWarning(task)
+}
+
+function matchesTaskSearch(task: AnyRecord, search: string) {
+  const needle = search.trim().toLowerCase()
+  if (!needle) return true
+  return [
+    task.layer_name,
+    task.smart_object_name,
+    task.smart_object_inner_layer_name,
+    task.artboard_name,
+    task.original_text,
+    task.target_text,
+    task.source_font,
+    task.target_font,
+  ].some((value) => String(value || '').toLowerCase().includes(needle))
+}
+
+function filterCount(tasks: AnyRecord[], filter: TaskFilter) {
+  return tasks.filter((task) => matchesTaskFilter(task, filter)).length
+}
+
+function formatTicketTime(createdAt: unknown, updatedAt: unknown) {
+  const raw = String(createdAt || '').trim()
+  const timestamp = raw || (updatedAt ? new Date(Number(updatedAt) * 1000).toISOString() : '')
+  if (!timestamp) return '未知时间'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return raw || '未知时间'
+  const pad = (value: number) => value.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return minutes ? `${minutes}分${seconds.toString().padStart(2, '0')}秒` : `${seconds}秒`
+}
+
+function scanProgressMessage(elapsedSec: number, sourceMode: 'active' | 'file' | 'folder') {
+  const sourceLabel = sourceMode === 'folder' ? 'PSD 文件夹' : sourceMode === 'file' ? 'PSD 文件' : '当前 Photoshop 文档'
+  if (elapsedSec < 4) return `正在连接 Photoshop 并读取${sourceLabel}...`
+  if (elapsedSec < 12) return '正在收集普通文字层、画板和字体信息...'
+  if (elapsedSec < 30) return '正在检查智能对象，Photoshop 可能会短暂打开和关闭内部文档...'
+  return '仍在扫描智能对象文字层；大型 PSD 或嵌套智能对象可能需要更久。'
+}
+
 function taskIdentityKey(task: AnyRecord) {
   return [
     task.layer_id,
     task.artboard_name,
     task.layer_name,
+    task.layer_kind,
+    task.smart_object_layer_id,
+    task.smart_object_name,
+    task.smart_object_inner_layer_name,
     task.original_text,
     task.source_font,
   ].map((item) => String(item || '')).join('|')

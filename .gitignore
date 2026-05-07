@@ -54,7 +54,7 @@ bin/um-cli.exe
 downloads/
 data/*.db
 data/*.db-*
-runtime/
+/runtime/
 frontend/node_modules/
 frontend/dist/
 projects/*/inputs/

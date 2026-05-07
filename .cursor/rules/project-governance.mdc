@@ -1,0 +1,25 @@
+---
+description: Project governance workflow for MediaTools
+alwaysApply: true
+---
+
+# Project Governance
+
+Before planning, coding, reviewing, or updating project state, read and follow these root documents:
+
+- `01_Project_Plan.md`
+- `02_Cursor_Rules.md`
+- `03_Context_Snapshot.md`
+- `04_New_Features.md`
+- `05_Lessons_Learned.md`
+
+Required behavior:
+
+- Treat `02_Cursor_Rules.md` as the authoritative workflow for initialization, development, audit, verification, and commit-state updates.
+- If `01_Project_Plan.md` is marked `[未初始化]`, do not write feature code. First confirm project mode, comment language, and tech stack with the user.
+- Before writing feature code, scan `05_Lessons_Learned.md` and explicitly state whether any historical risks apply.
+- Before adding a new feature, check `04_New_Features.md` for dependency and module impact expectations.
+- After code changes, follow the audit and verification flow defined in `02_Cursor_Rules.md`.
+- Do not update task completion or verification state in `03_Context_Snapshot.md` until the user confirms validation has passed.
+- Use Git history as the source of truth for the project timeline; use `03_Context_Snapshot.md` for current state, `04_New_Features.md` for feature planning, and `05_Lessons_Learned.md` for failures and prevention rules.
+- When working in parallel agents or new windows, keep each task on an isolated branch or worktree when changes may overlap.

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.services.api_photoshop_routes import create_router
+from backend.api.routes.photoshop import create_router
 
 
 class FakeJobRegistry:
@@ -19,8 +19,8 @@ class FakeJobRegistry:
         self.registered.append((job_id, job_type, name))
         return job_id
 
-    def update(self, job_id, stage, percent, status="running"):
-        self.updates.append((job_id, stage, percent, status))
+    def update(self, job_id, stage, percent, status="running", extra=None):
+        self.updates.append((job_id, stage, percent, status, extra or {}))
 
     def finish(self, job_id, success=True):
         self.finished[job_id] = success
@@ -80,12 +80,13 @@ class TestApiPhotoshopRoutes(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertIn("job_id", payload)
         self.assertTrue(self.job_registry.finished[payload["job_id"]])
-        self.scan_document.assert_called_once_with(
-            psd_path="design.psd",
-            languages=["zh"],
-            timeout_sec=5,
-            workspace=self.workspace,
-        )
+        self.scan_document.assert_called_once()
+        call_kwargs = self.scan_document.call_args.kwargs
+        self.assertEqual(call_kwargs["psd_path"], "design.psd")
+        self.assertEqual(call_kwargs["languages"], ["zh"])
+        self.assertEqual(call_kwargs["timeout_sec"], 5)
+        self.assertEqual(call_kwargs["workspace"], self.workspace)
+        self.assertTrue(callable(call_kwargs["progress_callback"]))
 
     def test_scan_error_returns_400_and_marks_job_failed(self):
         self.scan_document.side_effect = RuntimeError("Photoshop unavailable")

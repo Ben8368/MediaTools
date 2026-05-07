@@ -7,18 +7,18 @@
 
 import json
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
-
 
 # ──────────────────────────────────────────────
 # 数据结构
 # ──────────────────────────────────────────────
 
+
 @dataclass
 class TicketTask:
     """工单中的单个任务条目"""
+
     layer_id: int
     artboard_name: str
     layer_name: str
@@ -35,11 +35,15 @@ class TicketTask:
     original_text: str
     target_text: str
     target_font: str
-    status: str = "pending"        # pending / confirmed / skip / done / error
+    status: str = "pending"  # pending / confirmed / skip / done / error
     notes: str = ""
-    ai_confidence: float = 0.0    # AI 生成时的置信度 (0.0~1.0)
-    ai_notes: str = ""            # AI 生成时的备注
-    user_approved: bool = False   # 用户是否审核确认
+    ai_confidence: float = 0.0  # AI 生成时的置信度 (0.0~1.0)
+    ai_notes: str = ""  # AI 生成时的备注
+    user_approved: bool = False  # 用户是否审核确认
+    layer_kind: str = "text"
+    smart_object_layer_id: int = 0
+    smart_object_name: str = ""
+    smart_object_inner_layer_name: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -47,10 +51,18 @@ class TicketTask:
     @staticmethod
     def from_dict(d: dict) -> "TicketTask":
         # 兼容老字段
+        smart_object_layer_id = int(d.get("smart_object_layer_id", 0) or 0)
+        layer_kind = str(d.get("layer_kind", "") or "").strip()
+        if not layer_kind:
+            layer_kind = "smart_object_text" if smart_object_layer_id else "text"
         return TicketTask(
             layer_id=int(d.get("layer_id", 0)),
             artboard_name=str(d.get("artboard_name", "")),
             layer_name=str(d.get("layer_name", "")),
+            layer_kind=layer_kind,
+            smart_object_layer_id=smart_object_layer_id,
+            smart_object_name=str(d.get("smart_object_name", "")),
+            smart_object_inner_layer_name=str(d.get("smart_object_inner_layer_name", "")),
             output_name=str(d.get("output_name", "")),
             language=str(d.get("language", "")),
             line_count=int(d.get("line_count", 1)),
@@ -75,9 +87,10 @@ class TicketTask:
 @dataclass
 class TicketMeta:
     """工单元数据"""
+
     version: str = "2.0"
     created_at: str = ""
-    created_by: str = "manual"      # manual / ai / scan
+    created_by: str = "manual"  # manual / ai / scan
     source_psd: str = ""
     ai_analysis: dict = field(default_factory=dict)
 
@@ -89,6 +102,7 @@ class TicketMeta:
 @dataclass
 class Ticket:
     """完整工单"""
+
     meta: TicketMeta
     tasks: list[TicketTask]
 
@@ -116,6 +130,7 @@ class Ticket:
 # JSON 读写
 # ──────────────────────────────────────────────
 
+
 def load_ticket_json(path: str) -> Ticket:
     """读取工单 JSON"""
     with open(path, encoding="utf-8") as f:
@@ -132,6 +147,7 @@ def save_ticket_json(ticket: Ticket, path: str) -> None:
 # ──────────────────────────────────────────────
 # CSV → JSON 迁移（向后兼容）
 # ──────────────────────────────────────────────
+
 
 def load_ticket_csv_as_ticket(csv_path: str) -> Ticket:
     """
@@ -184,22 +200,25 @@ def load_ticket_csv_as_ticket(csv_path: str) -> Ticket:
 # ──────────────────────────────────────────────
 
 _EXCEL_COLUMNS = [
-    ("layer_id",       "图层ID"),
-    ("artboard_name",  "画板"),
-    ("layer_name",     "图层名"),
-    ("output_name",    "输出文件"),
-    ("language",       "语言"),
-    ("original_text",  "原文"),
-    ("target_text",    "译文"),
-    ("target_font",    "目标字体"),
-    ("source_font",    "原字体"),
-    ("font_size",      "字号"),
-    ("tracking",       "字间距"),
-    ("status",         "状态"),
-    ("ai_confidence",  "AI置信度"),
-    ("ai_notes",       "AI备注"),
-    ("notes",          "备注"),
-    ("user_approved",  "已审核"),
+    ("layer_id", "图层ID"),
+    ("artboard_name", "画板"),
+    ("layer_name", "图层名"),
+    ("layer_kind", "图层类型"),
+    ("smart_object_name", "智能对象"),
+    ("smart_object_inner_layer_name", "智能对象内层"),
+    ("output_name", "输出文件"),
+    ("language", "语言"),
+    ("original_text", "原文"),
+    ("target_text", "译文"),
+    ("target_font", "目标字体"),
+    ("source_font", "原字体"),
+    ("font_size", "字号"),
+    ("tracking", "字间距"),
+    ("status", "状态"),
+    ("ai_confidence", "AI置信度"),
+    ("ai_notes", "AI备注"),
+    ("notes", "备注"),
+    ("user_approved", "已审核"),
 ]
 
 _USER_EDITABLE = {"target_text", "target_font", "status", "notes", "user_approved"}
@@ -211,7 +230,7 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
     可编辑列：译文、目标字体、状态、备注、已审核
     """
     import openpyxl
-    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
     wb = openpyxl.Workbook()
@@ -219,10 +238,10 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
     ws.title = "工单"
 
     # 颜色定义
-    HEADER_FILL   = PatternFill("solid", fgColor="1F3864")   # 深蓝
-    EDITABLE_FILL = PatternFill("solid", fgColor="E8F4FD")   # 浅蓝（可编辑）
-    ALT_FILL      = PatternFill("solid", fgColor="F5F5F5")   # 浅灰（交替行）
-    WHITE_FILL    = PatternFill("solid", fgColor="FFFFFF")
+    HEADER_FILL = PatternFill("solid", fgColor="1F3864")  # 深蓝
+    EDITABLE_FILL = PatternFill("solid", fgColor="E8F4FD")  # 浅蓝（可编辑）
+    ALT_FILL = PatternFill("solid", fgColor="F5F5F5")  # 浅灰（交替行）
+    WHITE_FILL = PatternFill("solid", fgColor="FFFFFF")
 
     thin_border = Border(
         left=Side(style="thin", color="CCCCCC"),
@@ -232,7 +251,6 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
     )
 
     # 写表头
-    headers_en = [col[0] for col in _EXCEL_COLUMNS]
     headers_zh = [col[1] for col in _EXCEL_COLUMNS]
     ws.append(headers_zh)
 
@@ -261,7 +279,7 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
         ws.append(row_data)
 
         # 交替行底色
-        is_alt = (row_idx % 2 == 0)
+        is_alt = row_idx % 2 == 0
         for col_idx, (en_name, _) in enumerate(_EXCEL_COLUMNS, start=1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.border = thin_border
@@ -307,7 +325,8 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
     ws_meta.append(["源PSD", ticket.meta.source_psd])
     ws_meta.append(["总任务数", len(ticket.tasks)])
     ws_meta.append(["已确认", sum(1 for t in ticket.tasks if t.status == "confirmed")])
-    ws_meta.append([""]); ws_meta.append(["说明", "✏ 标记的列可以编辑后导入"])
+    ws_meta.append([""])
+    ws_meta.append(["说明", "✏ 标记的列可以编辑后导入"])
 
     os.makedirs(os.path.dirname(excel_path) if os.path.dirname(excel_path) else ".", exist_ok=True)
     wb.save(excel_path)
@@ -317,6 +336,7 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
 # ──────────────────────────────────────────────
 # Excel → JSON 导入（用户编辑后同步回来）
 # ──────────────────────────────────────────────
+
 
 def import_from_excel(excel_path: str, ticket: Ticket) -> Ticket:
     """
@@ -362,16 +382,20 @@ def import_from_excel(excel_path: str, ticket: Ticket) -> Ticket:
 
             t = task_map[key]
             # 只更新可编辑字段
-            new_target_text  = get(row, "target_text")
-            new_target_font  = get(row, "target_font")
-            new_status       = get(row, "status")
-            new_notes        = get(row, "notes")
+            new_target_text = get(row, "target_text")
+            new_target_font = get(row, "target_font")
+            new_status = get(row, "status")
+            new_notes = get(row, "notes")
             new_approved_raw = get(row, "user_approved")
 
-            if new_target_text  is not None: t.target_text  = new_target_text
-            if new_target_font  is not None: t.target_font  = new_target_font
-            if new_status       is not None: t.status       = new_status
-            if new_notes        is not None: t.notes        = new_notes
+            if new_target_text is not None:
+                t.target_text = new_target_text
+            if new_target_font is not None:
+                t.target_font = new_target_font
+            if new_status is not None:
+                t.status = new_status
+            if new_notes is not None:
+                t.notes = new_notes
             if new_approved_raw is not None:
                 t.user_approved = new_approved_raw.lower() in ("是", "true", "yes", "1", "✓")
 
@@ -389,6 +413,7 @@ def import_from_excel(excel_path: str, ticket: Ticket) -> Ticket:
 # 自动检测 Excel 变化并导入
 # ──────────────────────────────────────────────
 
+
 def watch_excel_and_sync(json_path: str, excel_path: str, poll_interval: float = 2.0) -> None:
     """
     监听 Excel 文件变化，自动同步回 JSON。
@@ -398,7 +423,7 @@ def watch_excel_and_sync(json_path: str, excel_path: str, poll_interval: float =
 
     last_mtime = None
     print(f"  [watch] 监听 {excel_path}")
-    print(f"  [watch] 按 Ctrl+C 停止")
+    print("  [watch] 按 Ctrl+C 停止")
     try:
         while True:
             if os.path.exists(excel_path):
@@ -406,7 +431,7 @@ def watch_excel_and_sync(json_path: str, excel_path: str, poll_interval: float =
                 if last_mtime is None:
                     last_mtime = mtime
                 elif mtime != last_mtime:
-                    print(f"  [watch] 检测到变化，正在同步...")
+                    print("  [watch] 检测到变化，正在同步...")
                     try:
                         ticket = load_ticket_json(json_path)
                         ticket = import_from_excel(excel_path, ticket)

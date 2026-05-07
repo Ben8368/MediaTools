@@ -59,7 +59,8 @@ def start_ticket_execution_impl(
                 candidate_tasks = [
                     task
                     for index, task in enumerate(ticket.tasks)
-                    if (selected_indexes is None or index in selected_indexes) and photoshop_service._should_execute_task(task)
+                    if (selected_indexes is None or index in selected_indexes)
+                    and photoshop_service._should_execute_task(task)
                 ]
                 if not candidate_tasks:
                     raise RuntimeError("Ticket does not contain selected confirmed or filled tasks")
@@ -97,7 +98,6 @@ def start_ticket_execution_impl(
                         doc = connector.app.ActiveDocument
 
                     scan_rows = runtime["scan_document_for_ticket"](connector, doc, source_psd)
-                    scan_map = {row.layer_id: row for row in scan_rows}
 
                     for task in tasks:
                         if state.cancel_event.is_set():
@@ -111,10 +111,14 @@ def start_ticket_execution_impl(
                         if on_progress:
                             on_progress(state.message, state.progress)
 
-                        row = scan_map.get(task.layer_id)
+                        row = photoshop_service._find_scan_row_for_task(scan_rows, task)
                         if row is None:
                             task.status = "error"
-                            task.notes = "Layer id not found during execution"
+                            task.notes = (
+                                "SMART_OBJECT_TEXT_NOT_FOUND"
+                                if photoshop_service._is_smart_object_task(task)
+                                else "Layer id not found during execution"
+                            )
                             continue
 
                         mapping = runtime["TextMapping"](
@@ -162,7 +166,10 @@ def start_ticket_execution_impl(
                 state.message = "Photoshop execution completed. The latest output PSD is open in Photoshop."
                 state.finished_at = time.time()
                 if on_finish:
-                    on_finish(True, {"status": "done", "output_paths": output_paths, "ticket_id": ticket_id, "dry_run": dry_run})
+                    on_finish(
+                        True,
+                        {"status": "done", "output_paths": output_paths, "ticket_id": ticket_id, "dry_run": dry_run},
+                    )
             except Exception as exc:
                 state.status = "error"
                 state.error = str(exc)

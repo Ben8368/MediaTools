@@ -15,8 +15,8 @@ from typing import Any
 from fastapi import Request, WebSocket
 from fastapi.responses import JSONResponse
 
-from core.auth import api_key_error
 from backend.api.routes.system import build_system_snapshot
+from core.auth import api_key_error
 
 
 def _is_loopback_address(host: str | None) -> bool:
@@ -88,7 +88,10 @@ def build_api_key_middleware(access_logger: logging.Logger, api_secret_key: str 
             request.url.path,
             response.status_code,
             elapsed_ms,
-            extra={"user": user, "event": f"{request.method} {request.url.path} -> {response.status_code} ({elapsed_ms:.1f}ms)"},
+            extra={
+                "user": user,
+                "event": f"{request.method} {request.url.path} -> {response.status_code} ({elapsed_ms:.1f}ms)",
+            },
         )
         return response
 
@@ -140,10 +143,19 @@ class JobRegistry:
         self._broadcast()
         return job_id
 
-    def update(self, job_id: str, stage: str, percent: float, status: str = "running") -> None:
+    def update(
+        self,
+        job_id: str,
+        stage: str,
+        percent: float,
+        status: str = "running",
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         with self._lock:
             if job_id in self._jobs:
                 self._jobs[job_id].update({"stage": stage, "percent": percent, "status": status})
+                if extra:
+                    self._jobs[job_id].update(extra)
         self._broadcast()
 
     def finish(self, job_id: str, success: bool = True) -> None:

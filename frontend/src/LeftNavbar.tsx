@@ -1,4 +1,4 @@
-import { shutdownSystem } from '@/api'
+import { restartSystem, shutdownSystem } from '@/api'
 import { getAppIcon } from '@/icon-library'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
@@ -12,7 +12,7 @@ export function LeftNavbar() {
   const focusWindow = useWindowStore((state) => state.focusWindow)
   const [showPowerMenu, setShowPowerMenu] = useState(false)
   const [isShuttingDown, setIsShuttingDown] = useState(false)
-  const [powerComplete, setPowerComplete] = useState<'shutdown' | null>(null)
+  const [powerComplete, setPowerComplete] = useState<'restart' | 'shutdown' | null>(null)
 
   const uniqueRunningApps = windows.filter(
     (windowItem, index, allWindows) =>
@@ -51,6 +51,20 @@ export function LeftNavbar() {
     }
   }
 
+  async function doRestart() {
+    if (isShuttingDown) return
+    if (!window.confirm('确认重启 MediaTools 后端服务吗？')) return
+
+    setIsShuttingDown(true)
+    try {
+      await restartSystem()
+      setPowerComplete('restart')
+    } catch (error: any) {
+      window.alert(error?.message || '重启失败，请稍后重试')
+      setIsShuttingDown(false)
+    }
+  }
+
   if (powerComplete) {
     return (
       <div
@@ -77,10 +91,12 @@ export function LeftNavbar() {
           }}
         >
           <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}>
-            MediaTools 已关闭
+            {powerComplete === 'restart' ? 'MediaTools 正在重启' : 'MediaTools 已关闭'}
           </div>
           <div style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, marginBottom: 18 }}>
-            后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。
+            {powerComplete === 'restart'
+              ? '后端服务正在重启。稍等片刻后点击下面的按钮重新连接。'
+              : '后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。'}
           </div>
           <button
             type="button"
@@ -197,6 +213,15 @@ export function LeftNavbar() {
             onClick={() => {
               setShowPowerMenu(false)
               void doShutdown()
+            }}
+          />
+          <PowerMenuButton
+            ariaLabel="restart-backend"
+            icon={<IconRestart />}
+            label="重启"
+            onClick={() => {
+              setShowPowerMenu(false)
+              void doRestart()
             }}
           />
         </div>

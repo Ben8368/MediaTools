@@ -324,6 +324,106 @@
   box-shadow: 0 8px 18px rgba(10,115,255,.22);
 }
 
+.ps-source-tab:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.ps-scan-progress {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 12px;
+  border: 1px solid rgba(66,153,255,.30);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0, rgba(10,115,255,.24), transparent 34%),
+    rgba(4,10,18,.48);
+  padding: 12px;
+}
+
+.ps-scan-progress-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ps-scan-progress-top span {
+  color: #8fc5ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ps-scan-progress-top strong {
+  color: #f7fbff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ps-scan-progress-bar {
+  position: relative;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(142,183,237,.14);
+}
+
+.ps-scan-progress-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -36%;
+  width: 36%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #4dabff, transparent);
+  animation: ps-scan-progress 1.15s ease-in-out infinite;
+}
+
+.ps-scan-progress p,
+.ps-scan-progress small {
+  margin: 0;
+  color: rgba(221,235,255,.72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ps-scan-progress small {
+  color: rgba(221,235,255,.52);
+}
+
+.ps-scan-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.ps-scan-counts span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid rgba(142,183,237,.13);
+  border-radius: 10px;
+  background: rgba(4,10,18,.42);
+  color: rgba(221,235,255,.62);
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.ps-scan-counts b {
+  color: #f7fbff;
+  font-size: 16px;
+  line-height: 1;
+}
+
+@keyframes ps-scan-progress {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+
 .ps-language-hint {
   display: grid;
   gap: 4px;
@@ -801,6 +901,78 @@
   color: #55e483;
 }
 
+.ps-task-controls {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(142,183,237,.13);
+  border-radius: 14px;
+  background: rgba(4,10,18,.28);
+  padding: 10px;
+}
+
+.ps-task-controls > input {
+  min-height: 36px;
+  border: 1px solid rgba(142,183,237,.18);
+  border-radius: 10px;
+  background: rgba(4,10,18,.70);
+  color: #f6fbff;
+  padding: 0 11px;
+  outline: 0;
+}
+
+.ps-task-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ps-task-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid rgba(142,183,237,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.045);
+  color: rgba(238,246,255,.74);
+  padding: 0 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ps-task-filter button span {
+  color: rgba(221,235,255,.50);
+  font-size: 11px;
+}
+
+.ps-task-filter .ps-filter--active {
+  border-color: rgba(10,115,255,.56);
+  background: rgba(10,115,255,.20);
+  color: #fff;
+}
+
+.ps-task-bulk {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.ps-task-bulk .font-picker-field {
+  min-height: 54px;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.ps-task-warning {
+  margin: 0;
+  color: #ffbd5a;
+  font-size: 12px;
+}
+
 .ps-ticket {
   position: relative;
   display: flex;
@@ -852,6 +1024,11 @@
   font-size: 12px;
 }
 
+.ps-ticket-time {
+  color: rgba(143,197,255,.86);
+  font-weight: 800;
+}
+
 .ps-empty {
   border: 1px dashed rgba(142,183,237,.18);
   border-radius: 12px;
@@ -876,6 +1053,14 @@
 .ps-task--selected {
   border-color: rgba(66,153,255,.58);
   background: rgba(16,63,119,.42);
+}
+
+.ps-task--smart {
+  border-color: rgba(139,92,246,.34);
+  background:
+    radial-gradient(circle at 0 0, rgba(139,92,246,.16), transparent 36%),
+    linear-gradient(180deg, rgba(7,18,31,.78), rgba(4,11,19,.62)),
+    rgba(5,13,23,.52);
 }
 
 .ps-task-check {
@@ -933,6 +1118,46 @@
 .ps-badge--ready {
   background: rgba(48,209,88,.12);
   color: #55e483;
+}
+
+.ps-badge--smart {
+  background: rgba(139,92,246,.16);
+  color: #c4b5fd;
+}
+
+.ps-badge--layer {
+  background: rgba(66,153,255,.14);
+  color: #8fc5ff;
+}
+
+.ps-badge--warning {
+  background: rgba(255,159,10,.14);
+  color: #ffbd5a;
+}
+
+.ps-task-badges {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ps-task-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.ps-task-context span {
+  border: 1px solid rgba(142,183,237,.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,.042);
+  color: rgba(221,235,255,.68);
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .ps-task-preview {
@@ -1132,7 +1357,9 @@
   .ps-metrics,
   .ps-import-file,
   .ps-output-cart,
+  .ps-scan-counts,
   .ps-task-guide,
+  .ps-task-bulk,
   .ps-task-preview {
     grid-template-columns: 1fr;
   }

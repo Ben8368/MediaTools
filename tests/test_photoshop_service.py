@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -25,6 +28,11 @@ class FakeScanRow:
     height_px: int = 60
     source_font: str = "SourceFont"
     original_text: str = "Hello"
+    raw_text: str = "Hello"
+    layer_obj: object | None = None
+    smart_object_layer_id: int = 0
+    smart_object_name: str = ""
+    smart_object_inner_layer_name: str = ""
 
 
 @dataclass
@@ -46,6 +54,11 @@ class FakeTicketTask:
     target_text: str
     target_font: str
     status: str
+    notes: str = ""
+    layer_kind: str = "text"
+    smart_object_layer_id: int = 0
+    smart_object_name: str = ""
+    smart_object_inner_layer_name: str = ""
 
 
 @dataclass
@@ -78,20 +91,11 @@ class FakeDoc:
     FullName = "C:/design/source.psd"
 
 
-class FakeDocuments:
-    Count = 1
-
-
-class FakeApp:
-    Documents = FakeDocuments()
-    ActiveDocument = FakeDoc()
-
-
 class FakeConnector:
     instances: list[FakeConnector] = []
 
     def __init__(self):
-        self.app = FakeApp()
+        self.app = SimpleNamespace(Documents=SimpleNamespace(Count=1), ActiveDocument=FakeDoc())
         self.opened: list[str] = []
         self.closed: list[tuple[FakeDoc, bool]] = []
         self.connected = False
@@ -128,7 +132,9 @@ def fake_runtime(rows: list[FakeScanRow] | None = None, pythoncom: FakePythonCom
         "TicketTask": FakeTicketTask,
         "TicketMeta": FakeTicketMeta,
         "Ticket": FakeTicket,
-        "save_ticket_json": Mock(side_effect=lambda ticket, path: Path(path).write_text(json.dumps(ticket.to_dict()), encoding="utf-8")),
+        "save_ticket_json": Mock(
+            side_effect=lambda ticket, path: Path(path).write_text(json.dumps(ticket.to_dict()), encoding="utf-8")
+        ),
     }
     return runtime
 
@@ -146,7 +152,10 @@ def patch_workspace(monkeypatch, tmp_path: Path):
 
 def test_ticket_payload_validation_and_summary(tmp_path):
     valid = tmp_path / "ticket-1.json"
-    valid.write_text(json.dumps({"meta": {"source_psd": "a.psd"}, "tasks": [{"status": "confirmed"}, {"status": "pending"}]}), encoding="utf-8")
+    valid.write_text(
+        json.dumps({"meta": {"source_psd": "a.psd"}, "tasks": [{"status": "confirmed"}, {"status": "pending"}]}),
+        encoding="utf-8",
+    )
 
     payload = service._load_ticket_payload(valid)
     summary = service._ticket_summary(valid, payload)
@@ -192,7 +201,9 @@ def test_status_ticket_crud_and_invalid_ticket_skip(tmp_path, monkeypatch):
     assert Path(status["tickets_dir"]).exists()
     assert Path(status["exports_dir"]).exists()
 
-    saved = service.save_photoshop_ticket("ticket-a", {"meta": {"source_psd": "a.psd"}, "tasks": [{"status": "confirmed"}]}, ws)
+    saved = service.save_photoshop_ticket(
+        "ticket-a", {"meta": {"source_psd": "a.psd"}, "tasks": [{"status": "confirmed"}]}, ws
+    )
     assert saved["ticket_id"] == "ticket-a"
     assert service.get_photoshop_ticket("ticket-a", ws)["ticket"]["meta"]["source_psd"] == "a.psd"
 
@@ -222,7 +233,17 @@ def test_status_ticket_crud_and_invalid_ticket_skip(tmp_path, monkeypatch):
 
 def test_build_ticket_expands_languages_and_defaults():
     runtime = fake_runtime()
-    rows = [FakeScanRow(layer_id=10, artboard="A"), FakeScanRow(layer_id=11, artboard="B")]
+    rows = [
+        FakeScanRow(layer_id=10, artboard="A"),
+        FakeScanRow(
+            layer_id=11,
+            artboard="B",
+            layer_name="Card / Price",
+            smart_object_layer_id=210,
+            smart_object_name="Card",
+            smart_object_inner_layer_name="Price",
+        ),
+    ]
 
     ticket = service._build_ticket(runtime, rows, "source.psd", ["zh", "en"])
     payload = ticket.to_dict()
@@ -230,25 +251,77 @@ def test_build_ticket_expands_languages_and_defaults():
     assert payload["meta"]["created_by"] == "mediatools_scan"
     assert len(payload["tasks"]) == 4
     assert {task["output_name"] for task in payload["tasks"]} == {"zh.psd", "en.psd"}
+    smart_tasks = [task for task in payload["tasks"] if task["layer_kind"] == "smart_object_text"]
+    assert len(smart_tasks) == 2
+    assert {task["smart_object_layer_id"] for task in smart_tasks} == {210}
+    assert {task["smart_object_name"] for task in smart_tasks} == {"Card"}
+    assert {task["smart_object_inner_layer_name"] for task in smart_tasks} == {"Price"}
 
     no_lang_ticket = service._build_ticket(runtime, rows[:1], "source.psd", [])
     no_lang_task = no_lang_ticket.to_dict()["tasks"][0]
     assert no_lang_task["output_name"] == ""
     assert no_lang_task["language"] == ""
+    assert no_lang_task["layer_kind"] == "text"
+
+
+def test_ticket_task_from_dict_accepts_missing_smart_fields():
+    spec = importlib.util.spec_from_file_location(
+        "ps_ticket_json",
+        Path("vendor/adobe/photoshop/com/src/ticket_json.py"),
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    task = module.TicketTask.from_dict(
+        {
+            "layer_id": 1,
+            "artboard_name": "Board",
+            "layer_name": "Title",
+            "output_name": "",
+            "language": "",
+            "source_psd": "source.psd",
+            "original_text": "Hello",
+        }
+    )
+
+    assert task.layer_kind == "text"
+    assert task.smart_object_layer_id == 0
+    assert task.smart_object_name == ""
 
 
 def test_scan_photoshop_document_success_opens_and_closes_doc(tmp_path, monkeypatch):
     ws = patch_workspace(monkeypatch, tmp_path)
     FakeConnector.instances.clear()
-    runtime = fake_runtime(rows=[FakeScanRow(artboard="Board B"), FakeScanRow(layer_id=2, artboard="Board A")])
+    runtime = fake_runtime(
+        rows=[
+            FakeScanRow(artboard="Board B"),
+            FakeScanRow(
+                layer_id=2,
+                artboard="Board A",
+                layer_name="Card / Price",
+                smart_object_layer_id=210,
+                smart_object_name="Card",
+                smart_object_inner_layer_name="Price",
+            ),
+        ]
+    )
     monkeypatch.setattr(service, "_runtime", lambda: runtime)
     monkeypatch.setattr(service.uuid, "uuid4", lambda: "ticket-id")
 
-    result = service.scan_photoshop_document(psd_path="C:/design/file.psd", languages=["zh"], timeout_sec=5, workspace=ws)
+    result = service.scan_photoshop_document(
+        psd_path="C:/design/file.psd", languages=["zh"], timeout_sec=5, workspace=ws
+    )
 
     assert result["ok"] is True
     assert result["ticket_id"] == "ticket-id"
     assert result["layer_count"] == 2
+    assert result["normal_text_layer_count"] == 1
+    assert result["smart_text_layer_count"] == 1
+    assert result["smart_object_count"] == 1
+    assert result["skipped_smart_object_count"] == 0
+    assert result["scan_warnings"] == []
     assert result["artboards"] == ["Board A", "Board B"]
     assert Path(result["ticket_path"]).exists()
     connector = FakeConnector.instances[0]
@@ -256,6 +329,52 @@ def test_scan_photoshop_document_success_opens_and_closes_doc(tmp_path, monkeypa
     assert connector.closed and connector.closed[0][1] is False
     assert connector.disconnected is True
     assert runtime["pythoncom"].calls == ["init", "uninit"]
+
+
+def test_scan_photoshop_document_reports_progress_counts(tmp_path, monkeypatch):
+    ws = patch_workspace(monkeypatch, tmp_path)
+    rows = [
+        FakeScanRow(),
+        FakeScanRow(
+            layer_id=2,
+            layer_name="Card / Price",
+            smart_object_layer_id=210,
+            smart_object_name="Card",
+            smart_object_inner_layer_name="Price",
+        ),
+    ]
+    runtime = fake_runtime(rows=rows)
+
+    def scan_with_progress(_connector, _doc, _source_path, progress_callback=None):
+        if progress_callback:
+            progress_callback(
+                {
+                    "stage": "已发现 2 个文字层",
+                    "layer_count": 2,
+                    "normal_text_layer_count": 1,
+                    "smart_text_layer_count": 1,
+                    "smart_object_count": 1,
+                    "skipped_smart_object_count": 0,
+                }
+            )
+        return rows
+
+    runtime["scan_document_for_ticket"] = Mock(side_effect=scan_with_progress)
+    monkeypatch.setattr(service, "_runtime", lambda: runtime)
+    monkeypatch.setattr(service.uuid, "uuid4", lambda: "ticket-id")
+    progress_events: list[dict] = []
+
+    service.scan_photoshop_document(
+        psd_path="C:/design/file.psd",
+        languages=[],
+        timeout_sec=5,
+        workspace=ws,
+        progress_callback=progress_events.append,
+    )
+
+    assert progress_events[0]["stage"] == "正在连接 Photoshop 并读取文档"
+    assert progress_events[-1]["layer_count"] == 2
+    assert progress_events[-1]["smart_text_layer_count"] == 1
 
 
 def test_scan_photoshop_document_uses_active_document_and_reports_no_layers(tmp_path, monkeypatch):
@@ -299,6 +418,115 @@ def test_scan_photoshop_document_reports_connector_errors_and_timeout(tmp_path, 
     monkeypatch.setattr(service.threading, "Thread", NeverFinishesThread)
     with pytest.raises(TimeoutError, match="timed out"):
         service.scan_photoshop_document(timeout_sec=0)
+
+
+def test_start_ticket_execution_distinguishes_normal_and_smart_rows(tmp_path, monkeypatch):
+    from modules.adobe.photoshop import execution
+
+    ws = patch_workspace(monkeypatch, tmp_path)
+    ticket_id = "ticket-exec"
+    service._ticket_path(ticket_id, ws).write_text("{}", encoding="utf-8")
+    with service._execution_lock:
+        service._executions.clear()
+
+    normal_task = FakeTicketTask(
+        layer_id=1,
+        artboard_name="Board",
+        layer_name="Title",
+        output_name="out.psd",
+        language="zh",
+        line_count=1,
+        alignment="left",
+        font_size=12,
+        tracking=0,
+        width_px=100,
+        height_px=20,
+        source_psd="source.psd",
+        source_font="SourceFont",
+        original_text="Hello",
+        target_text="你好",
+        target_font="",
+        status="confirmed",
+        layer_kind="text",
+    )
+    smart_task = FakeTicketTask(
+        layer_id=99,
+        artboard_name="Board",
+        layer_name="Card / Price",
+        output_name="out.psd",
+        language="zh",
+        line_count=1,
+        alignment="left",
+        font_size=12,
+        tracking=0,
+        width_px=100,
+        height_px=20,
+        source_psd="source.psd",
+        source_font="SourceFont",
+        original_text="Price",
+        target_text="价格",
+        target_font="",
+        status="confirmed",
+        layer_kind="smart_object_text",
+        smart_object_layer_id=210,
+        smart_object_name="Card",
+        smart_object_inner_layer_name="Price",
+    )
+    ticket = FakeTicket(FakeTicketMeta(created_by="test", source_psd="C:/design/source.psd"), [normal_task, smart_task])
+    modify_text_layer = Mock(return_value=SimpleNamespace(success=True, message="normal"))
+    modify_smart_object_text_layer = Mock(return_value=SimpleNamespace(success=True, message="smart"))
+    runtime = fake_runtime(
+        rows=[
+            FakeScanRow(layer_id=1, layer_name="Title", original_text="Hello", raw_text="Hello", layer_obj=object()),
+            FakeScanRow(
+                layer_id=2,
+                layer_name="Card / Price",
+                original_text="Price",
+                raw_text="Price",
+                smart_object_layer_id=210,
+                smart_object_name="Card",
+                smart_object_inner_layer_name="Price",
+            ),
+        ]
+    )
+    runtime.update(
+        {
+            "load_ticket_json": Mock(return_value=ticket),
+            "save_ticket_json": Mock(),
+            "TextMapping": lambda **kwargs: SimpleNamespace(**kwargs),
+            "AdjustParams": lambda **kwargs: SimpleNamespace(**kwargs),
+            "modify_text_layer": modify_text_layer,
+            "modify_smart_object_text_layer": modify_smart_object_text_layer,
+        }
+    )
+    monkeypatch.setattr(service, "_runtime", lambda: runtime)
+
+    class ImmediateThread:
+        def __init__(self, target, daemon=True):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr(execution.threading, "Thread", ImmediateThread)
+    finished: list[tuple[bool, dict]] = []
+
+    result = execution.start_ticket_execution_impl(
+        ticket_id,
+        dry_run=True,
+        workspace=ws,
+        job_id="job-1",
+        on_finish=lambda ok, payload: finished.append((ok, payload)),
+    )
+
+    assert result["ok"] is True
+    execution_state = service._executions[ticket_id]
+    assert execution_state.error == ""
+    modify_text_layer.assert_called_once()
+    modify_smart_object_text_layer.assert_called_once()
+    assert normal_task.status == "done"
+    assert smart_task.status == "done"
+    assert finished == [(True, {"status": "done", "output_paths": [], "ticket_id": ticket_id, "dry_run": True})]
 
 
 def test_task_helpers_and_start_execution_delegate(monkeypatch):

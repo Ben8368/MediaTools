@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from adapters.photoshop_runtime import PhotoshopAutomationAdapter
-from modules.adobe.common.execution import (
-    _executions,
-    cancel_execution,
-    get_execution_state,
-)
+from modules.adobe.common import execution as common_execution
+
+_executions = common_execution._executions
+cancel_execution = common_execution.cancel_execution
+get_execution_state = common_execution.get_execution_state
 
 ProgressCallback = Callable[[str, float], None]
 FinishCallback = Callable[[bool, dict[str, Any]], None]
@@ -139,7 +139,9 @@ def get_photoshop_ticket(ticket_id: str, workspace: dict | None = None) -> dict[
     return {"ticket_id": ticket_id, "path": str(path), "ticket": _load_ticket_payload(path)}
 
 
-def save_photoshop_ticket(ticket_id: str, ticket_payload: dict[str, Any], workspace: dict | None = None) -> dict[str, Any]:
+def save_photoshop_ticket(
+    ticket_id: str, ticket_payload: dict[str, Any], workspace: dict | None = None
+) -> dict[str, Any]:
     path = _ticket_path(ticket_id, workspace)
     _save_ticket_payload(path, ticket_payload)
     return {"ticket_id": ticket_id, "path": str(path), "ticket": _load_ticket_payload(path)}
@@ -168,52 +170,40 @@ def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str
     ticket_tasks = []
     expanded_languages = [item for item in languages if item] if languages else []
 
+    def _task_kwargs(row: Any, *, output_name: str, language: str) -> dict[str, Any]:
+        smart_object_layer_id = int(getattr(row, "smart_object_layer_id", 0) or 0)
+        return {
+            "layer_id": row.layer_id,
+            "artboard_name": row.artboard,
+            "layer_name": row.layer_name,
+            "output_name": output_name,
+            "language": language,
+            "line_count": row.line_count,
+            "alignment": row.alignment,
+            "font_size": row.font_size,
+            "tracking": row.tracking,
+            "width_px": row.width_px,
+            "height_px": row.height_px,
+            "source_psd": source_psd,
+            "source_font": row.source_font,
+            "original_text": row.original_text,
+            "target_text": "",
+            "target_font": "",
+            "status": "pending",
+            "layer_kind": "smart_object_text" if smart_object_layer_id else "text",
+            "smart_object_layer_id": smart_object_layer_id,
+            "smart_object_name": getattr(row, "smart_object_name", "") or "",
+            "smart_object_inner_layer_name": getattr(row, "smart_object_inner_layer_name", "") or "",
+        }
+
     for row in scan_rows:
         if expanded_languages:
             for language in expanded_languages:
                 ticket_tasks.append(
-                    runtime["TicketTask"](
-                        layer_id=row.layer_id,
-                        artboard_name=row.artboard,
-                        layer_name=row.layer_name,
-                        output_name=f"{language}.psd",
-                        language=language,
-                        line_count=row.line_count,
-                        alignment=row.alignment,
-                        font_size=row.font_size,
-                        tracking=row.tracking,
-                        width_px=row.width_px,
-                        height_px=row.height_px,
-                        source_psd=source_psd,
-                        source_font=row.source_font,
-                        original_text=row.original_text,
-                        target_text="",
-                        target_font="",
-                        status="pending",
-                    )
+                    runtime["TicketTask"](**_task_kwargs(row, output_name=f"{language}.psd", language=language))
                 )
         else:
-            ticket_tasks.append(
-                runtime["TicketTask"](
-                    layer_id=row.layer_id,
-                    artboard_name=row.artboard,
-                    layer_name=row.layer_name,
-                    output_name="",
-                    language="",
-                    line_count=row.line_count,
-                    alignment=row.alignment,
-                    font_size=row.font_size,
-                    tracking=row.tracking,
-                    width_px=row.width_px,
-                    height_px=row.height_px,
-                    source_psd=source_psd,
-                    source_font=row.source_font,
-                    original_text=row.original_text,
-                    target_text="",
-                    target_font="",
-                    status="pending",
-                )
-            )
+            ticket_tasks.append(runtime["TicketTask"](**_task_kwargs(row, output_name="", language="")))
 
     meta = runtime["TicketMeta"](created_by="mediatools_scan", source_psd=source_psd)
     return runtime["Ticket"](meta=meta, tasks=ticket_tasks)
@@ -225,6 +215,7 @@ def scan_photoshop_document(
     languages: list[str] | None = None,
     timeout_sec: int = 180,
     workspace: dict | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     runtime = _runtime()
     result_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
@@ -247,7 +238,23 @@ def scan_photoshop_document(
                 doc = connector.app.ActiveDocument
 
             source_path = str(doc.FullName)
-            scan_rows = runtime["scan_document_for_ticket"](connector, doc, source_path)
+            if progress_callback:
+                progress_callback(
+                    {
+                        "stage": "正在连接 Photoshop 并读取文档",
+                        "layer_count": 0,
+                        "normal_text_layer_count": 0,
+                        "smart_text_layer_count": 0,
+                        "smart_object_count": 0,
+                        "skipped_smart_object_count": 0,
+                    }
+                )
+            scan_rows = runtime["scan_document_for_ticket"](
+                connector,
+                doc,
+                source_path,
+                progress_callback=progress_callback,
+            )
             if not scan_rows:
                 result_queue.put(("ok", {"ok": False, "message": "No text layers found", "source_psd": source_path}))
                 return
@@ -258,6 +265,14 @@ def scan_photoshop_document(
             runtime["save_ticket_json"](ticket, str(ticket_path))
             artboards = sorted({row.artboard for row in scan_rows})
             smart_text_layer_count = sum(1 for row in scan_rows if getattr(row, "smart_object_layer_id", 0))
+            normal_text_layer_count = len(scan_rows) - smart_text_layer_count
+            smart_object_names = sorted(
+                {
+                    getattr(row, "smart_object_name", "")
+                    for row in scan_rows
+                    if getattr(row, "smart_object_layer_id", 0) and getattr(row, "smart_object_name", "")
+                }
+            )
             result_queue.put(
                 (
                     "ok",
@@ -268,7 +283,11 @@ def scan_photoshop_document(
                         "ticket": ticket.to_dict(),
                         "source_psd": source_path,
                         "layer_count": len(scan_rows),
+                        "normal_text_layer_count": normal_text_layer_count,
                         "smart_text_layer_count": smart_text_layer_count,
+                        "smart_object_count": len(smart_object_names),
+                        "skipped_smart_object_count": 0,
+                        "scan_warnings": [],
                         "artboard_count": len(artboards),
                         "artboards": artboards,
                     },
@@ -300,6 +319,54 @@ def scan_photoshop_document(
     if kind == "error":
         raise RuntimeError(payload)
     return payload
+
+
+def _is_smart_object_task(task: Any) -> bool:
+    return (
+        getattr(task, "layer_kind", "") == "smart_object_text"
+        or int(getattr(task, "smart_object_layer_id", 0) or 0) > 0
+    )
+
+
+def _find_scan_row_for_task(scan_rows: list[Any], task: Any) -> Any | None:
+    is_smart_task = _is_smart_object_task(task)
+    task_layer_id = int(getattr(task, "layer_id", 0) or 0)
+    smart_object_layer_id = int(getattr(task, "smart_object_layer_id", 0) or 0)
+    smart_object_name = str(getattr(task, "smart_object_name", "") or "").strip()
+    inner_layer_name = str(getattr(task, "smart_object_inner_layer_name", "") or "").strip()
+    layer_name = str(getattr(task, "layer_name", "") or "").strip()
+    original_text = str(getattr(task, "original_text", "") or "")
+
+    for row in scan_rows:
+        row_is_smart = int(getattr(row, "smart_object_layer_id", 0) or 0) > 0
+        if row.layer_id == task_layer_id and row_is_smart == is_smart_task:
+            return row
+
+    if not is_smart_task:
+        return None
+
+    for row in scan_rows:
+        if int(getattr(row, "smart_object_layer_id", 0) or 0) <= 0:
+            continue
+        if smart_object_layer_id and int(getattr(row, "smart_object_layer_id", 0) or 0) != smart_object_layer_id:
+            continue
+        if smart_object_name and str(getattr(row, "smart_object_name", "") or "").strip() != smart_object_name:
+            continue
+        if (
+            inner_layer_name
+            and str(getattr(row, "smart_object_inner_layer_name", "") or "").strip() != inner_layer_name
+        ):
+            continue
+        if original_text and str(getattr(row, "original_text", getattr(row, "raw_text", "")) or "") != original_text:
+            continue
+        return row
+
+    for row in scan_rows:
+        if int(getattr(row, "smart_object_layer_id", 0) or 0) <= 0:
+            continue
+        if layer_name and str(getattr(row, "layer_name", "") or "").strip() == layer_name:
+            return row
+    return None
 
 
 def _should_execute_task(task: Any) -> bool:

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -62,6 +62,7 @@ const apiMocks = vi.hoisted(() => ({
   updateAuditorConfig: vi.fn(),
   updateAETicket: vi.fn(),
   updatePhotoshopTicket: vi.fn(),
+  wsUrl: vi.fn(),
 }))
 
 vi.mock('@/api', () => apiMocks)
@@ -96,7 +97,16 @@ function resetApiMocks() {
   apiMocks.fetchPhotoshopExecution.mockResolvedValue({ ok: true, state: { status: 'done' } })
   apiMocks.fetchPhotoshopStatus.mockResolvedValue({ available: true, pywin32: true, running_executions: 0 })
   apiMocks.fetchPhotoshopTicket.mockResolvedValue({ ok: true, ticket: { meta: {}, tasks: [] } })
-  apiMocks.fetchPhotoshopTickets.mockResolvedValue({ ok: true, items: [] })
+  apiMocks.fetchPhotoshopTickets.mockResolvedValue({
+    ok: true,
+    items: [{
+      ticket_id: 'ps-old-1',
+      task_count: 50,
+      source_psd: 'D:/design/demo.psd',
+      created_at: '2026-05-07T19:30:00',
+      updated_at: 1778153400,
+    }],
+  })
   apiMocks.fetchSystemFonts.mockResolvedValue({ ok: true, items: [] })
   apiMocks.fetchWorkbenchMedia.mockResolvedValue({ ok: true, video_rows: [], subtitle_rows: [], export_rows: [] })
   apiMocks.importAETicket.mockResolvedValue({ ok: true, ticket_id: 'ae-import-1', ticket: { meta: {}, tasks: [] } })
@@ -119,6 +129,7 @@ function resetApiMocks() {
   apiMocks.updateAuditorConfig.mockResolvedValue({ ok: true, config: { watch_folders: [] } })
   apiMocks.updateAETicket.mockResolvedValue({ ok: true, ticket: { meta: {}, tasks: [] } })
   apiMocks.updatePhotoshopTicket.mockResolvedValue({ ok: true, ticket: { meta: {}, tasks: [] } })
+  apiMocks.wsUrl.mockReturnValue('ws://localhost/ws/jobs')
 }
 
 describe('MediaTools utility apps', () => {
@@ -208,6 +219,7 @@ describe('MediaTools workflow apps', () => {
     render(<PhotoshopApp />)
 
     await screen.findByRole('button', { name: '扫描并生成工单' })
+    expect(await screen.findByText('建立：2026-05-07 19:30')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
     await waitFor(() => {
@@ -241,6 +253,59 @@ describe('MediaTools workflow apps', () => {
     })
     fireEvent.click(screen.getByRole('option', { name: 'Arial Narrow Bold' }))
     expect(font).toHaveValue('Arial Narrow / Bold')
+  })
+
+  it('shows visible Photoshop scan progress while the backend request is pending', async () => {
+    let resolveScan!: (value: unknown) => void
+    const sockets: Array<{ onmessage: ((event: { data: string }) => void) | null, close: () => void }> = []
+    class FakeWebSocket {
+      onmessage: ((event: { data: string }) => void) | null = null
+      close = vi.fn()
+
+      constructor() {
+        sockets.push(this)
+      }
+    }
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    apiMocks.scanPhotoshopTicket.mockReturnValueOnce(new Promise((resolve) => {
+      resolveScan = resolve
+    }))
+
+    render(<PhotoshopApp />)
+
+    const scanButton = await screen.findByRole('button', { name: '扫描并生成工单' })
+    fireEvent.click(scanButton)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('扫描进行中')
+    expect(screen.getByText(/正在连接 Photoshop/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '扫描中，请稍候...' })).toBeDisabled()
+    await waitFor(() => {
+      expect(sockets.length).toBe(1)
+    })
+    act(() => {
+      sockets[0].onmessage?.({
+        data: JSON.stringify({
+          jobs: [{
+            type: 'photoshop_scan',
+            status: 'running',
+            stage: '已发现 7 个文字层，正在扫描智能对象：Card',
+            scan_layer_count: 7,
+            scan_normal_text_layer_count: 4,
+            scan_smart_text_layer_count: 3,
+            scan_smart_object_count: 2,
+          }],
+        }),
+      })
+    })
+    expect(screen.getByText('7')).toBeInTheDocument()
+    expect(within(screen.getByLabelText('Photoshop 扫描计数')).getByText('智能对象文字')).toBeInTheDocument()
+    expect(screen.getByText('已发现 7 个文字层，正在扫描智能对象：Card')).toBeInTheDocument()
+
+    resolveScan({ ok: true, ticket_id: 'ps-progress-1', ticket: { meta: {}, tasks: [] } })
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+    vi.unstubAllGlobals()
   })
 
   it('uses the Photoshop language cart as the requested output set', async () => {
@@ -291,6 +356,74 @@ describe('MediaTools workflow apps', () => {
     })
     expect(await screen.findByDisplayValue('zh-CN.psd')).toBeInTheDocument()
     expect(screen.getByDisplayValue('en-US.psd')).toBeInTheDocument()
+  })
+
+  it('shows Photoshop smart object task context and supports filtering with batch edits', async () => {
+    apiMocks.fetchSystemFonts.mockResolvedValueOnce({
+      ok: true,
+      items: [{ name: 'Inter' }, { name: 'NotoSans-SemiBold' }],
+    })
+    apiMocks.scanPhotoshopTicket.mockResolvedValueOnce({
+      ok: true,
+      ticket_id: 'ps-smart-1',
+      ticket: {
+        meta: { source_psd: 'demo.psd' },
+        tasks: [
+          {
+            layer_id: 1,
+            layer_kind: 'text',
+            layer_name: 'Title',
+            artboard_name: 'Hero',
+            language: '',
+            original_text: 'Hello',
+            source_font: 'NotoSans',
+            target_text: '',
+            target_font: '',
+            output_name: '',
+            status: 'pending',
+          },
+          {
+            layer_id: 2,
+            layer_kind: 'smart_object_text',
+            smart_object_layer_id: 210,
+            smart_object_name: 'Card',
+            smart_object_inner_layer_name: 'Price',
+            layer_name: 'Card / Price',
+            artboard_name: 'Hero',
+            language: '',
+            original_text: '$9.99',
+            source_font: 'NotoSans',
+            target_text: '',
+            target_font: '',
+            output_name: '',
+            status: 'pending',
+          },
+        ],
+      },
+    })
+
+    render(<PhotoshopApp />)
+
+    await screen.findByRole('button', { name: '扫描并生成工单' })
+    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+
+    expect(await screen.findByText('智能对象：Card')).toBeInTheDocument()
+    expect(screen.getByText('内部文字层：Price')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /智能对象内文字层/ }))
+    fireEvent.change(screen.getByLabelText('搜索 Photoshop 任务'), { target: { value: 'Card' } })
+
+    expect(screen.getByLabelText('替换文本 2')).toBeInTheDocument()
+    expect(screen.queryByLabelText('替换文本 1')).not.toBeInTheDocument()
+
+    const bulkFont = screen.getByLabelText('批量目标字体')
+    fireEvent.focus(bulkFont)
+    fireEvent.change(bulkFont, { target: { value: 'Inter' } })
+    fireEvent.keyDown(bulkFont, { key: 'Enter' })
+    fireEvent.click(screen.getByRole('button', { name: '批量设置字体' }))
+    expect(screen.getByLabelText('目标字体 2')).toHaveValue('Inter / Regular')
+
+    fireEvent.click(screen.getByRole('button', { name: '批量确认当前筛选' }))
+    expect(screen.getByRole('checkbox')).toBeChecked()
   })
 
   it('renders workbench and auditor pages with backend configuration', async () => {

@@ -17,8 +17,95 @@
 4.  **验证 (Verify)**：**仅当审查非红灯时**，执行 Rule 7 (输出验证指南)。
 5.  **停止 (Stop)**：等待用户指令。
 
+### 1.1 项目时间线协议 (Project Timeline Protocol)
+- **真实时间线：** Git 历史是代码和文档演进的唯一事实来源；可验证阶段完成后，应由用户确认再提交。
+- **当前状态：** `03_Context_Snapshot.md` 只记录当前任务焦点、验证状态、最近验证结果和下一步；未获用户【验证通过】前，不得写成“通过/已完成”。
+- **功能规划：** `04_New_Features.md` 记录新功能卡片、依赖、影响模块、验证思路和回滚策略；新增功能进入开发前必须先完成评估。
+- **失败复盘：** `05_Lessons_Learned.md` 记录报错、踩坑、根因、修复方式和未来预防规则。
+- **并行开发：** 多 Agent 或多窗口处理可能重叠的任务时，优先使用独立 Git branch 或 worktree，避免多个 Agent 直接修改同一个 checkout。
+
 ## 2. 动态技术规范 (Dynamic Tech Specs)
-(等待初始化...)
+### 2.1 项目身份
+- **项目名称：** MediaTools
+- **项目模式：** 工程模式
+- **注释/文档语言：** 中文优先；代码标识符、API 字段、协议名、第三方术语和环境变量保持英文。
+- **主维护边界：** `backend/`、`frontend/`、`modules/`、`adapters/`、`core/`、`patches/`、`scripts/`、`tests/`、`docs/`。
+- **第三方边界：** `vendor/` 仅作为上游源码或嵌入工具存放区，默认不修改第三方源码；如确需修改，优先通过 `patches/` 或 wrapper/adapter 隔离。
+
+### 2.2 技术栈
+| 层级 | 技术 | 约束 |
+|---|---|---|
+| 后端 | Python 3.11+、FastAPI、Uvicorn、Pydantic | 路由轻量，复杂业务进入 `backend/services/` |
+| CLI | `cli/main.py`、`modules/*/cli.py` | 模块能力必须可独立调用和测试 |
+| 前端 | React 18、TypeScript、Vite、Zustand | 组件按领域拆分，API 调用集中到 helper 或服务层 |
+| 媒体工具 | `yt-dlp`、FFmpeg/ffprobe、Unlock Music CLI | 外部工具路径、版本和缺失提示必须集中管理 |
+| AI | OpenAI-compatible API、`openai` SDK | API Key 只来自 `.env` 或环境变量 |
+| 测试/质量 | pytest、pytest-cov、ruff、black、mypy、Vitest、TypeScript | 修改后按影响范围执行验证 |
+
+### 2.3 分层和依赖方向
+```text
+frontend/
+  -> backend/api/routes/
+  -> backend/services/
+  -> modules/
+  -> adapters/core/vendor/bin
+```
+
+- `frontend/` 只理解产品语义和 API，不直接依赖 Python 文件路径。
+- `backend/api/routes/` 只处理请求解析、校验、响应组织和状态码，不承载跨模块流程。
+- `backend/services/` 承载跨模块业务编排、任务中心、工作区、运行时管理和 Web/CLI/Agent 复用逻辑。
+- `modules/` 承载单步底层能力，例如下载、字幕处理、转码、解密、素材扫描、Adobe/CapCut 封装。
+- `adapters/` 和 `backend/services/runtime/` 隔离本机软件、外部进程、平台差异和版本探测。
+- `core/` 只放通用基础能力，例如认证、校验、日志、FFmpeg helper。
+- 禁止新增循环依赖；禁止从 `vendor/` 反向调用项目业务层。
+
+### 2.4 文件规模和拆分标准
+- Python 新增业务文件目标不超过 300 行；超过时优先拆到 service/helper/model/test。
+- React 应用窗口若出现明显多职责，必须拆到 `frontend/src/apps/<domain>/` 子组件。
+- 路由文件不直接堆叠长流程；长任务必须进入 service，并接入 `task_center` 或提供等价可观察日志。
+- 一次性维护脚本放入 `scripts/`，不得混入业务层。
+
+### 2.5 安全与配置
+- 敏感信息必须通过 `.env`、环境变量或配置对象读取，禁止写入代码和文档示例中的真实密钥。
+- 服务绑定非本机地址时必须设置并校验 `API_SECRET_KEY`。
+- 工作区路径、文件浏览、预览、导出和删除操作必须经过允许根目录和路径校验。
+- 外部命令执行必须避免直接拼接未校验用户输入；优先使用参数列表和集中 adapter。
+
+### 2.6 验证命令
+后端常规验证：
+```powershell
+python -m pytest
+python -m ruff check .
+python -m black --check .
+python -m mypy backend --ignore-missing-imports
+```
+
+前端常规验证：
+```powershell
+cd frontend
+npm run typecheck
+npm test
+npm run build
+```
+
+最小运行验证：
+```powershell
+python app.py
+python -m cli.main --help
+python -m cli.main fetcher ytdlp status
+```
+
+### 2.7 当前稳定主线
+优先保护并验证以下链路：
+```text
+yt-dlp 下载
+-> 字幕清洗/AI 分析
+-> FFmpeg 切片或转码
+-> 工作台复核
+-> 工作区素材管理
+```
+
+Adobe、CapCut、auditor、filebrowser、浏览器控制属于环境相关扩展能力。新增或修改这些能力时必须提供状态检查、缺失依赖提示和最小可复现验证方式。
 
 ## 3. 预防性反哺 (Pre-emptive Feedback)
 **触发时机**：编写任何功能代码**之前**。
@@ -30,13 +117,19 @@
 ## 4. 基础规范
 - **命名**：严格遵循语言社区标准。
 - **敏感数据**：强制 .env。
+- **注释语言**：业务注释中文优先，解释“为什么”；不要为显而易见的赋值写注释。
+- **文档边界**：根 README、`WORKFLOW.md`、`ARCHITECTURE.md`、`docs/README.md` 和 01-05 治理文档优先于早期历史材料。
+- **第三方文档**：`vendor/` 内 README/CHANGELOG 多为上游项目文档，不作为 MediaTools 自身事实来源。
 
 ## 5. 模块化与耦合控制
-- **工程模式**：严格 SRP，组件原子化。
+- **工程模式**：严格 SRP，组件原子化；新增业务文件目标不超过 300 行；禁止循环依赖。
 - **脚本模式**：单文件上限 500 行。超过必须拆分 `utils` 模块。
+- **MediaTools 分层**：新增 API 先判断是否应落在 route、service、module、adapter、core 中，禁止把外部工具细节散落在路由和前端组件中。
 
 ## 6. 新功能控制
 - 必须先通过 `04_New_Features.md` 的“模块影响评估”。
+- 新增功能必须填写：前置依赖、预计影响模块、数据/路径安全影响、验证思路、回滚或降级策略。
+- 若功能依赖 Adobe、CapCut、auditor、filebrowser、浏览器或本地二进制工具，必须声明本机环境假设。
 
 ## 7. 保姆级验证协议 (Babysitter Verification)
 **触发时机**：代码生成完毕，且 Rule 10 审查结果为 **🟢 绿灯** 或 **🟡 黄灯** 时。
