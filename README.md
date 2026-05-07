@@ -1,5 +1,7 @@
 # MediaTools
 
+> **English** | **[中文](./README.zh.md)**
+
 MediaTools is a web-based workstation for content creation and local media processing. It integrates video downloading, subtitle processing, AI analysis, FFmpeg transcoding/slicing, music decryption, asset management, file management, Adobe automation, and an executable AI assistant into a single project.
 
 The main entry points are:
