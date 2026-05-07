@@ -81,7 +81,13 @@ def build_api_key_middleware(access_logger: logging.Logger, api_secret_key: str 
             raise
 
         elapsed_ms = (time.perf_counter() - started) * 1000
-        log_method = access_logger.warning if response.status_code >= 400 else access_logger.info
+        is_noisy_success = request.url.path in {"/api/system/metrics", "/api/logs"}
+        if response.status_code >= 400:
+            log_method = access_logger.warning
+        elif is_noisy_success:
+            log_method = access_logger.debug
+        else:
+            log_method = access_logger.info
         log_method(
             "%s %s -> %s %.1fms",
             request.method,

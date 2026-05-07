@@ -28,6 +28,7 @@ import {
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
 import { AutomationTaskDialog } from '@/apps/mediatools/AutomationTaskDialog'
+import { FontPicker } from '@/apps/mediatools/FontPicker'
 import {
   automationTaskIndexes,
   isAutomationTaskExecutable,
@@ -35,6 +36,32 @@ import {
 } from '@/apps/mediatools/automation'
 
 type AnyRecord = Record<string, any>
+
+function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
+  if (!result && !execution) return <div className="ae-empty">暂无执行记录。</div>
+  
+  return (
+    <div className="ae-execution-summary">
+       {result && (
+         <div className="ae-execution-card">
+           <h4>执行请求</h4>
+           {result.ok ? <p className="success">请求已提交成功</p> : <p className="error">提交失败：{result.error || '未知错误'}</p>}
+           {result.message && <p>{result.message}</p>}
+         </div>
+       )}
+       {execution && typeof execution === 'string' ? (
+         <div className="ae-execution-card"><p>{execution}</p></div>
+       ) : execution && (
+         <div className="ae-execution-card">
+           <h4>执行状态</h4>
+           <p>状态：{execution.state?.status || '未知'}</p>
+           {execution.state?.progress !== undefined && <p>进度：{execution.state.progress}%</p>}
+           {execution.state?.message && <p>{execution.state.message}</p>}
+         </div>
+       )}
+    </div>
+  )
+}
 
 export function AEApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
@@ -387,9 +414,32 @@ export function AEApp() {
                         <em className={ready ? 'ae-badge ae-badge--ready' : 'ae-badge'}>{ready ? '可执行' : '待确认'}</em>
                       </div>
                       <div className="ae-task-preview">
-                        <span><b>替换</b>{task.target_text || '待填写'}</span>
-                        <span><b>字体</b>{task.target_font || task.source_font || '未指定'}</span>
-                        <span><b>输出</b>{task.output_name || '默认命名'}</span>
+                        <label>
+                          <b>替换</b>
+                          <input
+                            aria-label={`AE 替换文本 ${index + 1}`}
+                            value={task.target_text || ''}
+                            onChange={(event) => updateTask(index, { target_text: event.target.value })}
+                            placeholder="待填写"
+                          />
+                        </label>
+                        <FontPicker
+                          compact
+                          ariaLabel={`AE 目标字体 ${index + 1}`}
+                          value={task.target_font || ''}
+                          sourceFont={task.source_font}
+                          fonts={fontOptionsForTask(fonts, task)}
+                          onChange={(font: string) => updateTask(index, { target_font: font })}
+                        />
+                        <label>
+                          <b>输出</b>
+                          <input
+                            aria-label={`AE 输出名称 ${index + 1}`}
+                            value={task.output_name || ''}
+                            onChange={(event) => updateTask(index, { output_name: event.target.value })}
+                            placeholder="默认命名"
+                          />
+                        </label>
                         <ToolbarButton onClick={() => setEditingTaskIndex(index)}>确认修改</ToolbarButton>
                       </div>
                     </div>
@@ -449,23 +499,24 @@ export function AEApp() {
           <div className="ae-section-head">
             <div>
               <h3>执行与回执</h3>
-              <p>保存确认后的工单，再执行已选择任务；Dry Run 可先检查将要执行的内容。</p>
+              <p>保存确认后的工单，再执行已选择任务。</p>
             </div>
             <div className="ae-actions">
               <ToolbarButton onClick={save} disabled={!ticketId}>保存工单</ToolbarButton>
               <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>执行已选任务</PrimaryButton>
-              <ToolbarButton onClick={() => void execute(true)} disabled={!ticketId || !selected.length}>Dry Run</ToolbarButton>
               <ToolbarButton onClick={refreshExecution} disabled={!ticketId}>刷新执行状态</ToolbarButton>
               <ToolbarButton onClick={async () => ticketId && setExecution(await cancelAEExecution(ticketId))} disabled={!ticketId}>取消执行</ToolbarButton>
             </div>
           </div>
           <div className="ae-result-grid">
-            <ResultBox value={result} />
-            <ResultBox value={execution} />
+            <ExecutionSummary result={result} execution={execution} />
           </div>
           <details className="ae-json">
-            <summary>高级：工单 JSON</summary>
-            <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} />
+            <summary>高级：工单 JSON 及原始执行结果</summary>
+            <div className="ae-json-grid">
+              <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} placeholder="工单 JSON" />
+              <textarea value={JSON.stringify({ result, execution }, null, 2)} readOnly placeholder="执行结果 JSON" />
+            </div>
           </details>
         </section>
         </main>
@@ -482,5 +533,15 @@ export function AEApp() {
         />
       </div>
     </AppLayout>
+  )
+}
+
+function fontOptionsForTask(fonts: string[], task: AnyRecord): string[] {
+  return Array.from(
+    new Set(
+      [task.target_font, task.source_font, ...fonts]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean),
+    ),
   )
 }

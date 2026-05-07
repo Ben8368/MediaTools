@@ -219,7 +219,9 @@ describe('MediaTools workflow apps', () => {
     render(<PhotoshopApp />)
 
     await screen.findByRole('button', { name: '扫描并生成工单' })
+    fireEvent.click(screen.getByText('02'))
     expect(await screen.findByText('建立：2026-05-07 19:30')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('01'))
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
     await waitFor(() => {
@@ -230,29 +232,31 @@ describe('MediaTools workflow apps', () => {
     })
 
     const replacement = await screen.findByLabelText('替换文本 1')
-    const font = await screen.findByLabelText('目标字体 1')
+    const fontFamily = await screen.findByLabelText('目标字体 1 家族')
+    const fontWeight = screen.getByLabelText('目标字体 1 字重')
     const output = screen.getByLabelText('输出名称 1')
-    fireEvent.focus(font)
+    
+    fireEvent.change(fontFamily, { target: { value: 'Inter' } })
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'Inter' })).toBeInTheDocument()
     })
-    expect(screen.getByText('Noto Sans')).toBeInTheDocument()
     fireEvent.change(replacement, { target: { value: 'New headline' } })
-    fireEvent.change(font, { target: { value: 'Noto Sans Semi' } })
-    fireEvent.click(screen.getByRole('option', { name: 'NotoSans-SemiBold' }))
+    
+    fireEvent.change(fontFamily, { target: { value: 'Noto Sans' } })
+    fireEvent.keyDown(fontFamily, { key: 'Enter' })
+    fireEvent.change(fontWeight, { target: { value: 'NotoSans-SemiBold' } })
     fireEvent.change(output, { target: { value: 'custom.psd' } })
 
     expect(replacement).toHaveValue('New headline')
-    expect(font).toHaveValue('Noto Sans / SemiBold')
+    expect(fontFamily).toHaveValue('Noto Sans')
+    expect(fontWeight).toHaveValue('NotoSans-SemiBold')
     expect(output).toHaveValue('custom.psd')
 
-    fireEvent.focus(font)
-    fireEvent.change(font, { target: { value: 'Arial Narrow' } })
-    await waitFor(() => {
-      expect(screen.getByText('Arial Narrow')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('option', { name: 'Arial Narrow Bold' }))
-    expect(font).toHaveValue('Arial Narrow / Bold')
+    fireEvent.change(fontFamily, { target: { value: 'Arial Narrow' } })
+    fireEvent.keyDown(fontFamily, { key: 'Enter' })
+    fireEvent.change(fontWeight, { target: { value: 'Arial Narrow Bold' } })
+    expect(fontFamily).toHaveValue('Arial Narrow')
+    expect(fontWeight).toHaveValue('Arial Narrow Bold')
   })
 
   it('shows visible Photoshop scan progress while the backend request is pending', async () => {
@@ -342,10 +346,12 @@ describe('MediaTools workflow apps', () => {
     render(<PhotoshopApp />)
 
     await screen.findByRole('button', { name: '扫描并生成工单' })
-    fireEvent.change(screen.getByPlaceholderText('输入 zh-CN,en-US'), {
+    fireEvent.click(screen.getByText('02'))
+    fireEvent.change(screen.getByPlaceholderText('输入自定义语言'), {
       target: { value: 'zh-CN,en-US' },
     })
     fireEvent.click(screen.getAllByRole('button', { name: '添加' })[0])
+    fireEvent.click(screen.getByText('01'))
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
     await waitFor(() => {
@@ -407,20 +413,25 @@ describe('MediaTools workflow apps', () => {
     await screen.findByRole('button', { name: '扫描并生成工单' })
     fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
 
-    expect(await screen.findByText('智能对象：Card')).toBeInTheDocument()
-    expect(screen.getByText('内部文字层：Price')).toBeInTheDocument()
+    const task2Replace = await screen.findByLabelText('替换文本 2')
+    expect(task2Replace).toHaveAttribute('placeholder', '$9.99')
+    expect(screen.getByText('智能对象内文字层', { selector: '.ps-badge.ps-badge--smart' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /智能对象内文字层/ }))
     fireEvent.change(screen.getByLabelText('搜索 Photoshop 任务'), { target: { value: 'Card' } })
 
     expect(screen.getByLabelText('替换文本 2')).toBeInTheDocument()
     expect(screen.queryByLabelText('替换文本 1')).not.toBeInTheDocument()
 
-    const bulkFont = screen.getByLabelText('批量目标字体')
-    fireEvent.focus(bulkFont)
-    fireEvent.change(bulkFont, { target: { value: 'Inter' } })
-    fireEvent.keyDown(bulkFont, { key: 'Enter' })
+    const bulkFontFamily = screen.getByLabelText('批量目标字体 家族')
+    const bulkFontWeight = screen.getByLabelText('批量目标字体 字重')
+    fireEvent.focus(bulkFontFamily)
+    const bulkExpandButton = bulkFontFamily.parentElement!.querySelector('button[aria-label="展开字体列表"]')!
+    fireEvent.click(bulkExpandButton)
+    fireEvent.change(bulkFontFamily, { target: { value: 'Inter' } })
+    fireEvent.keyDown(bulkFontFamily, { key: 'Enter' })
+    fireEvent.change(bulkFontWeight, { target: { value: 'Inter' } })
     fireEvent.click(screen.getByRole('button', { name: '批量设置字体' }))
-    expect(screen.getByLabelText('目标字体 2')).toHaveValue('Inter / Regular')
+    expect(screen.getByLabelText('目标字体 2 家族')).toHaveValue('Inter')
 
     fireEvent.click(screen.getByRole('button', { name: '批量确认当前筛选' }))
     expect(screen.getByRole('checkbox')).toBeChecked()

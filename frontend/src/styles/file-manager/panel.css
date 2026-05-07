@@ -118,6 +118,36 @@
   min-height: 0;
   overflow: auto;
   padding-bottom: 12px;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(130, 175, 240, 0.55) rgba(5, 12, 22, 0.52);
+}
+
+/* 与 Photoshop ps-operation / .ps-task-list 同款（WebKit） */
+.fm-panel::-webkit-scrollbar,
+.fm-list::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.fm-panel::-webkit-scrollbar-track,
+.fm-list::-webkit-scrollbar-track {
+  background: rgba(5, 12, 22, 0.52);
+  border-radius: 999px;
+  margin: 4px 2px 4px 0;
+}
+
+.fm-panel::-webkit-scrollbar-thumb,
+.fm-list::-webkit-scrollbar-thumb {
+  background: rgba(130, 175, 240, 0.52);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.fm-panel::-webkit-scrollbar-thumb:hover,
+.fm-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 205, 255, 0.72);
+  background-clip: padding-box;
 }
 
 .fm-row {

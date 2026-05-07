@@ -46,6 +46,7 @@ def get_wechat_moments_status(workspace: dict | None = None) -> dict[str, Any]:
     manifests_dir = _wechat_root("manifests", workspace)
     status.update(
         {
+            "available": True,
             "module_id": "wechat_moments",
             "integration_mode": "frontend_module",
             "module_status": "staged",

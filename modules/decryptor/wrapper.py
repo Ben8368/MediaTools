@@ -4,6 +4,7 @@ Unlock Music CLI 封装器
 通过 subprocess 调用 bin/um-cli.exe 执行音乐解密。
 """
 import platform
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -17,17 +18,36 @@ def _get_umcli_bin() -> Path:
     return bin_dir / f"um-cli{suffix}"
 
 
+def _get_umcli_source_dir() -> Path:
+    return Path(__file__).parent.parent.parent / "vendor" / "um-cli" / "source"
+
+
 class DecryptorWrapper:
     """Unlock Music CLI 封装器"""
 
     def __init__(self, umcli_bin: Path = None):
+        self.allow_source_fallback = umcli_bin is None
         if umcli_bin is None:
             umcli_bin = _get_umcli_bin()
         self.umcli_bin = Path(umcli_bin)
+        self.source_dir = _get_umcli_source_dir()
 
     def is_available(self) -> bool:
         """检查 um-cli 二进制是否存在"""
-        return self.umcli_bin.exists()
+        return self.umcli_bin.exists() or self.source_available()
+
+    def source_available(self) -> bool:
+        return self.allow_source_fallback and self.source_dir.exists() and (self.source_dir / "cmd" / "um" / "main.go").exists() and shutil.which("go") is not None
+
+    def command(self) -> list[str]:
+        if self.umcli_bin.exists():
+            return [str(self.umcli_bin)]
+        if self.source_available():
+            return ["go", "run", "./cmd/um"]
+        return [str(self.umcli_bin)]
+
+    def command_cwd(self) -> str | None:
+        return str(self.source_dir) if not self.umcli_bin.exists() and self.source_available() else None
 
     def decrypt(self, input_path: str, output_dir: str = None, remove_source: bool = False) -> dict:
         """
@@ -48,7 +68,7 @@ class DecryptorWrapper:
                 "error": f"um-cli 未找到，请编译 vendor/unlock-music/ 并放置于: {self.umcli_bin}"
             }
 
-        cmd = [str(self.umcli_bin), "-i", input_path]
+        cmd = self.command() + ["-i", input_path]
         if output_dir:
             cmd += ["-o", output_dir]
         if remove_source:
@@ -56,7 +76,7 @@ class DecryptorWrapper:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300,
+                cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300, cwd=self.command_cwd(),
                 creationflags=_SUBPROCESS_FLAGS,
             )
             return {
@@ -88,7 +108,7 @@ class DecryptorWrapper:
                 "error": f"um-cli 未找到，请编译 vendor/unlock-music/ 并放置于: {self.umcli_bin}"
             }
 
-        cmd = [str(self.umcli_bin), "-i", input_dir]
+        cmd = self.command() + ["-i", input_dir]
         if output_dir:
             cmd += ["-o", output_dir]
         if remove_source:
@@ -96,7 +116,7 @@ class DecryptorWrapper:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800,
+                cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, cwd=self.command_cwd(),
                 creationflags=_SUBPROCESS_FLAGS,
             )
             return {
@@ -115,8 +135,8 @@ class DecryptorWrapper:
             return "未安装"
         try:
             result = subprocess.run(
-                [str(self.umcli_bin), "--version"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+                self.command() + ["--version"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, cwd=self.command_cwd(),
                 creationflags=_SUBPROCESS_FLAGS,
             )
             return result.stdout.strip() if result.returncode == 0 else "未知"

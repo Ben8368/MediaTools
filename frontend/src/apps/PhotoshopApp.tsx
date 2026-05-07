@@ -34,6 +34,32 @@ import {
 type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
 
+function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
+  if (!result && !execution) return <div className="ps-empty">暂无执行记录。</div>
+  
+  return (
+    <div className="ps-execution-summary">
+       {result && (
+         <div className="ps-execution-card">
+           <h4>执行请求</h4>
+           {result.ok ? <p className="success">请求已提交成功</p> : <p className="error">提交失败：{result.error || '未知错误'}</p>}
+           {result.message && <p>{result.message}</p>}
+         </div>
+       )}
+       {execution && typeof execution === 'string' ? (
+         <div className="ps-execution-card"><p>{execution}</p></div>
+       ) : execution && (
+         <div className="ps-execution-card">
+           <h4>执行状态</h4>
+           <p>状态：{execution.state?.status || '未知'}</p>
+           {execution.state?.progress !== undefined && <p>进度：{execution.state.progress}%</p>}
+           {execution.state?.message && <p>{execution.state.message}</p>}
+         </div>
+       )}
+    </div>
+  )
+}
+
 export function PhotoshopApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
   const [activePanel, setActivePanel] = useState<'scan' | 'import' | 'result'>('scan')
@@ -389,11 +415,6 @@ export function PhotoshopApp() {
                 <input value="留空时读取当前 Photoshop 活动文档" readOnly />
               </Field>
             )}
-            <div className="ps-language-hint">
-              <span>目标语言</span>
-              <strong>{targetLanguages.length ? targetLanguages.join(', ') : '原始任务'}</strong>
-              <small>在下方输出购物车中添加语言；留空只生成原始任务。</small>
-            </div>
           </div>
           {isScanning ? (
             <div className="ps-scan-progress" role="status" aria-live="polite">
@@ -472,7 +493,7 @@ export function PhotoshopApp() {
             <div className="ps-output-cart">
               <div className="ps-output-cart-head">
                 <div>
-                  <strong>目标语言购物车</strong>
+                  <strong>预设语言</strong>
                   <small>一个工单可输出多个目标语言。</small>
                 </div>
                 <em>{targetLanguages.length || 1} 组输出</em>
@@ -484,12 +505,21 @@ export function PhotoshopApp() {
                   </button>
                 )) : <span className="ps-language-empty">原始任务</span>}
               </div>
-              <div className="ps-language-presets" aria-label="常用目标语言">
-                {['zh-CN', 'en-US', 'ja-JP', 'ko-KR'].map((language) => (
-                  <button type="button" key={language} onClick={() => addTargetLanguages(language)}>{language}</button>
-                ))}
-              </div>
               <div className="ps-language-add">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      addTargetLanguages(e.target.value)
+                    }
+                  }}
+                  className="ps-language-select"
+                >
+                  <option value="" disabled>选择预设语言...</option>
+                  {['zh-CN', 'en-US', 'ja-JP', 'ko-KR'].map((language) => (
+                    <option key={language} value={language}>{language}</option>
+                  ))}
+                </select>
                 <input
                   value={languageDraft}
                   onChange={(event) => setLanguageDraft(event.target.value)}
@@ -499,7 +529,7 @@ export function PhotoshopApp() {
                       addTargetLanguages(languageDraft)
                     }
                   }}
-                  placeholder="输入 zh-CN,en-US"
+                  placeholder="输入自定义语言"
                 />
                 <ToolbarButton onClick={() => addTargetLanguages(languageDraft)}>添加</ToolbarButton>
               </div>
@@ -531,27 +561,34 @@ export function PhotoshopApp() {
               <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
             <div className="ps-task-controls">
-              <input
-                aria-label="搜索 Photoshop 任务"
-                value={taskSearch}
-                onChange={(event) => setTaskSearch(event.target.value)}
-                placeholder="搜索原文、图层、智能对象或画板"
-              />
-              <div className="ps-task-filter" role="tablist" aria-label="Photoshop 任务分类">
-                {taskFilters.map((filter) => (
-                  <button
-                    type="button"
-                    key={filter.id}
-                    className={taskFilter === filter.id ? 'ps-filter--active' : ''}
-                    onClick={() => setTaskFilter(filter.id)}
-                  >
-                    {filter.label}
-                    <span>{filterCount(tasks, filter.id)}</span>
-                  </button>
-                ))}
+              <div className="ps-task-controls__search">
+                <input
+                  className="ps-task-search"
+                  aria-label="搜索 Photoshop 任务"
+                  value={taskSearch}
+                  onChange={(event) => setTaskSearch(event.target.value)}
+                  placeholder="搜索原文、图层、智能对象或画板"
+                />
               </div>
-              <div className="ps-task-bulk">
+              <div className="ps-task-controls__filters">
+                <div className="ps-task-filter" role="tablist" aria-label="Photoshop 任务分类">
+                  {taskFilters.map((filter) => (
+                    <button
+                      type="button"
+                      key={filter.id}
+                      className={taskFilter === filter.id ? 'ps-filter--active' : ''}
+                      onClick={() => setTaskFilter(filter.id)}
+                    >
+                      {filter.label}
+                      <span>{filterCount(tasks, filter.id)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="ps-task-controls__bulk">
                 <FontPicker
+                  compact
+                  hideLabels
                   ariaLabel="批量目标字体"
                   value={bulkFont}
                   sourceFont=""
@@ -567,9 +604,19 @@ export function PhotoshopApp() {
               {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => {
                 const ready = isAutomationTaskExecutable(task)
                 const smart = isSmartObjectTask(task)
+                const originalLine = String(task.original_text || '').trim()
+                const layerFallback = String(smart ? (task.smart_object_inner_layer_name || task.layer_name) : task.layer_name || '').trim()
+                const primaryCopy = originalLine || layerFallback || `任务 ${index + 1}`
+                const taskWarning = hasTaskWarning(task)
+                const checkState = taskWarning ? 'warning' : ready ? 'ready' : 'pending'
+                const checkTitle = taskWarning
+                  ? `任务 ${index + 1} · 有错误/警告`
+                  : ready
+                    ? `任务 ${index + 1} · 可执行`
+                    : `任务 ${index + 1} · 待确认`
                 return (
                   <div className={`ps-task ${selected.includes(index) ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}`} key={index}>
-                    <label className="ps-task-check">
+                    <label className={`ps-task-check ps-task-check--${checkState}`} title={checkTitle}>
                       <input
                         type="checkbox"
                         checked={selected.includes(index)}
@@ -579,53 +626,44 @@ export function PhotoshopApp() {
                       <span>{index + 1}</span>
                     </label>
                     <div className="ps-task-main">
-                      <div className="ps-task-title">
-                        <div>
-                          <strong>{smart ? task.smart_object_inner_layer_name || task.layer_name || `任务 ${index + 1}` : task.layer_name || `任务 ${index + 1}`}</strong>
-                          <small>{task.language || '未指定语言'} · {task.original_text || '未读取原文'}</small>
-                          <div className="ps-task-context">
-                            {smart ? (
-                              <>
-                                <span>智能对象：{task.smart_object_name || '未记录父层'}</span>
-                                <span>内部文字层：{task.smart_object_inner_layer_name || task.layer_name || '未记录内层'}</span>
-                              </>
-                            ) : <span>普通文字层：{task.layer_name || '未命名图层'}</span>}
-                            <span>画板：{task.artboard_name || '未记录画板'}</span>
-                            {task.notes ? <span>备注：{task.notes}</span> : null}
-                          </div>
-                        </div>
-                        <div className="ps-task-badges">
-                          <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
-                          <em className={hasTaskWarning(task) ? 'ps-badge ps-badge--warning' : ready ? 'ps-badge ps-badge--ready' : 'ps-badge'}>{hasTaskWarning(task) ? '有错误/警告' : ready ? '可执行' : '待确认'}</em>
-                        </div>
-                      </div>
-                      <div className="ps-task-preview">
-                        <label>
-                          <b>替换</b>
-                          <textarea
+                      <div className="ps-task-head">
+                        <div className="ps-task-head-main">
+                          <input
+                            className="ps-task-copy-input"
                             aria-label={`替换文本 ${index + 1}`}
                             value={task.target_text || ''}
                             onChange={(event) => updateTask(index, { target_text: event.target.value })}
-                            placeholder="待填写"
+                            placeholder={primaryCopy}
+                            title={primaryCopy}
                           />
-                        </label>
-                        <FontPicker
-                          ariaLabel={`目标字体 ${index + 1}`}
-                          value={task.target_font || ''}
-                          sourceFont={task.source_font}
-                          fonts={fontOptionsForTask(fonts, task)}
-                          onChange={(font) => updateTask(index, { target_font: font })}
-                        />
-                        <label>
-                          <b>输出</b>
+                        </div>
+                        <div className="ps-task-badges">
+                          <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
+                          {taskWarning ? <em className="ps-badge ps-badge--warning">有错误/警告</em> : null}
+                        </div>
+                      </div>
+                      <div className="ps-task-toolbar">
+                        <div className="ps-task-field ps-task-field--fonts">
+                          <FontPicker
+                            compact
+                            hideLabels
+                            accent={smart ? 'purple' : 'blue'}
+                            ariaLabel={`目标字体 ${index + 1}`}
+                            value={task.target_font || ''}
+                            sourceFont={task.source_font}
+                            fonts={fontOptionsForTask(fonts, task)}
+                            onChange={(font) => updateTask(index, { target_font: font })}
+                          />
+                        </div>
+                        <div className="ps-task-field ps-task-field--output">
                           <input
                             aria-label={`输出名称 ${index + 1}`}
                             value={task.output_name || ''}
                             onChange={(event) => updateTask(index, { output_name: event.target.value })}
-                            placeholder="默认命名"
+                            placeholder="输出 · 默认命名"
                           />
-                        </label>
-                        <ToolbarButton onClick={() => confirmTask(index)}>确认修改</ToolbarButton>
+                        </div>
+                        <ToolbarButton className="ps-task-confirm-btn" type="button" onClick={() => confirmTask(index)}>确认修改</ToolbarButton>
                       </div>
                     </div>
                   </div>
@@ -639,7 +677,6 @@ export function PhotoshopApp() {
               </div>
               <div className="ps-execute-dock-actions">
                 <ToolbarButton onClick={save} disabled={!ticketId}>只保存</ToolbarButton>
-                <ToolbarButton onClick={() => void execute(true)} disabled={!ticketId || !selected.length}>Dry Run</ToolbarButton>
                 <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>保存并执行</PrimaryButton>
               </div>
             </div>
@@ -650,23 +687,24 @@ export function PhotoshopApp() {
           <div className="ps-section-head">
             <div>
               <h3>执行与回执</h3>
-              <p>保存确认后的工单，再执行已选择任务；Dry Run 可先检查将要执行的内容。</p>
+              <p>保存确认后的工单，再执行已选择任务。</p>
             </div>
             <div className="ps-actions">
               <ToolbarButton onClick={save} disabled={!ticketId}>保存工单</ToolbarButton>
               <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>执行已选任务</PrimaryButton>
-              <ToolbarButton onClick={() => void execute(true)} disabled={!ticketId || !selected.length}>Dry Run</ToolbarButton>
               <ToolbarButton onClick={refreshExecution} disabled={!ticketId}>刷新执行状态</ToolbarButton>
               <ToolbarButton onClick={async () => ticketId && setExecution(await cancelPhotoshopExecution(ticketId))} disabled={!ticketId}>取消执行</ToolbarButton>
             </div>
           </div>
           <div className="ps-result-grid">
-            <ResultBox value={result} />
-            <ResultBox value={execution} />
+            <ExecutionSummary result={result} execution={execution} />
           </div>
           <details className="ps-json">
-            <summary>高级：工单 JSON</summary>
-            <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} />
+            <summary>高级：工单 JSON 及原始执行结果</summary>
+            <div className="ps-json-grid">
+              <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} placeholder="工单 JSON" />
+              <textarea value={JSON.stringify({ result, execution }, null, 2)} readOnly placeholder="执行结果 JSON" />
+            </div>
           </details>
         </section>
         </main>

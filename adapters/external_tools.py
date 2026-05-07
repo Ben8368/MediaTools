@@ -41,7 +41,10 @@ class YtdlpAdapter:
         return self.manager.download_latest()
 
     def build_command(self, args: list[str], context: dict | None = None) -> list[str]:
-        return apply_command_patches(self.tool_name, [str(self.binary)] + list(args), context)
+        base_command = self.manager.command() if hasattr(self.manager, "command") else [str(self.binary)]
+        if not isinstance(base_command, list):
+            base_command = [str(self.binary)]
+        return apply_command_patches(self.tool_name, base_command + list(args), context)
 
     def run(self, args: list[str], *, context: dict | None = None, **kwargs) -> subprocess.CompletedProcess:
         defaults = {
@@ -77,7 +80,7 @@ class FFmpegAdapter:
         return self.manager.get_ffmpeg_location()
 
     def build_command(self, args: list[str], context: dict | None = None) -> list[str]:
-        return apply_command_patches(self.tool_name, [str(self.ffmpeg_bin)] + list(args), context)
+        return apply_command_patches(self.tool_name, [self.manager.get_ffmpeg_path()] + list(args), context)
 
     def run(self, args: list[str], *, context: dict | None = None, **kwargs) -> subprocess.CompletedProcess:
         if not self.is_available():
@@ -127,14 +130,21 @@ class UmcliAdapter:
         return self.wrapper.get_version()
 
     def get_status(self) -> dict:
+        source_available_fn = getattr(self.wrapper, "source_available", None)
+        source_available = bool(source_available_fn()) if callable(source_available_fn) else False
+        source_dir = getattr(self.wrapper, "source_dir", self.binary)
         return {
             "installed": self.is_available(),
             "version": self.get_version(),
-            "path": str(self.binary),
+            "path": str(self.binary if self.binary.exists() or not source_available else source_dir),
+            "runtime": "binary" if self.binary.exists() else "source" if source_available else "missing",
         }
 
     def build_command(self, args: list[str], context: dict | None = None) -> list[str]:
-        return apply_command_patches(self.tool_name, [str(self.binary)] + list(args), context)
+        base_command = self.wrapper.command() if hasattr(self.wrapper, "command") else [str(self.binary)]
+        if not isinstance(base_command, list):
+            base_command = [str(self.binary)]
+        return apply_command_patches(self.tool_name, base_command + list(args), context)
 
     def run(self, args: list[str], *, context: dict | None = None, **kwargs) -> subprocess.CompletedProcess:
         defaults = {
@@ -142,6 +152,10 @@ class UmcliAdapter:
             "encoding": "utf-8",
             "errors": "replace",
         }
+        command_cwd = getattr(self.wrapper, "command_cwd", None)
+        cwd = command_cwd() if callable(command_cwd) else None
+        if cwd:
+            defaults["cwd"] = cwd
         defaults.update(kwargs)
         return subprocess.run(self.build_command(args, context), **defaults)
 
@@ -158,6 +172,10 @@ class UmcliAdapter:
             "encoding": "utf-8",
             "errors": "replace",
         }
+        command_cwd = getattr(self.wrapper, "command_cwd", None)
+        cwd = command_cwd() if callable(command_cwd) else None
+        if cwd:
+            defaults["cwd"] = cwd
         defaults.update(kwargs)
 
         cmd = self.build_command(args, context)

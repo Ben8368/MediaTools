@@ -47,6 +47,7 @@ describe('LogViewer', () => {
     render(<LogViewer />)
 
     expect(await screen.findByText('日志')).toBeInTheDocument()
+    expect(apiMocks.fetchLogs).toHaveBeenCalledWith(expect.objectContaining({ level: 'INFO' }))
     expect((await screen.findAllByText('通知')).length).toBeGreaterThan(0)
     expect((await screen.findAllByText('错误')).length).toBeGreaterThan(0)
     expect(screen.getByText('服务启动')).toBeInTheDocument()
@@ -59,6 +60,7 @@ describe('LogViewer', () => {
 
     await screen.findByText('服务启动')
     const selects = screen.getAllByRole('combobox')
+    expect(screen.getByRole('option', { name: 'Debug' })).toBeInTheDocument()
     fireEvent.change(selects[0], { target: { value: 'ERROR' } })
     fireEvent.change(selects[1], { target: { value: 'tasks' } })
 

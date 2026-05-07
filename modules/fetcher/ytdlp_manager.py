@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -21,21 +22,37 @@ def _get_bin_dir() -> Path:
     return Path(__file__).parent.parent.parent / "bin"
 
 
+def _get_vendor_entrypoint() -> Path:
+    return Path(__file__).parent.parent.parent / "vendor" / "yt-dlp" / "source" / "yt_dlp" / "__main__.py"
+
+
 class YtdlpManager:
     def __init__(self, bin_dir: Path | None = None):
+        self.allow_source_fallback = bin_dir is None
         self.bin_dir = Path(bin_dir) if bin_dir is not None else _get_bin_dir()
         suffix = ".exe" if platform.system() == "Windows" else ""
         self.ytdlp_bin = self.bin_dir / f"yt-dlp{suffix}"
+        self.vendor_entrypoint = _get_vendor_entrypoint()
 
     def is_installed(self) -> bool:
-        return self.ytdlp_bin.exists()
+        return self.ytdlp_bin.exists() or self.source_available()
+
+    def source_available(self) -> bool:
+        return self.allow_source_fallback and self.vendor_entrypoint.exists()
+
+    def command(self) -> list[str]:
+        if self.ytdlp_bin.exists():
+            return [str(self.ytdlp_bin)]
+        if self.source_available():
+            return [sys.executable, str(self.vendor_entrypoint)]
+        return [str(self.ytdlp_bin)]
 
     def get_version(self) -> str:
         if not self.is_installed():
             return "not installed"
         try:
             result = subprocess.run(
-                [str(self.ytdlp_bin), "--version"],
+                self.command() + ["--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -52,7 +69,7 @@ class YtdlpManager:
         before = self.get_version()
         try:
             result = subprocess.run(
-                [str(self.ytdlp_bin), "-U"],
+                self.command() + ["-U"],
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -100,8 +117,13 @@ class YtdlpManager:
         return success
 
     def get_status(self) -> dict:
-        return {
+        path = self.vendor_entrypoint if self.source_available() and not self.ytdlp_bin.exists() else self.ytdlp_bin
+        runtime = "binary" if self.ytdlp_bin.exists() else "source" if self.source_available() else "missing"
+        status = {
             "installed": self.is_installed(),
             "version": self.get_version(),
-            "path": str(self.ytdlp_bin),
+            "path": str(path),
         }
+        if runtime != "missing":
+            status["runtime"] = runtime
+        return status

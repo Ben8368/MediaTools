@@ -85,6 +85,20 @@
   padding: 0 12px;
 }
 
+.lv-filter select option,
+.lv-page-size select option {
+  background: #0f1419;
+  color: #e0e7ff;
+  padding: 4px 8px;
+  line-height: 1.5;
+}
+
+.lv-filter select option:checked,
+.lv-page-size select option:checked {
+  background: #2563eb;
+  color: #fff;
+}
+
 .lv-spacer {
   flex: 1;
 }
@@ -180,6 +194,10 @@
 
 .lv-level--info {
   color: #f8fafc;
+}
+
+.lv-level--notice {
+  color: #54d2e6;
 }
 
 .lv-level--warning {

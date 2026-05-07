@@ -281,6 +281,8 @@
   min-height: 0;
   padding: 22px 22px 0;
   background: #222325;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(130, 175, 240, 0.55) rgba(5, 12, 22, 0.52);
 }
 
 .fm-topbar,

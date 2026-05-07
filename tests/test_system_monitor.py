@@ -229,7 +229,11 @@ def test_service_statuses_builds_and_caches_adapter_statuses():
     photoshop_adapter = Mock()
     photoshop_adapter.get_status.return_value = {"available": False, "message": "missing"}
 
-    with patch.object(monitor.time, "time", return_value=200.0), patch.object(
+    with patch.dict(monitor.os.environ, {"MEDIATOOLS_FRONTEND_DEV_URL": "http://127.0.0.1:5173"}), patch.object(
+        monitor.time,
+        "time",
+        return_value=200.0,
+    ), patch.object(
         monitor,
         "get_current_workspace",
         return_value=Mock(name="workspace"),
@@ -241,20 +245,32 @@ def test_service_statuses_builds_and_caches_adapter_statuses():
         monitor,
         "PhotoshopAutomationAdapter",
         return_value=photoshop_adapter,
-    ), patch.object(monitor, "get_auditor_status", return_value={"available": True}), patch.object(
+    ), patch.object(monitor, "get_auditor_status", return_value={"available": True, "integration_mode": "service_module"}), patch.object(
         monitor,
         "get_wechat_moments_status",
-        return_value={"available": False},
+        return_value={"available": False, "integration_mode": "frontend_module"},
+    ), patch.object(
+        monitor,
+        "get_filebrowser_status",
+        return_value={"running": False},
     ):
         services = sampler._service_statuses()
 
     by_id = {service["id"]: service for service in services}
+    assert by_id["frontend"]["mode"] == "dev"
+    assert by_id["frontend"]["mode_label"] == "开发"
+    assert by_id["encoder"]["name"] == "编码转码"
+    assert by_id["decryptor"]["name"] == "音乐解密"
     assert by_id["encoder"]["online"] is True
+    assert by_id["encoder"]["runtime_status"] == "online"
+    assert by_id["encoder"]["availability_status"] == "ready"
     assert by_id["fetcher"]["online"] is False
+    assert by_id["fetcher"]["runtime_status"] == "offline"
+    assert by_id["fetcher"]["availability_status"] == "dep_missing"
     assert by_id["decryptor"]["online"] is True
     assert by_id["photoshop"]["detail"] == "missing"
     assert by_id["auditor"]["online"] is True
-    assert by_id["wechat"]["online"] is False
+    assert by_id["wechat_moments"]["online"] is False
     assert sampler._service_cache == (200.0, services)
 
 
@@ -280,7 +296,7 @@ def test_task_progress_uses_active_queue_and_readable_labels():
     assert tasks == [
         {
             "id": "task-1",
-            "name": "视频转码",
+            "name": "编码转码",
             "source": "D:/media/in.mp4",
             "type": "transcode",
             "status": "running",

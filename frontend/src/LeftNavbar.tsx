@@ -1,8 +1,8 @@
-import { restartSystem, shutdownSystem } from '@/api'
+import { shutdownSystem, getUnreadNotificationCount } from '@/api'
 import { getAppIcon } from '@/icon-library'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function LeftNavbar() {
   const { showLauncher, toggleLauncher } = useSystemStore()
@@ -12,12 +12,27 @@ export function LeftNavbar() {
   const focusWindow = useWindowStore((state) => state.focusWindow)
   const [showPowerMenu, setShowPowerMenu] = useState(false)
   const [isShuttingDown, setIsShuttingDown] = useState(false)
-  const [powerComplete, setPowerComplete] = useState<'restart' | 'shutdown' | null>(null)
+  const [powerComplete, setPowerComplete] = useState<'shutdown' | null>(null)
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
 
   const uniqueRunningApps = windows.filter(
     (windowItem, index, allWindows) =>
       allWindows.findIndex((candidate) => candidate.appType === windowItem.appType) === index
   )
+
+  useEffect(() => {
+    async function loadUnreadCount() {
+      try {
+        const data = await getUnreadNotificationCount()
+        setUnreadNotificationCount(data?.unread_count ?? 0)
+      } catch {
+        setUnreadNotificationCount(0)
+      }
+    }
+    void loadUnreadCount()
+    const timer = window.setInterval(() => void loadUnreadCount(), 3000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   function doClick(appType: string) {
     const existingWindow = windows.find((windowItem) => windowItem.appType === appType)
@@ -51,20 +66,6 @@ export function LeftNavbar() {
     }
   }
 
-  async function doRestart() {
-    if (isShuttingDown) return
-    if (!window.confirm('确认重启 MediaTools 后端服务吗？')) return
-
-    setIsShuttingDown(true)
-    try {
-      await restartSystem()
-      setPowerComplete('restart')
-    } catch (error: any) {
-      window.alert(error?.message || '重启失败，请稍后重试')
-      setIsShuttingDown(false)
-    }
-  }
-
   if (powerComplete) {
     return (
       <div
@@ -91,12 +92,10 @@ export function LeftNavbar() {
           }}
         >
           <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}>
-            {powerComplete === 'restart' ? 'MediaTools 正在重启' : 'MediaTools 已关闭'}
+            MediaTools 已关闭
           </div>
           <div style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, marginBottom: 18 }}>
-            {powerComplete === 'restart'
-              ? '后端服务正在重启。稍等片刻后点击下面的按钮重新连接。'
-              : '后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。'}
+            后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。
           </div>
           <button
             type="button"
@@ -178,7 +177,31 @@ export function LeftNavbar() {
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
         <Btn icon={<IconGlobe />} tooltip="网络" />
-        <Btn icon={<IconBell />} tooltip="日志" active={windows.some((item) => item.appType === 'logs' && !item.isMinimized)} onClick={() => openWindow('logs')} />
+        <div style={{ position: 'relative' }}>
+          <Btn icon={<IconBell />} tooltip="日志" active={windows.some((item) => item.appType === 'logs' && !item.isMinimized)} onClick={() => openWindow('logs')} />
+          {unreadNotificationCount > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -4,
+                right: -4,
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                background: '#FF4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: 'white',
+                border: '2px solid rgba(10,12,16,.6)',
+              }}
+            >
+              {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+            </div>
+          )}
+        </div>
         <Btn icon={<IconUser />} tooltip="账号" />
         <Btn icon={<IconGear />} tooltip="设置" onClick={() => openWindow('settings')} />
         <Btn
@@ -213,15 +236,6 @@ export function LeftNavbar() {
             onClick={() => {
               setShowPowerMenu(false)
               void doShutdown()
-            }}
-          />
-          <PowerMenuButton
-            ariaLabel="restart-backend"
-            icon={<IconRestart />}
-            label="重启"
-            onClick={() => {
-              setShowPowerMenu(false)
-              void doRestart()
             }}
           />
         </div>
@@ -315,5 +329,4 @@ const IconGlobe = () => <svg viewBox="0 0 24 24" width={18} height={18} fill="no
 const IconBell = () => <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></svg>
 const IconUser = () => <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a6.5 6.5 0 0113 0" /></svg>
 const IconGear = () => <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-const IconRestart = () => <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12a9 9 0 019-9 9.8 9.8 0 016.4 2.4" /><path d="M18 2v4h-4" /><path d="M21 12a9 9 0 01-9 9 9.8 9.8 0 01-6.4-2.4" /><path d="M6 22v-4h4" /></svg>
 const IconPower = () => <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2v10" /><path d="M18.4 5.6a9 9 0 11-12.8 0" /></svg>

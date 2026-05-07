@@ -16,7 +16,19 @@ type RuntimeMetrics = {
     upload_bytes_per_sec?: number
     download_bytes_per_sec?: number
   }
-  services?: Array<{ id: string; name: string; online: boolean; status: string; detail?: string }>
+  services?: Array<{
+    id: string
+    name: string
+    online: boolean
+    status: string
+    runtime_status?: string
+    availability_status?: string
+    mode?: string
+    mode_label?: string
+    detail?: string
+    dep?: string | null
+    experimental?: boolean
+  }>
   tasks?: Array<{
     id: string
     name: string
@@ -35,6 +47,7 @@ type RuntimeMetrics = {
     total_download_records?: number
     terminal_download_records?: number
   }
+  log_mode?: string
 }
 
 const EMPTY_METRICS: RuntimeMetrics = {
@@ -57,8 +70,25 @@ function formatUptime(totalSeconds = 0) {
   return `${d}天${h}时${m}分${s}秒`
 }
 
-function serviceLabel(online: boolean) {
-  return online ? '在线' : '离线'
+function serviceTitle(service: NonNullable<RuntimeMetrics['services']>[number]) {
+  return [service.id, service.detail || service.dep || service.status].filter(Boolean).join(' · ')
+}
+
+function serviceName(service: NonNullable<RuntimeMetrics['services']>[number]) {
+  return service.id || service.name
+}
+
+function normalizeServices(services: NonNullable<RuntimeMetrics['services']>) {
+  const visibleIds = new Set(['fetcher', 'encoder', 'decryptor', 'photoshop', 'auditor', 'wechat_moments'])
+  return services
+    .filter((service) => service.id !== 'frontend')
+    .map((service) => (service.id === 'wechat' ? { ...service, id: 'wechat_moments' } : service))
+    .filter((service) => visibleIds.has(service.id))
+}
+
+function frontendModeLabel(logMode?: string) {
+  if (logMode === 'development') return '开发模式'
+  return ''
 }
 
 function taskStatusClass(status: string) {
@@ -94,6 +124,7 @@ export function RightPanel() {
   const [netDownData, setNetDownData] = useState<number[]>(Array.from({ length: 40 }, () => 0))
   const [error, setError] = useState('')
   const [expandedTaskType, setExpandedTaskType] = useState<string | null>(null)
+  const [servicesExpanded, setServicesExpanded] = useState(false)
 
   async function refresh() {
     try {
@@ -167,7 +198,7 @@ export function RightPanel() {
 
   const system = metrics.system || EMPTY_METRICS.system!
   const network = metrics.network || EMPTY_METRICS.network!
-  const services = metrics.services || []
+  const services = useMemo(() => normalizeServices(metrics.services || []), [metrics.services])
   const tasks = metrics.tasks || []
   const taskSummary = metrics.task_summary
   const groupedTasks = useMemo(() => {
@@ -193,8 +224,9 @@ export function RightPanel() {
   return (
     <div className="fnos-right-panel">
       <div className="rp-card">
-        <div className="rp-card-title">运行状态</div>
-        <div className="rp-device-name">MediaTools</div>
+        <div className="rp-card-head rp-runtime-head">
+          <div className="rp-card-title">运行状态</div>
+        </div>
         <div className="rp-gauges">
           <GaugeSvg value={system.cpu_percent || 0} color="#7CB3FF" label="CPU" />
           <GaugeSvg value={system.memory_percent || 0} color="#7CB3FF" label="内存" />
@@ -206,7 +238,8 @@ export function RightPanel() {
           />
         </div>
         <div className="rp-uptime">
-          本次运行 <span>{formatUptime(metrics.runtime?.uptime_seconds || 0)}</span>
+          <span>本次运行 <span>{formatUptime(metrics.runtime?.uptime_seconds || 0)}</span></span>
+          {frontendModeLabel(metrics.log_mode) && <span className="rp-runtime-mode">{frontendModeLabel(metrics.log_mode)}</span>}
         </div>
         {error && <div className="rp-error">{error}</div>}
       </div>
@@ -225,17 +258,26 @@ export function RightPanel() {
       </div>
 
       <div className="rp-card">
-        <div className="rp-card-title">服务状态</div>
-        <div className="rp-service-list">
-          {services.map((service) => (
-            <div key={service.id} className="rp-service-item">
-              <span className={`rp-service-dot ${service.online ? 'rp-service-dot--online' : ''}`} />
-              <span className="rp-service-name">{service.name}</span>
-              <span className={service.online ? 'rp-service-ok' : 'rp-service-off'}>{serviceLabel(service.online)}</span>
-            </div>
-          ))}
-          {!services.length && <div className="rp-empty">暂无服务状态</div>}
-        </div>
+        <button
+          type="button"
+          className="rp-card-head rp-service-toggle"
+          aria-expanded={servicesExpanded}
+          onClick={() => setServicesExpanded((expanded) => !expanded)}
+        >
+          <div className="rp-card-title">服务状态</div>
+          <span className={`rp-service-chevron ${servicesExpanded ? 'rp-service-chevron--open' : ''}`}>›</span>
+        </button>
+        {servicesExpanded && (
+          <div className="rp-service-list">
+            {services.map((service) => (
+              <div key={service.id} className="rp-service-item" title={serviceTitle(service)}>
+                <span className={`rp-service-dot ${service.online ? 'rp-service-dot--online' : ''}`} />
+                <span className="rp-service-name">{serviceName(service)}</span>
+              </div>
+            ))}
+            {!services.length && <div className="rp-empty">暂无服务状态</div>}
+          </div>
+        )}
       </div>
 
       <div className="rp-card">

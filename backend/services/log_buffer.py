@@ -6,6 +6,26 @@ from datetime import datetime
 from typing import Any
 
 
+LEVEL_ORDER = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "NOTICE": 25,  # 在 INFO(20) 和 WARNING(30) 之间
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+NOISY_INFO_MODULES = {"api.access", "uvicorn.access"}
+SUPPRESSED_ACCESS_PATHS = ("/api/logs", "/api/system/metrics")
+
+
+def _is_suppressed_access_record(record: logging.LogRecord, message: str) -> bool:
+    if record.name not in NOISY_INFO_MODULES:
+        return False
+    event = str(getattr(record, "event", ""))
+    text = f"{message} {event}"
+    return any(path in text for path in SUPPRESSED_ACCESS_PATHS)
+
+
 class LogBuffer(logging.Handler):
     """Thread-safe log buffer with filtering and pagination."""
 
@@ -18,6 +38,8 @@ class LogBuffer(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
+            if _is_suppressed_access_record(record, msg):
+                return
             entry = {
                 "level": record.levelname,
                 "module": record.name,
@@ -29,6 +51,19 @@ class LogBuffer(logging.Handler):
             }
             with self._lock:
                 self._records.append(entry)
+
+            # 自动添加 NOTICE 等级的日志到通知系统
+            if record.levelname == "NOTICE":
+                try:
+                    from backend.services.notification import get_notification_manager
+                    manager = get_notification_manager()
+                    manager.add_notification(
+                        level="NOTICE",
+                        module=record.name,
+                        message=getattr(record, "event", msg),
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -48,7 +83,13 @@ class LogBuffer(logging.Handler):
             records = list(self._records)
         records.reverse()
         if normalized_level:
-            records = [r for r in records if r["level"] == normalized_level]
+            minimum_level = LEVEL_ORDER.get(normalized_level)
+            if minimum_level is not None:
+                records = [r for r in records if LEVEL_ORDER.get(r["level"], logging.INFO) >= minimum_level]
+            else:
+                records = [r for r in records if r["level"] == normalized_level]
+        if normalized_level != "DEBUG" and not normalized_module:
+            records = [r for r in records if not (r["level"] == "INFO" and r["module"] in NOISY_INFO_MODULES)]
         if normalized_module:
             records = [r for r in records if normalized_module in r["module"].lower()]
         total = len(records)
@@ -71,7 +112,7 @@ class LogBuffer(logging.Handler):
     def get_levels(self) -> list[str]:
         with self._lock:
             levels = {r["level"] for r in self._records}
-        order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        order = ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL"]
         return [level for level in order if level in levels]
 
     def clear(self) -> None:

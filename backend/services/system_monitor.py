@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import platform
 import socket
 import time
@@ -12,7 +13,10 @@ from typing import Any
 import psutil
 
 from adapters import FFmpegAdapter, PhotoshopAutomationAdapter, UmcliAdapter, YtdlpAdapter
+from backend.api.modules import build_module_catalog
+from backend.config import BASE_DIR, LOG_MODE
 from backend.services.auditor import get_auditor_status
+from backend.services.runtime.filebrowser import get_filebrowser_status
 from backend.services.task_center import TaskStatus, TaskType, get_task_center
 from backend.services.wechat_moments import get_wechat_moments_status
 from backend.services.workspace import get_current_workspace
@@ -30,6 +34,57 @@ def _bytes_per_sec(value: float) -> dict[str, Any]:
 
 def _status(online: bool, detail: str = "") -> dict[str, Any]:
     return {"online": bool(online), "status": "online" if online else "offline", "detail": detail}
+
+
+def _module_service(module: dict[str, Any], detail: str = "") -> dict[str, Any]:
+    status = str(module.get("status") or "")
+    online = status != "dep_missing"
+    return {
+        "id": module.get("id", ""),
+        "name": module.get("name", ""),
+        "online": online,
+        "status": status or ("online" if online else "offline"),
+        "runtime_status": "online" if online else "offline",
+        "availability_status": status or ("ready" if online else "dep_missing"),
+        "detail": detail or str(module.get("dep") or ""),
+        "dep": module.get("dep"),
+        "dep_ok": module.get("dep_ok"),
+        "experimental": module.get("experimental", False),
+    }
+
+
+def _frontend_service() -> dict[str, Any]:
+    dev_url = (os.environ.get("MEDIATOOLS_FRONTEND_DEV_URL") or "").rstrip("/")
+    dist_ready = (BASE_DIR / "frontend" / "dist" / "index.html").exists()
+    if dev_url:
+        mode = "dev"
+        mode_label = "开发"
+        online = True
+        detail = dev_url
+    elif dist_ready:
+        mode = "static"
+        mode_label = "内置"
+        online = True
+        detail = "frontend/dist"
+    else:
+        mode = "api_only"
+        mode_label = "API"
+        online = False
+        detail = "frontend dist missing"
+    return {
+        "id": "frontend",
+        "name": "前端",
+        "online": online,
+        "status": "ready" if online else "dep_missing",
+        "runtime_status": "online" if online else "offline",
+        "availability_status": "ready" if online else "dep_missing",
+        "mode": mode,
+        "mode_label": mode_label,
+        "detail": detail,
+        "dep": None,
+        "dep_ok": online,
+        "experimental": False,
+    }
 
 
 INTERNAL_INTERFACE_HINTS = (
@@ -98,11 +153,11 @@ def _external_network_totals() -> tuple[int, int, list[str]]:
 TASK_TYPE_LABELS = {
     "fetch": "媒体下载",
     "download": "媒体下载",
-    "transcode": "视频转码",
+    "transcode": "编码转码",
     "slice": "视频切片",
-    "decrypt": "音频解密",
-    "photoshop": "PS 工单",
-    "audit": "素材审核",
+    "decrypt": "音乐解密",
+    "photoshop": "Photoshop 自动化",
+    "audit": "审核流水线",
     "wechat": "朋友圈生成",
 }
 
@@ -175,6 +230,7 @@ class RuntimeMetricSampler:
             "services": self._service_statuses(),
             "tasks": self._task_progress(),
             "task_summary": self._task_summary(),
+            "log_mode": LOG_MODE,
         }
 
     def _network_rates(self, now: float) -> tuple[float, float]:
@@ -243,13 +299,34 @@ class RuntimeMetricSampler:
         ffmpeg_info = FFmpegAdapter().get_info()
         ytdlp_status = YtdlpAdapter().get_status()
         photoshop_status = PhotoshopAutomationAdapter().get_status()
+        auditor_status = get_auditor_status(workspace)
+        wechat_status = get_wechat_moments_status(workspace)
+        filebrowser_status = get_filebrowser_status()
+        umcli_ok = UmcliAdapter().is_available()
+        catalog = build_module_catalog(
+            auditor_ok=auditor_status.get("available", False),
+            ffmpeg_ok=ffmpeg_info.get("installed", False),
+            filebrowser_ok=filebrowser_status.get("running", False),
+            photoshop_ok=photoshop_status.get("available", False),
+            umcli_ok=umcli_ok,
+            wechat_ok=wechat_status.get("available", False),
+            ytdlp_ok=ytdlp_status.get("installed", False),
+        )
+        details = {
+            "fetcher": ytdlp_status.get("version", ""),
+            "encoder": ffmpeg_info.get("version", ""),
+            "decryptor": "um-cli" if umcli_ok else "um-cli missing",
+            "photoshop": photoshop_status.get("message") or photoshop_status.get("reason") or "",
+            "auditor": auditor_status.get("integration_mode", ""),
+            "wechat_moments": wechat_status.get("integration_mode", ""),
+            "filebrowser": filebrowser_status.get("message") or filebrowser_status.get("status") or "",
+        }
         services = [
-            {"id": "fetcher", "name": "媒体获取", **_status(ytdlp_status.get("installed", False), ytdlp_status.get("version", ""))},
-            {"id": "encoder", "name": "转码编码", **_status(ffmpeg_info.get("installed", False), ffmpeg_info.get("version", ""))},
-            {"id": "decryptor", "name": "音频解密", **_status(UmcliAdapter().is_available(), "um-cli")},
-            {"id": "photoshop", "name": "PS 工单", **_status(photoshop_status.get("available", False), photoshop_status.get("message", ""))},
-            {"id": "auditor", "name": "素材审核", **_status(get_auditor_status(workspace).get("available", False), "")},
-            {"id": "wechat", "name": "朋友圈生成", **_status(get_wechat_moments_status(workspace).get("available", False), "")},
+            _frontend_service(),
+            *[
+                _module_service(module, str(details.get(module.get("id", ""), "")))
+                for module in catalog["modules"]
+            ],
         ]
         self._service_cache = (now, services)
         return services

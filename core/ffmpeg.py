@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import platform
 import re
+import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -17,20 +18,33 @@ def _get_bin_dir() -> Path:
 
 class FFmpegManager:
     def __init__(self, bin_dir: Path | None = None):
+        self.allow_path_fallback = bin_dir is None
         self.bin_dir = Path(bin_dir) if bin_dir is not None else _get_bin_dir()
         suffix = ".exe" if platform.system() == "Windows" else ""
         self.ffmpeg_bin = self.bin_dir / f"ffmpeg{suffix}"
         self.ffprobe_bin = self.bin_dir / f"ffprobe{suffix}"
 
+    def _ffmpeg_path(self) -> Path | None:
+        if self.ffmpeg_bin.exists():
+            return self.ffmpeg_bin
+        resolved = shutil.which("ffmpeg") if self.allow_path_fallback else None
+        return Path(resolved) if resolved else None
+
+    def _ffprobe_path(self) -> Path | None:
+        if self.ffprobe_bin.exists():
+            return self.ffprobe_bin
+        resolved = shutil.which("ffprobe") if self.allow_path_fallback else None
+        return Path(resolved) if resolved else None
+
     def is_available(self) -> bool:
-        return self.ffmpeg_bin.exists() and self.ffprobe_bin.exists()
+        return self._ffmpeg_path() is not None and self._ffprobe_path() is not None
 
     def get_version(self) -> str:
         if not self.is_available():
             return "not installed"
         try:
             result = subprocess.run(
-                [str(self.ffmpeg_bin), "-version"],
+                [self.get_ffmpeg_path(), "-version"],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -44,13 +58,19 @@ class FFmpegManager:
             return "unknown"
 
     def get_ffmpeg_location(self) -> str:
-        return str(self.bin_dir) if self.is_available() else ""
+        ffmpeg_path = self._ffmpeg_path()
+        ffprobe_path = self._ffprobe_path()
+        if not ffmpeg_path or not ffprobe_path:
+            return ""
+        return str(ffmpeg_path.parent) if ffmpeg_path.parent == ffprobe_path.parent else ""
 
     def get_ffmpeg_path(self) -> str:
-        return str(self.ffmpeg_bin) if self.ffmpeg_bin.exists() else ""
+        path = self._ffmpeg_path()
+        return str(path) if path else ""
 
     def get_ffprobe_path(self) -> str:
-        return str(self.ffprobe_bin) if self.ffprobe_bin.exists() else ""
+        path = self._ffprobe_path()
+        return str(path) if path else ""
 
     def get_info(self) -> dict:
         if not self.is_available():
@@ -58,10 +78,10 @@ class FFmpegManager:
         return {
             "installed": True,
             "version": self.get_version(),
-            "ffmpeg_path": str(self.ffmpeg_bin),
-            "ffprobe_path": str(self.ffprobe_bin),
-            "ffmpeg_size_mb": round(self.ffmpeg_bin.stat().st_size / (1024 * 1024), 2),
-            "ffprobe_size_mb": round(self.ffprobe_bin.stat().st_size / (1024 * 1024), 2),
+            "ffmpeg_path": self.get_ffmpeg_path(),
+            "ffprobe_path": self.get_ffprobe_path(),
+            "ffmpeg_size_mb": round(Path(self.get_ffmpeg_path()).stat().st_size / (1024 * 1024), 2),
+            "ffprobe_size_mb": round(Path(self.get_ffprobe_path()).stat().st_size / (1024 * 1024), 2),
         }
 
     def run(self, args: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -74,7 +94,7 @@ class FFmpegManager:
             "errors": "replace",
         }
         defaults.update(kwargs)
-        return subprocess.run([str(self.ffmpeg_bin)] + args, **defaults)
+        return subprocess.run([self.get_ffmpeg_path()] + args, **defaults)
 
     def get_duration(self, input_path: str) -> float | None:
         if not self.is_available():
@@ -82,7 +102,7 @@ class FFmpegManager:
         try:
             result = subprocess.run(
                 [
-                    str(self.ffprobe_bin),
+                    self.get_ffprobe_path(),
                     "-v",
                     "error",
                     "-show_entries",
@@ -132,7 +152,7 @@ class FFmpegManager:
             duration = self.get_duration(input_path)
 
         process = subprocess.Popen(
-            [str(self.ffmpeg_bin)] + args,
+            [self.get_ffmpeg_path()] + args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             **defaults,
@@ -171,7 +191,7 @@ class FFmpegManager:
             process.wait()
 
         return subprocess.CompletedProcess(
-            args=[str(self.ffmpeg_bin)] + args,
+            args=[self.get_ffmpeg_path()] + args,
             returncode=-1 if cancelled else process.returncode,
             stdout=stdout_output,
             stderr="".join(stderr_output),

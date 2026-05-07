@@ -51,6 +51,7 @@ def configure_application_routes(
     from backend.api.routes.files import create_router as create_files_router
     from backend.api.routes.log import router as log_router
     from backend.api.routes.media import create_router as create_media_router
+    from backend.api.routes.notification import router as notification_router
     from backend.api.routes.path_picker import router as path_picker_router
     from backend.api.routes.photoshop import create_router as create_photoshop_router
     from backend.api.routes.system import create_router as create_system_router
@@ -133,3 +134,4 @@ def configure_application_routes(
 
     install_log_buffer()
     app.include_router(log_router)
+    app.include_router(notification_router)

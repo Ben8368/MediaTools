@@ -68,6 +68,10 @@ FILEBROWSER_BASE_URL = os.getenv("FILEBROWSER_BASE_URL", "http://127.0.0.1:30010
 FILEBROWSER_BINARY_RAW = os.getenv("FILEBROWSER_BINARY", str(BIN_DIR / "filebrowser.exe"))
 FILEBROWSER_DB_PATH_RAW = os.getenv("FILEBROWSER_DB_PATH", str(BASE_DIR / "runtime" / "filebrowser.db"))
 
+# ── 日志配置 ───────────────────────────────────────────────────────────
+LOG_MODE = os.getenv("LOG_MODE", "production")  # production/development
+LOG_LEVEL = "DEBUG" if LOG_MODE == "development" else "NOTICE"
+
 # ── GUI 服务配置 ───────────────────────────────────────────────────────
 GUI_SERVER_NAME = os.getenv("GUI_SERVER_NAME", "127.0.0.1")
 GUI_SERVER_PORT = int(os.getenv("GUI_SERVER_PORT", "7860"))

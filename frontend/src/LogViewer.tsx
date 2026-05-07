@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { clearLogs, fetchLogMetadata, fetchLogs } from '@/api'
+import { clearLogs, fetchLogMetadata, fetchLogs, getSystemMetrics, getUnreadNotificationCount } from '@/api'
 
 type LogEntry = {
   level: string
@@ -22,17 +22,19 @@ type LogResponse = {
 
 const LEVEL_LABELS: Record<string, string> = {
   DEBUG: 'Debug',
-  INFO: '通知',
+  INFO: '信息',
+  NOTICE: '通知',
   WARNING: '警告',
   ERROR: '错误',
   CRITICAL: '严重',
 }
 
-const FIXED_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+const PRODUCTION_LEVELS = ['NOTICE', 'WARNING', 'ERROR', 'CRITICAL']
+const DEVELOPMENT_LEVELS = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL']
 
 export function LogViewer() {
   const [logs, setLogs] = useState<LogResponse>({ total: 0, items: [], page: 1, page_size: 50 })
-  const [level, setLevel] = useState('')
+  const [level, setLevel] = useState('NOTICE')
   const [module, setModule] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
@@ -40,6 +42,10 @@ export function LogViewer() {
   const [modules, setModules] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [logMode, setLogMode] = useState<'production' | 'development'>('production')
+
+  const availableLevels = logMode === 'development' ? DEVELOPMENT_LEVELS : PRODUCTION_LEVELS
 
   const totalPages = Math.max(Math.ceil((logs.total || 0) / pageSize), 1)
 
@@ -62,6 +68,15 @@ export function LogViewer() {
     }
   }, [level, module, page, pageSize])
 
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const data = await getUnreadNotificationCount()
+      setUnreadCount(data?.unread_count ?? 0)
+    } catch {
+      setUnreadCount(0)
+    }
+  }, [])
+
   const loadMetadata = useCallback(async () => {
     try {
       const data = await fetchLogMetadata()
@@ -72,11 +87,32 @@ export function LogViewer() {
   }, [])
 
   useEffect(() => {
+    async function loadMetricsAndLogs() {
+      try {
+        const metrics = await getSystemMetrics()
+        const mode = metrics?.log_mode === 'development' ? 'development' : 'production'
+        setLogMode(mode)
+        // 根据模式设置默认等级
+        if (mode === 'production') {
+          setLevel('NOTICE')
+        }
+      } catch {
+        setLogMode('production')
+      }
+    }
+    void loadMetricsAndLogs()
+  }, [])
+
+  useEffect(() => {
     void loadLogs()
     void loadMetadata()
-    const timer = window.setInterval(() => void loadLogs(), 3000)
+    void loadUnreadCount()
+    const timer = window.setInterval(() => {
+      void loadLogs()
+      void loadUnreadCount()
+    }, 3000)
     return () => window.clearInterval(timer)
-  }, [loadLogs, loadMetadata])
+  }, [loadLogs, loadMetadata, loadUnreadCount])
 
   const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages])
 
@@ -119,8 +155,7 @@ export function LogViewer() {
           <label className="lv-filter">
             <span>等级</span>
             <select value={level} onChange={(event) => changeLevel(event.target.value)}>
-              <option value="">全部</option>
-              {FIXED_LEVELS.map((item) => <option key={item} value={item}>{LEVEL_LABELS[item]}</option>)}
+              {availableLevels.map((item) => <option key={item} value={item}>{LEVEL_LABELS[item]}</option>)}
             </select>
           </label>
           <label className="lv-filter">

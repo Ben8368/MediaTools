@@ -102,6 +102,17 @@
   font-size: var(--app-control-font-size);
 }
 
+select option {
+  background: #17191f;
+  color: #f8fafc;
+}
+
+select option:checked,
+select option:hover {
+  background: #2563eb;
+  color: #fff;
+}
+
 .mt-field textarea {
   min-height: 120px;
   padding: 8px 10px;

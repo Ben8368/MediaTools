@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -30,8 +28,4 @@ async def get_log_modules():
 async def clear_logs():
     """Clear all buffered backend log records."""
     get_log_buffer().clear()
-    logging.getLogger("api.logs").info(
-        "Log buffer cleared",
-        extra={"user": "local", "event": "清空日志缓冲区"},
-    )
     return JSONResponse({"ok": True})
