@@ -10,6 +10,7 @@ MediaTools Web 服务入口
 import argparse
 import asyncio
 import ipaddress
+import signal
 import socket
 import sys
 from pathlib import Path
@@ -87,7 +88,7 @@ def main():
         reload_dirs=[str(root_dir)] if args.reload else None,
         access_log=False,
         server_header=False,
-        timeout_graceful_shutdown=3,
+        timeout_graceful_shutdown=5,
     )
 
     server = ReuseAddrUvicornServer(config)

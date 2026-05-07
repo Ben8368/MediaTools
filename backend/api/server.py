@@ -251,9 +251,9 @@ async def shutdown_server(request: Request):
 
     def _delayed_shutdown():
         time.sleep(0.5)
-        # Use os._exit(0) to force immediate exit
-        # This ensures the process terminates and releases the port
-        os._exit(0)
+        # Close all connections and exit gracefully
+        import signal
+        os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server shutting down"})
