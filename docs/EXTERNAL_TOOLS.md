@@ -105,7 +105,8 @@ CAPCUT_MATE_BASE_URL=http://localhost:30000
 
 维护位置：
 
-- `services/filebrowser_runtime.py`
+- `backend/services/runtime/filebrowser.py`
+- `backend/api/routes/filebrowser.py`
 - `modules/filebrowser/`
 - `vendor/filebrowser/`
 
@@ -121,7 +122,7 @@ CAPCUT_MATE_BASE_URL=http://localhost:30000
 
 - 强依赖本机软件安装和权限。
 - 文档见 `docs/adobe/`。
-- 当前实现以 `modules/adobe/`、`services/api_adobe_routes.py`、`services/api_photoshop_routes.py` 为准。
+- 当前实现以 `modules/adobe/`、`backend/api/routes/adobe.py`、`backend/api/routes/photoshop.py`、`backend/services/photoshop.py`、`backend/services/photoshop_state.py` 为准。
 
 ## 排查清单
 

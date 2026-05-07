@@ -52,7 +52,7 @@ MediaTools/
 │   │   ├── setup.py         # 路由配置
 │   │   ├── runtime.py       # 运行时管理
 │   │   ├── models.py        # 数据模型
-│   │   └── routes/          # API 路由（15个）
+│   │       └── routes/          # API 路由（16个）
 │   │       ├── media.py
 │   │       ├── workspace.py
 │   │       ├── workbench.py

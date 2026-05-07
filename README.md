@@ -1,5 +1,7 @@
 # MediaTools
 
+> **[English version](./README.md.en)** — 中文版本见本文档。
+
 MediaTools 是一个面向内容创作和本地素材处理的 Web 工作台。它把视频下载、字幕处理、AI 分析、FFmpeg 转码/切片、音乐解密、素材管理、文件管理、Adobe 自动化和执行型 AI 助手整合到同一个项目里。
 
 当前主入口是：
@@ -173,16 +175,20 @@ MediaTools/
 
 ## 文档入口
 
-- [工作流说明](./WORKFLOW.md)
-- [当前架构](./ARCHITECTURE.md)
 - [文档索引](./docs/README.md)
-- [API 概览](./docs/API_OVERVIEW.md)
-- [前端结构](./docs/FRONTEND_OVERVIEW.md)
-- [目录结构](./docs/DIRECTORY_STRUCTURE.md)
-- [外部工具管理](./docs/EXTERNAL_TOOLS.md)
-- [任务中心](./docs/TASK_QUEUE.md)
-- [补丁系统](./docs/PATCH_SYSTEM.md)
-- [vendor 组织规范](./docs/VENDOR_ORGANIZATION.md)
+- [工作流说明](./WORKFLOW.md) | [English](./WORKFLOW.md.en)
+- [当前架构](./ARCHITECTURE.md) | [English](./ARCHITECTURE.md.en)
+- [变更记录](./CHANGELOG.md) | [English](./CHANGELOG.md.en)
+- [API 概览](./docs/API_OVERVIEW.md) | [English](./docs/API_OVERVIEW.md.en)
+- [前端结构](./docs/FRONTEND_OVERVIEW.md) | [English](./docs/FRONTEND_OVERVIEW.md.en)
+- [目录结构](./docs/DIRECTORY_STRUCTURE.md) | [English](./docs/DIRECTORY_STRUCTURE.md.en)
+- [外部工具管理](./docs/EXTERNAL_TOOLS.md) | [English](./docs/EXTERNAL_TOOLS.md.en)
+- [任务中心](./docs/TASK_QUEUE.md) | [English](./docs/TASK_QUEUE.md.en)
+- [补丁系统](./docs/PATCH_SYSTEM.md) | [English](./docs/PATCH_SYSTEM.md.en)
+- [vendor 组织规范](./docs/VENDOR_ORGANIZATION.md) | [English](./docs/VENDOR_ORGANIZATION.md.en)
+- [模块依赖](./docs/MODULE_DEPENDENCIES.md) | [English](./docs/MODULE_DEPENDENCIES.md.en)
+- [命名规范](./docs/NAMING_CONVENTIONS.md) | [English](./docs/NAMING_CONVENTIONS.md.en)
+- [工具路线](./docs/TOOL_FACTIONS.md) | [English](./docs/TOOL_FACTIONS.md.en)
 
 ## 开发
 

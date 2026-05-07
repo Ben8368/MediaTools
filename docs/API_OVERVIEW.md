@@ -11,28 +11,29 @@ http://127.0.0.1:7860/docs
 ## 服务入口
 
 - `app.py` 启动 uvicorn。
-- `services/api_server.py` 创建 FastAPI 应用。
-- `services/api_server_setup.py` 注册路由。
+- `backend/api/server.py` 创建 FastAPI 应用。
+- `backend/api/setup.py` 注册路由。
 
 ## 路由分组
 
 | 分组 | 路径前缀 | 文件 |
 |---|---|---|
-| 系统状态 | `/api/system`, `/api/modules` | `services/api_system_routes.py` |
-| 媒体任务 | `/api/fetcher`, `/api/encoder`, `/api/decryptor` | `services/api_media_routes.py` |
-| 工作区 | `/api/workspace` | `services/api_workspace_routes.py` |
-| 工作台 | `/api/workbench` | `services/api_workbench_routes.py` |
-| 素材 | `/api/assets` | `services/api_assets_routes.py` |
-| 文件操作 | `/api/files` | `services/api_files_routes.py` |
-| filebrowser | `/api/filebrowser` | `services/api_filebrowser_routes.py` |
-| 任务中心 | `/api/tasks` | `services/api_task_center.py` |
-| 日志 | `/api/logs` | `services/api_log_routes.py` |
-| 路径选择 | `/api/path-picker` | `services/api_path_picker_routes.py` |
-| Photoshop | `/api/photoshop` | `services/api_photoshop_routes.py` |
-| Adobe/AE | `/api/adobe` | `services/api_adobe_routes.py` |
-| auditor | `/api/auditor` | `services/api_auditor_routes.py` |
-| 微信朋友圈图 | `/api/wechat_moments` | `services/api_wechat_routes.py` |
-| AI 助手 | 见 agent routes | `services/agent_direct_routes.py` |
+| 系统状态 | `/api/system`, `/api/modules` | `backend/api/routes/system.py` |
+| 媒体任务 | `/api/media` | `backend/api/routes/media.py` |
+| 工作区 | `/api/workspace` | `backend/api/routes/workspace.py` |
+| 工作台 | `/api/workbench` | `backend/api/routes/workbench.py` |
+| 素材 | `/api/assets` | `backend/api/routes/assets.py` |
+| 文件操作 | `/api/files` | `backend/api/routes/files.py` |
+| filebrowser | `/api/filebrowser` | `backend/api/routes/filebrowser.py` |
+| 任务中心 | `/api/tasks` | `backend/api/routes/task_center.py` |
+| 日志 | `/api/logs` | `backend/api/routes/log.py` |
+| 路径选择 | `/api/path-picker` | `backend/api/routes/path_picker.py` |
+| Photoshop | `/api/photoshop` | `backend/api/routes/photoshop.py` |
+| Adobe/AE | `/api/adobe` | `backend/api/routes/adobe.py` |
+| auditor | `/api/auditor` | `backend/api/routes/auditor.py` |
+| 微信朋友圈图 | `/api/wechat_moments` | `backend/api/routes/wechat.py` |
+| 浏览器控制 | `/api/browser` | `backend/api/routes/browser.py` |
+| AI 助手 | 见 agent routes | `backend/agent/routes.py` |
 
 ## 任务型 API
 
@@ -55,7 +56,7 @@ http://127.0.0.1:7860/docs
 
 ## 维护建议
 
-- 新 API 优先加入对应 `api_*_routes.py`。
-- 请求/响应模型集中在 `services/api_models.py` 或同域模块。
+- 新 API 优先加入对应 `backend/api/routes/` 下的路由文件。
+- 请求/响应模型集中在 `backend/api/models.py` 或同域模块。
 - 路由不要直接写复杂业务逻辑。
 - 文件路径相关 API 必须覆盖安全测试。

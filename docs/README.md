@@ -40,6 +40,29 @@
 | [adobe/com_vs_cep_technical_proof.md](./adobe/com_vs_cep_technical_proof.md) | COM 与 CEP 技术可行性 |
 | [adobe/atom_plugin_capabilities.md](./adobe/atom_plugin_capabilities.md) | Atom 插件能力说明 |
 
+## 英文文档
+
+所有文档均有对应的英文翻译版本（`.md.en` 后缀）。英文文档与中文原文一一对应：
+
+| 中文原文 | 英文版本 |
+|---|---|
+| `README.md` | [README.md.en](../README.md.en) |
+| `ARCHITECTURE.md` | [ARCHITECTURE.md.en](../ARCHITECTURE.md.en) |
+| `WORKFLOW.md` | [WORKFLOW.md.en](../WORKFLOW.md.en) |
+| `CHANGELOG.md` | [CHANGELOG.md.en](../CHANGELOG.md.en) |
+| [docs/API_OVERVIEW.md](./API_OVERVIEW.md) | [API_OVERVIEW.md.en](./API_OVERVIEW.md.en) |
+| [docs/DIRECTORY_STRUCTURE.md](./DIRECTORY_STRUCTURE.md) | [DIRECTORY_STRUCTURE.md.en](./DIRECTORY_STRUCTURE.md.en) |
+| [docs/FRONTEND_OVERVIEW.md](./FRONTEND_OVERVIEW.md) | [FRONTEND_OVERVIEW.md.en](./FRONTEND_OVERVIEW.md.en) |
+| [docs/MODULE_DEPENDENCIES.md](./MODULE_DEPENDENCIES.md) | [MODULE_DEPENDENCIES.md.en](./MODULE_DEPENDENCIES.md.en) |
+| [docs/NAMING_CONVENTIONS.md](./NAMING_CONVENTIONS.md) | [NAMING_CONVENTIONS.md.en](./NAMING_CONVENTIONS.md.en) |
+| [docs/EXTERNAL_TOOLS.md](./EXTERNAL_TOOLS.md) | [EXTERNAL_TOOLS.md.en](./EXTERNAL_TOOLS.md.en) |
+| [docs/VENDOR_ORGANIZATION.md](./VENDOR_ORGANIZATION.md) | [VENDOR_ORGANIZATION.md.en](./VENDOR_ORGANIZATION.md.en) |
+| [docs/PATCH_SYSTEM.md](./PATCH_SYSTEM.md) | [PATCH_SYSTEM.md.en](./PATCH_SYSTEM.md.en) |
+| [docs/TASK_QUEUE.md](./TASK_QUEUE.md) | [TASK_QUEUE.md.en](./TASK_QUEUE.md.en) |
+| [docs/TOOL_FACTIONS.md](./TOOL_FACTIONS.md) | [TOOL_FACTIONS.md.en](./TOOL_FACTIONS.md.en) |
+
+以中文文档为准；英文版是翻译，若有歧义以中文为准。
+
 ## 第三方文档
 
 `vendor/` 下还有大量 README、CHANGELOG、LICENSE 和上游文档。它们属于第三方项目，不纳入 MediaTools 自有文档索引。需要排查某个外部工具时，再进入对应目录阅读。

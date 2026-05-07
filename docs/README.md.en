@@ -1,0 +1,66 @@
+# MediaTools Documentation Index
+
+Recommended reading order:
+
+1. [Root README](../README.md.en): Purpose, installation, launching, and commands
+2. [WORKFLOW.md.en](../WORKFLOW.md.en): Currently recommended workflows
+3. [ARCHITECTURE.md.en](../ARCHITECTURE.md.en): Current code structure and maintenance boundaries
+4. This document: Specialized document index and document status
+
+## Current Maintained Documentation
+
+These documents should be kept in sync with the current implementation; update these first when making changes:
+
+| Document | Content |
+|---|---|
+| [API_OVERVIEW.md.en](./API_OVERVIEW.md.en) | FastAPI route groups and maintenance boundaries |
+| [DIRECTORY_STRUCTURE.md.en](./DIRECTORY_STRUCTURE.md.en) | Directory structure and responsibility boundaries |
+| [FRONTEND_OVERVIEW.md.en](./FRONTEND_OVERVIEW.md.en) | React frontend application structure |
+| [MODULE_DEPENDENCIES.md.en](./MODULE_DEPENDENCIES.md.en) | Module layering and dependency relationships |
+| [NAMING_CONVENTIONS.md.en](./NAMING_CONVENTIONS.md.en) | Naming conventions |
+| [EXTERNAL_TOOLS.md.en](./EXTERNAL_TOOLS.md.en) | yt-dlp, FFmpeg, um-cli, and other external tools |
+| [VENDOR_ORGANIZATION.md.en](./VENDOR_ORGANIZATION.md.en) | `vendor/` directory organization |
+| [PATCH_SYSTEM.md.en](./PATCH_SYSTEM.md.en) | External tool patch system |
+| [TASK_QUEUE.md.en](./TASK_QUEUE.md.en) | Built-in task center and long-running task mechanism |
+
+## Design and Specialized Documents
+
+These documents record design background, comparison analysis, or phase proposals. Cross-reference with current code to verify implementation status:
+
+| Document | Status |
+|---|---|
+| [TOOL_FACTIONS.md.en](./TOOL_FACTIONS.md.en) | Adobe/剪映 and other tool route comparison materials |
+
+## Adobe Topics
+
+| Document | Content |
+|---|---|
+| [adobe/ATOM_INTEGRATION.md](./adobe/ATOM_INTEGRATION.md) | Atom plugin integration |
+| [adobe/ae_capability_comparison.md](./adobe/ae_capability_comparison.md) | After Effects capability comparison |
+| [adobe/com_vs_cep_technical_proof.md](./adobe/com_vs_cep_technical_proof.md) | COM vs CEP technical feasibility |
+| [adobe/atom_plugin_capabilities.md](./adobe/atom_plugin_capabilities.md) | Atom plugin capabilities |
+
+## Third-Party Documentation
+
+Additional README, CHANGELOG, LICENSE, and upstream documentation exist under `vendor/`. These belong to third-party projects and are not included in the MediaTools document index. Check the corresponding directory when investigating an external tool.
+
+Common third-party directories:
+
+- `vendor/yt-dlp/`
+- `vendor/filebrowser/`
+- `vendor/capcut-mate/`
+- `vendor/adobe/`
+- `vendor/auditor/`
+
+## English Translations
+
+All English versions of the above documents use the `.md.en` extension (e.g., `API_OVERVIEW.md.en`). They are translations of the Chinese originals. If there is a discrepancy, the Chinese document is authoritative.
+
+## Documentation Maintenance Rules
+
+- Quick user-facing instructions go in the root README.
+- Operational procedures go in `WORKFLOW.md`.
+- Code structure, boundaries, and data flows go in `ARCHITECTURE.md`.
+- Specialized proposals go in `docs/` with status annotations.
+- Third-party reference materials stay in `vendor/`; do not mix into the project's main documentation.
+- If implementation conflicts with documentation, fix the documentation entry first, then decide whether to archive the old specialized document.
