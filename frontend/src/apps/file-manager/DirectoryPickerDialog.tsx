@@ -14,7 +14,7 @@ import {
   SortIcon,
 } from '@/apps/file-manager/controls'
 import type { DirectoryPickerDialogProps, DiskInfo } from '@/apps/file-manager/types'
-import { entryType, formatDate, formatSize, locationLabel, parentPath, resolveInitialPath } from '@/apps/file-manager/utils'
+import { displayDiskName, entryType, formatDate, formatSize, isPathOnDisk, locationLabel, parentPath, resolveInitialPath } from '@/apps/file-manager/utils'
 import { useFilebrowserNavigator } from '@/apps/file-manager/useFilebrowserNavigator'
 
 export function DirectoryPickerDialog({
@@ -41,6 +41,7 @@ export function DirectoryPickerDialog({
   } = useFilebrowserNavigator()
   const [disks, setDisks] = useState<DiskInfo[]>([])
   const [selectedPath, setSelectedPath] = useState('')
+  const [activeDiskPath, setActiveDiskPath] = useState('')
   const [searchText, setSearchText] = useState('')
 
   const canPickDirectory = mode === 'directory' || mode === 'any'
@@ -59,6 +60,7 @@ export function DirectoryPickerDialog({
         const workspacePath = workspace?.workspace?.project_root || workspace?.project_root || ''
         const initialPath = resolveInitialPath(value, workspacePath, nextDisks)
         setDisks(nextDisks)
+        setActiveDiskPath(nextDisks.find((disk: DiskInfo) => isPathOnDisk(initialPath, disk.path))?.path || '')
         setSearchText('')
         resetHistory()
         setSelectedPath(canPickDirectory ? initialPath : '')
@@ -93,6 +95,11 @@ export function DirectoryPickerDialog({
   const currentParent = parentPath(currentPath)
   const confirmedPath = selectedPath || (canPickDirectory ? currentPath : '')
   const searchPlaceholder = mode === 'directory' ? '搜索文件夹' : '搜索文件或文件夹'
+
+  useEffect(() => {
+    if (!currentPath) return
+    setActiveDiskPath((current) => disks.find((disk) => isPathOnDisk(currentPath, disk.path))?.path || current)
+  }, [currentPath, disks])
 
   if (!open) return null
 
@@ -139,11 +146,14 @@ export function DirectoryPickerDialog({
               <button
                 key={disk.path}
                 type="button"
-                className={`fm-picker__drive ${currentPath.toLowerCase().startsWith(disk.path.toLowerCase()) ? 'fm-picker__drive--active' : ''}`}
-                onClick={() => void navigate(disk.path)}
+                className={`fm-picker__drive ${activeDiskPath === disk.path || isPathOnDisk(currentPath, disk.path) ? 'fm-picker__drive--active' : ''}`}
+                onClick={() => {
+                  setActiveDiskPath(disk.path)
+                  void navigate(disk.path)
+                }}
               >
                 <DriveIcon />
-                <span>{disk.name}</span>
+                <span>{displayDiskName(disk.name)}</span>
                 <small>{formatSize(disk.free)}</small>
               </button>
             ))}
@@ -223,7 +233,7 @@ export function DirectoryPickerDialog({
                 onClose()
               }}
             >
-              {confirmLabel}
+              确认
             </button>
           </div>
         </div>

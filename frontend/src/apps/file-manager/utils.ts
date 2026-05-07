@@ -56,7 +56,14 @@ export function displayDiskName(name: string): string {
   return name.replace(/^(本地磁盘|SMB 磁盘|网络磁盘)\s*/i, '磁盘 ')
 }
 
+export function isPathOnDisk(path: string, diskPath: string): boolean {
+  const currentDrive = path.match(/^([A-Za-z]:)/)?.[1]?.toLowerCase()
+  const diskDrive = diskPath.match(/^([A-Za-z]:)/)?.[1]?.toLowerCase()
+  if (currentDrive && diskDrive) return currentDrive === diskDrive
+  return path.toLowerCase().startsWith(diskPath.toLowerCase())
+}
+
 export function locationLabel(path: string, disks: DiskInfo[]): string {
-  const disk = disks.find((item) => path.toLowerCase().startsWith(item.path.toLowerCase()))
-  return disk ? disk.name.replace('本地磁盘 ', '') : '当前目录'
+  const disk = disks.find((item) => isPathOnDisk(path, item.path))
+  return disk ? disk.name.replace(/^(本地磁盘|SMB 磁盘|网络磁盘)\s*/i, '') : '当前目录'
 }

@@ -365,6 +365,21 @@
   border-color: rgba(142,183,237,.18);
   background: rgba(4,10,18,.70);
   color: #f6fbff;
+  color-scheme: dark;
+}
+
+.ps-app .mt-field select option,
+.ps-task-fields select option,
+.ps-task-preview select option {
+  background-color: #0b1624;
+  color: #f6fbff;
+}
+
+.ps-app .mt-field select option:checked,
+.ps-task-fields select option:checked,
+.ps-task-preview select option:checked {
+  background-color: #0a73ff;
+  color: #fff;
 }
 
 .ps-app .mt-field input::placeholder,
@@ -698,12 +713,15 @@
 
 .ps-task {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  border: 1px solid rgba(142,183,237,.14);
-  border-radius: 14px;
-  background: rgba(5,13,23,.52);
-  padding: 12px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 20px;
+  border: 1px solid rgba(142,183,237,.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(7,18,31,.78), rgba(4,11,19,.62)),
+    rgba(5,13,23,.52);
+  padding: 18px 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
 }
 
 .ps-task--selected {
@@ -714,14 +732,17 @@
 .ps-task-check {
   display: grid;
   justify-items: center;
-  gap: 6px;
+  align-content: start;
+  gap: 72px;
+  padding-top: 2px;
   color: rgba(221,235,255,.58);
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .ps-task-check input {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   accent-color: #0a73ff;
 }
 
@@ -729,31 +750,35 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 18px;
+  margin-bottom: 16px;
 }
 
 .ps-task-title strong {
   display: block;
   color: #f7fbff;
-  font-size: 14px;
+  font-size: 20px;
+  line-height: 1.18;
+  letter-spacing: -.02em;
 }
 
 .ps-task-title small {
   display: block;
-  margin-top: 3px;
-  font-size: 12px;
+  margin-top: 7px;
+  color: rgba(221,235,255,.68);
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .ps-badge {
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgba(255,159,10,.12);
+  background: rgba(255,159,10,.14);
   color: #ffbd5a;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 8px 13px;
+  font-size: 13px;
   font-style: normal;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .ps-badge--ready {
@@ -763,22 +788,34 @@
 
 .ps-task-preview {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  gap: 8px;
+  grid-template-columns: minmax(250px, 1.08fr) minmax(280px, .98fr) minmax(220px, .82fr) 124px;
+  gap: 12px;
   align-items: stretch;
 }
 
 .ps-task-preview label {
   min-width: 0;
   display: grid;
-  gap: 3px;
-  border: 1px solid rgba(142,183,237,.12);
-  border-radius: 10px;
-  background: rgba(255,255,255,.035);
-  padding: 7px 9px;
+  align-content: start;
+  gap: 9px;
+  min-height: 96px;
+  border: 1px solid rgba(142,183,237,.13);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.026));
+  padding: 10px 12px 11px;
   overflow: hidden;
   color: rgba(238,246,255,.88);
   font-size: 12px;
+}
+
+.ps-task-preview > .mt-btn {
+  align-self: stretch;
+  min-height: 96px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .ps-ticket-top {
@@ -822,7 +859,9 @@
 
 .ps-task-preview b {
   color: rgba(221,235,255,.48);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .02em;
 }
 
 .ps-task-preview input,
@@ -836,6 +875,8 @@
   padding: 0;
   color: rgba(238,246,255,.94);
   font: inherit;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .ps-task-preview select {
@@ -843,10 +884,10 @@
 }
 
 .ps-task-preview textarea {
-  min-height: 34px;
+  min-height: 54px;
   max-height: 96px;
   resize: vertical;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .ps-task-preview input::placeholder,
@@ -915,7 +956,21 @@
 
   .ps-metrics,
   .ps-task-preview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .ps-task {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .ps-task-title {
+    flex-direction: column;
+  }
+
+  .ps-task-preview > .mt-btn {
+    min-height: 48px;
   }
 
   .ps-result-grid,

@@ -185,7 +185,7 @@ describe('MediaTools workflow apps', () => {
   it('creates Photoshop tickets without implicit languages and allows inline task edits', async () => {
     apiMocks.fetchSystemFonts.mockResolvedValueOnce({
       ok: true,
-      items: [{ name: 'NotoSans' }, { name: 'Inter' }],
+      items: [{ name: 'NotoSans' }, { name: 'NotoSans-SemiBold' }, { name: 'Arial Narrow Bold' }, { name: 'Inter' }],
     })
     apiMocks.scanPhotoshopTicket.mockResolvedValueOnce({
       ok: true,
@@ -220,16 +220,27 @@ describe('MediaTools workflow apps', () => {
     const replacement = await screen.findByLabelText('替换文本 1')
     const font = await screen.findByLabelText('目标字体 1')
     const output = screen.getByLabelText('输出名称 1')
+    fireEvent.focus(font)
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'Inter' })).toBeInTheDocument()
     })
+    expect(screen.getByText('Noto Sans')).toBeInTheDocument()
     fireEvent.change(replacement, { target: { value: 'New headline' } })
-    fireEvent.change(font, { target: { value: 'Inter' } })
+    fireEvent.change(font, { target: { value: 'Noto Sans Semi' } })
+    fireEvent.click(screen.getByRole('option', { name: 'NotoSans-SemiBold' }))
     fireEvent.change(output, { target: { value: 'custom.psd' } })
 
     expect(replacement).toHaveValue('New headline')
-    expect(font).toHaveValue('Inter')
+    expect(font).toHaveValue('Noto Sans / SemiBold')
     expect(output).toHaveValue('custom.psd')
+
+    fireEvent.focus(font)
+    fireEvent.change(font, { target: { value: 'Arial Narrow' } })
+    await waitFor(() => {
+      expect(screen.getByText('Arial Narrow')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('option', { name: 'Arial Narrow Bold' }))
+    expect(font).toHaveValue('Arial Narrow / Bold')
   })
 
   it('uses the Photoshop language cart as the requested output set', async () => {

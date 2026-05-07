@@ -23,6 +23,7 @@ import {
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
 import { AutomationTaskDialog } from '@/apps/mediatools/AutomationTaskDialog'
+import { FontPicker } from '@/apps/mediatools/FontPicker'
 import {
   automationTaskIndexes,
   isAutomationTaskExecutable,
@@ -253,15 +254,7 @@ export function PhotoshopApp() {
         </aside>
 
         <main className="ps-operation">
-        <section className="ps-hero">
-          <div>
-            <div className="ps-eyebrow">Adobe Automation</div>
-            <h2>Photoshop 自动化</h2>
-            <p>左侧按扫描工单、导入工单组织流程；右侧完成来源扫描、当前工单确认和执行。</p>
-          </div>
-        </section>
-
-        <div className="ps-metrics">
+        <div className={`ps-metrics ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
           <div className="ps-metric"><span>工单数量</span><strong>{tickets.length}</strong></div>
           <div className="ps-metric"><span>内容项</span><strong>{tasks.length}</strong></div>
           <div className="ps-metric"><span>可执行</span><strong>{executableIndexes.length}</strong></div>
@@ -304,8 +297,8 @@ export function PhotoshopApp() {
           <PrimaryButton onClick={scan}>扫描并生成工单</PrimaryButton>
         </section>
 
-        <div className="ps-workspace">
-          <section className={`ps-panel ps-ticket-panel ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
+        <div className={`ps-workspace ${activePanel === 'import' ? '' : 'ps-workspace--hidden'}`}>
+          <section className="ps-panel ps-ticket-panel">
             <div className="ps-ticket-head">
               <div>
                 <h3>导入工单</h3>
@@ -351,7 +344,7 @@ export function PhotoshopApp() {
             </div>
           </section>
 
-          <section className={`ps-panel ps-output-panel ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
+          <section className="ps-panel ps-output-panel">
             <div className="ps-output-cart">
               <div className="ps-output-cart-head">
                 <div>
@@ -433,21 +426,13 @@ export function PhotoshopApp() {
                             placeholder="待填写"
                           />
                         </label>
-                        <label>
-                          <b>字体</b>
-                          <select
-                            aria-label={`目标字体 ${index + 1}`}
-                            value={task.target_font || ''}
-                            onChange={(event) => updateTask(index, { target_font: event.target.value })}
-                          >
-                            <option value="">
-                              {task.source_font ? `沿用源字体：${task.source_font}` : '沿用源字体'}
-                            </option>
-                            {fontOptionsForTask(fonts, task).map((font) => (
-                              <option value={font} key={font}>{font}</option>
-                            ))}
-                          </select>
-                        </label>
+                        <FontPicker
+                          ariaLabel={`目标字体 ${index + 1}`}
+                          value={task.target_font || ''}
+                          sourceFont={task.source_font}
+                          fonts={fontOptionsForTask(fonts, task)}
+                          onChange={(font) => updateTask(index, { target_font: font })}
+                        />
                         <label>
                           <b>输出</b>
                           <input
@@ -467,7 +452,7 @@ export function PhotoshopApp() {
           </section>
         </div>
 
-        <section className="ps-panel ps-execute-panel">
+        <section className={`ps-panel ps-execute-panel ${activePanel === 'result' ? '' : 'ps-panel--hidden'}`}>
           <div className="ps-section-head">
             <div>
               <h3>执行与回执</h3>

@@ -347,7 +347,7 @@ export function DownloaderApp() {
         open={showDirectoryPicker}
         value={taskOutputDir}
         title="选择下载目录"
-        confirmLabel="用于下载"
+        confirmLabel="确认"
         onClose={() => setShowDirectoryPicker(false)}
         onPick={setTaskOutputDir}
       />

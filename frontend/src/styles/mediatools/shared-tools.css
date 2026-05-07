@@ -1096,9 +1096,20 @@
   border-radius: 9px;
   background: rgba(4,10,18,.72);
   color: #f4f8ff;
+  color-scheme: dark;
   font: inherit;
   font-size: 13px;
   padding: 9px 10px;
+}
+
+.automation-dialog-grid select option {
+  background-color: #0b1320;
+  color: #f4f8ff;
+}
+
+.automation-dialog-grid select option:checked {
+  background-color: #2563eb;
+  color: #fff;
 }
 
 .automation-dialog-grid textarea {
@@ -1110,6 +1121,289 @@
 .automation-dialog-grid textarea[readonly] {
   color: rgba(240,247,255,.68);
   background: rgba(255,255,255,.035);
+}
+
+.font-picker-field {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(142,183,237,.13);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.026));
+  padding: 10px 12px 11px;
+  color: rgba(238,246,255,.88);
+  font-size: 12px;
+}
+
+.automation-dialog-grid .font-picker-field {
+  gap: 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: rgba(230,238,255,.68);
+  font-weight: 700;
+}
+
+.font-picker-field b,
+.automation-dialog-grid .font-picker-field > b {
+  color: rgba(221,235,255,.50);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.automation-dialog-grid .font-picker-field > b {
+  color: rgba(230,238,255,.68);
+  font-size: 12px;
+}
+
+.font-picker {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  min-width: 0;
+  min-height: 54px;
+  border: 1px solid rgba(142,183,237,.20);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(77,171,255,.13), transparent 48%),
+    linear-gradient(135deg, rgba(9,20,34,.96), rgba(4,10,18,.82));
+  overflow: visible;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.font-picker:focus-within {
+  border-color: rgba(77,171,255,.58);
+  box-shadow: 0 0 0 3px rgba(77,171,255,.14);
+}
+
+.font-picker input {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  color: #f6fbff;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.font-picker--closed input {
+  color: transparent;
+  caret-color: transparent;
+}
+
+.font-picker--closed input::placeholder {
+  color: transparent;
+}
+
+.font-picker--open input {
+  color: #f6fbff;
+  caret-color: auto;
+}
+
+.font-picker-summary {
+  position: absolute;
+  z-index: 1;
+  inset: 8px 48px 8px 13px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.font-picker-summary span,
+.font-picker-summary strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-picker-summary span {
+  color: rgba(236,246,255,.92);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .01em;
+}
+
+.font-picker-summary strong {
+  color: rgba(141,190,255,.86);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.font-picker:not(.font-picker--selected) .font-picker-summary span {
+  color: rgba(221,235,255,.52);
+}
+
+.font-picker:not(.font-picker--selected) .font-picker-summary strong {
+  color: rgba(221,235,255,.38);
+}
+
+.font-picker input::placeholder {
+  color: rgba(221,235,255,.42);
+}
+
+.font-picker--closed input,
+.font-picker--closed input::placeholder {
+  color: transparent;
+}
+
+.font-picker > button {
+  position: relative;
+  z-index: 3;
+  border: 0;
+  border-left: 1px solid rgba(142,183,237,.14);
+  border-radius: 0 11px 11px 0;
+  background: rgba(255,255,255,.045);
+  color: rgba(230,238,255,.70);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.font-picker > button:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.font-picker-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  width: max(100%, min(390px, calc(100vw - 48px)));
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid rgba(142,183,237,.24);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0a1727 0%, #06101c 100%);
+  box-shadow: 0 22px 60px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.04);
+  padding: 6px;
+}
+
+.font-picker-group + .font-picker-group {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+
+.font-picker-family {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+  padding: 8px 10px 6px;
+}
+
+.font-picker-family strong,
+.font-picker-family small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-picker-family strong {
+  color: #7db7ff;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.font-picker-family small {
+  flex: 0 0 auto;
+  color: rgba(201,222,255,.44);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.font-picker-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(246,251,255,.90);
+  cursor: pointer;
+  padding: 0 10px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.font-picker-option:hover,
+.font-picker-option--active {
+  background: linear-gradient(90deg, rgba(42,140,255,.22), rgba(42,140,255,.10));
+  color: #fff;
+}
+
+.font-picker-option--active {
+  box-shadow: inset 3px 0 0 rgba(94,173,255,.82);
+}
+
+.font-picker-option span,
+.font-picker-option em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-picker-option span {
+  font-weight: 750;
+}
+
+.font-picker-option em {
+  color: rgba(246,251,255,.82);
+  font-style: normal;
+}
+
+.font-picker-empty {
+  color: rgba(230,238,255,.50);
+  padding: 10px 8px;
+  font-size: 12px;
+}
+
+.font-picker-field--purple .font-picker:focus-within {
+  border-color: rgba(148,119,255,.62);
+  box-shadow: 0 0 0 3px rgba(148,119,255,.16);
+}
+
+.font-picker-field--purple .font-picker {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(148,119,255,.16), transparent 48%),
+    linear-gradient(135deg, rgba(14,14,32,.96), rgba(6,8,18,.84));
+}
+
+.font-picker-field--purple .font-picker-family {
+  color: #b5a7ff;
+}
+
+.font-picker-field--purple .font-picker-summary strong,
+.font-picker-field--purple .font-picker-family strong {
+  color: #b5a7ff;
+}
+
+.font-picker-field--purple .font-picker-option:hover,
+.font-picker-field--purple .font-picker-option--active {
+  background: linear-gradient(90deg, rgba(148,119,255,.24), rgba(148,119,255,.10));
+}
+
+.font-picker-field--purple .font-picker-option--active {
+  box-shadow: inset 3px 0 0 rgba(181,167,255,.82);
 }
 
 .automation-dialog-actions {

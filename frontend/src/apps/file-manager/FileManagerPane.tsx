@@ -41,6 +41,7 @@ import {
   formatDate,
   formatSize,
   joinPath,
+  isPathOnDisk,
   locationLabel,
   parentPath,
   resolveInitialPath,
@@ -69,6 +70,7 @@ export function FileManagerPane() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [searchText, setSearchText] = useState('')
   const [activeSection, setActiveSection] = useState<'local' | 'trash'>('local')
+  const [activeDiskPath, setActiveDiskPath] = useState('')
   const [lastLocalPath, setLastLocalPath] = useState('')
   const [trashItems, setTrashItems] = useState<TrashEntry[]>([])
 
@@ -84,6 +86,7 @@ export function FileManagerPane() {
         const initialPath = resolveInitialPath('', workspacePath, nextDisks)
         setDisks(nextDisks)
         if (initialPath) {
+          setActiveDiskPath(nextDisks.find((disk: DiskInfo) => isPathOnDisk(initialPath, disk.path))?.path || '')
           const data = await navigate(initialPath)
           if (alive && data?.path) setLastLocalPath(data.path)
         }
@@ -102,8 +105,9 @@ export function FileManagerPane() {
     if (currentPath && currentPath !== TRASH_PATH) {
       setLastLocalPath(currentPath)
       setActiveSection('local')
+      setActiveDiskPath((current) => disks.find((disk) => isPathOnDisk(currentPath, disk.path))?.path || current)
     }
-  }, [currentPath])
+  }, [currentPath, disks])
 
   const trashEntries = useMemo<FileEntry[]>(() => trashItems.map((item) => ({
     name: item.name,
@@ -237,8 +241,11 @@ export function FileManagerPane() {
               {disks.map((disk) => (
                 <button
                   key={disk.path}
-                  className={`fm-disk ${currentPath.toLowerCase().startsWith(disk.path.toLowerCase()) ? 'fm-disk--active' : ''}`}
-                  onClick={() => void navigate(disk.path)}
+                  className={`fm-disk ${activeDiskPath === disk.path || isPathOnDisk(currentPath, disk.path) ? 'fm-disk--active' : ''}`}
+                  onClick={() => {
+                    setActiveDiskPath(disk.path)
+                    void navigate(disk.path)
+                  }}
                 >
                   <DriveIcon />
                   <span className="fm-disk-main">{displayDiskName(disk.name)}</span>

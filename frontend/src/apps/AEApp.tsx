@@ -261,15 +261,7 @@ export function AEApp() {
         </aside>
 
         <main className="ae-operation">
-        <section className="ae-hero">
-          <div>
-            <div className="ae-eyebrow">Adobe Automation</div>
-            <h2>After Effects 自动化</h2>
-            <p>左侧按扫描工单、导入工单组织流程；右侧完成来源扫描、当前工单确认和执行。</p>
-          </div>
-        </section>
-
-        <div className="ae-metrics">
+        <div className={`ae-metrics ${activePanel === 'import' ? '' : 'ae-panel--hidden'}`}>
           <div className="ae-metric"><span>工单数量</span><strong>{tickets.length}</strong></div>
           <div className="ae-metric"><span>内容项</span><strong>{tasks.length}</strong></div>
           <div className="ae-metric"><span>可执行</span><strong>{executableIndexes.length}</strong></div>
@@ -309,8 +301,8 @@ export function AEApp() {
           <PrimaryButton onClick={scan}>扫描并生成工单</PrimaryButton>
         </section>
 
-        <div className="ae-workspace">
-          <section className={`ae-panel ae-ticket-panel ${activePanel === 'import' ? '' : 'ae-panel--hidden'}`}>
+        <div className={`ae-workspace ${activePanel === 'import' ? '' : 'ae-workspace--hidden'}`}>
+          <section className="ae-panel ae-ticket-panel">
             <div className="ae-section-head">
               <div>
                 <h3>导入工单</h3>
@@ -402,7 +394,7 @@ export function AEApp() {
           </section>
         </div>
 
-        <div className="ae-tools">
+        <div className={`ae-tools ${activePanel === 'result' ? '' : 'ae-tools--hidden'}`}>
           <section className="ae-panel">
             <div className="ae-section-head">
               <div>
@@ -447,7 +439,7 @@ export function AEApp() {
           </section>
         </div>
 
-        <section className="ae-panel ae-execute-panel">
+        <section className={`ae-panel ae-execute-panel ${activePanel === 'result' ? '' : 'ae-panel--hidden'}`}>
           <div className="ae-section-head">
             <div>
               <h3>执行与回执</h3>

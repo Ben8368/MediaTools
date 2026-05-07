@@ -216,7 +216,7 @@ describe('FileManagerApp', () => {
     render(<DirectoryPickerDialog open value="" mode="directory" onClose={onClose} onPick={onPick} />)
 
     expect(await screen.findByText('当前目录')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '确定' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认' }))
 
     expect(onPick).toHaveBeenCalledWith('D:\\')
     expect(onClose).toHaveBeenCalled()
@@ -228,7 +228,7 @@ describe('FileManagerApp', () => {
 
     render(<DirectoryPickerDialog open value="" mode="file" onClose={onClose} onPick={onPick} />)
 
-    const confirmButton = await screen.findByRole('button', { name: '确定' })
+    const confirmButton = await screen.findByRole('button', { name: '确认' })
     expect(confirmButton).toBeDisabled()
 
     fireEvent.click(await screen.findByText('downloads'))

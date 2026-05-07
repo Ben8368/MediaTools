@@ -98,6 +98,15 @@ async def list_browser_sessions():
     })
 
 
+@router.get("/status")
+async def get_browser_status():
+    """Get supported browser availability and session status."""
+    return JSONResponse({
+        "ok": True,
+        "browsers": browser_manager.get_browser_statuses(),
+    })
+
+
 @router.websocket("/ws/cdp/{session_id}")
 async def cdp_proxy(websocket: WebSocket, session_id: str):
     """WebSocket proxy to browser CDP endpoint."""

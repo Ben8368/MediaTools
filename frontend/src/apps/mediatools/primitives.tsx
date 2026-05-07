@@ -54,7 +54,7 @@ export function PathInput({
         value={value}
         mode={mode}
         title={mode === 'directory' ? '选择目录' : '选择文件'}
-        confirmLabel={mode === 'directory' ? '使用此目录' : '使用此路径'}
+        confirmLabel="确认"
         onClose={() => setOpen(false)}
         onPick={onChange}
       />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { FontPicker } from '@/apps/mediatools/FontPicker'
 import { PrimaryButton, ToolbarButton } from '@/apps/mediatools/primitives'
 
 type AnyRecord = Record<string, any>
@@ -28,7 +29,6 @@ export function AutomationTaskDialog({
   onSave,
 }: AutomationTaskDialogProps) {
   const [draft, setDraft] = useState<AnyRecord>({})
-  const fontListId = `automation-fonts-${accent}`
 
   useEffect(() => {
     if (open && task) setDraft({ ...task })
@@ -78,18 +78,15 @@ export function AutomationTaskDialog({
             当前字体
             <input value={draft.source_font || draft.font || ''} readOnly />
           </label>
-          <label>
-            目标字体
-            <input
-              list={fontListId}
-              value={draft.target_font || ''}
-              onChange={(event) => setDraft({ ...draft, target_font: event.target.value })}
-              placeholder="选择或输入字体名"
-            />
-            <datalist id={fontListId}>
-              {fonts.map((font) => <option value={font} key={font} />)}
-            </datalist>
-          </label>
+          <FontPicker
+            label="目标字体"
+            ariaLabel="目标字体"
+            value={draft.target_font || ''}
+            sourceFont={draft.source_font || draft.font || ''}
+            fonts={fonts}
+            accent={accent}
+            onChange={(font) => setDraft({ ...draft, target_font: font })}
+          />
           <label>
             输出名称
             <input value={draft.output_name || ''} onChange={(event) => setDraft({ ...draft, output_name: event.target.value })} />

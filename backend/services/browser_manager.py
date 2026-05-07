@@ -32,17 +32,19 @@ SHORTCUT_DIR = os.path.expandvars(r"%USERPROFILE%\Desktop")
 BROWSER_LABELS = { "chrome": "Chrome", "edge": "Edge" }
 
 LAUNCH_GUIDE = """
-璇锋墜鍔ㄥ惎鍔ㄥ甫杩滅▼璋冭瘯鐨勬祻瑙堝櫒锛?
-  1. 鎸?Win+R锛岀矘璐翠互涓嬪懡浠ゅ苟鍥炶溅锛堥€夋嫨浣犵殑娴忚鍣級锛?
+请手动启动带远程调试的浏览器：
+  1. 按 Win+R，粘贴以下命令并回车（选择你的浏览器）：
      Edge:
      "%LOCALAPPDATA%\\Microsoft\\Edge\\Application\\msedge.exe" --remote-debugging-port=9222
 
      Chrome:
      "%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222
 
-  2. 娴忚鍣ㄤ細浠ヤ綘鐨勯粯璁ら厤缃惎鍔紙淇濈暀鎵€鏈夌櫥褰曟€併€佹彃浠讹級
-  3. 鍦ㄦ绐楀彛鐐瑰嚮銆岃繛鎺ャ€嶅嵆鍙?
-鎻愮ず锛氶娆¤繛鎺ュ悗锛孧ediaTools 浼氬湪妗岄潰鍒涘缓涓€涓揩鎹锋柟寮忥紝浠ュ悗鍙屽嚮鍗冲彲銆?""".strip()
+  2. 浏览器会以你的默认配置启动，保留所有登录态和插件。
+  3. 回到 MediaTools 的浏览器窗口再次点击“启动”即可连接。
+
+提示：首次连接后，MediaTools 会在桌面创建一个快捷方式，以后双击即可。
+""".strip()
 
 
 def find_browser_exe(browser_type: str = "chrome") -> str | None:
@@ -60,7 +62,7 @@ def _is_port_open(port: int) -> bool:
         return False
 
 
-def create_cdp_shortcut(browser_type: str, vbs_path: str) -> str:
+def create_cdp_shortcut(browser_type: str) -> str:
     exe = find_browser_exe(browser_type)
     if not exe:
         return ""
@@ -147,7 +149,8 @@ class BrowserManager:
     def __init__(self):
         self.sessions: dict[str, BrowserSession] = {}
 
-    async def create_session(self, url: str, browser_type: str = "chrome") -> BrowserSession:
+    async def create_session(self, url: str, browser_type: str = "chrome", width: int = 1280, height: int = 720) -> BrowserSession:
+        _ = (width, height)
         for s in self.sessions.values():
             if s.browser_type == browser_type:
                 s.last_activity = asyncio.get_event_loop().time()
@@ -173,6 +176,21 @@ class BrowserManager:
     def list_sessions(self) -> list[dict[str, Any]]:
         return [{"session_id": s.session_id, "url": s.url, "browser_type": s.browser_type,
                  "cdp_port": s.cdp_port, "shortcut_path": s.shortcut_path} for s in self.sessions.values()]
+
+    def get_browser_statuses(self) -> list[dict[str, Any]]:
+        cdp_connected = _is_port_open(CDP_PORT)
+        active_types = {s.browser_type for s in self.sessions.values()}
+        return [
+            {
+                "browser_type": browser_type,
+                "installed": bool(find_browser_exe(browser_type)),
+                "connected": cdp_connected and browser_type in active_types,
+                "cdp_connected": cdp_connected,
+                "supported": True,
+                "cdp_port": CDP_PORT,
+            }
+            for browser_type in BROWSER_PATHS
+        ]
 
 
 browser_manager = BrowserManager()

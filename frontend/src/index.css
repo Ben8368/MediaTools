@@ -2,6 +2,7 @@
 @import './styles/file-manager.css';
 @import './styles/log-viewer.css';
 @import './styles/downloader.css';
+@import './styles/browser.css';
 
 /* ===== MediaTools app panels inside the FnOS-style window shell ===== */
 .mt-page {
