@@ -1,10 +1,12 @@
-# 命名规范
+# Naming Conventions
 
-本文记录项目内推荐命名，保持 CLI、API、服务和前端概念一致。
+> [中文版](./NAMING_CONVENTIONS.zh.md) · Chinese
 
-## 模块名
+This document records recommended naming conventions to maintain consistency across CLI, API, services, and frontend concepts.
 
-使用小写单词，必要时用下划线。CLI 顶层模块保持稳定：
+## Module Names
+
+Use lowercase words, with underscores where needed. CLI top-level modules should remain stable:
 
 - `fetcher`
 - `encoder`
@@ -16,25 +18,25 @@
 - `auditor`
 - `generator`
 
-旧别名仅用于兼容：
+Legacy aliases for compatibility only:
 
 - `fetch`
 - `encode`
 - `decrypt`
 - `edit`
 
-新文档和新代码应使用规范模块名。
+New documentation and new code should use canonical module names.
 
 ## Python
 
-- 文件名：`snake_case.py`
-- 函数名：`snake_case`
-- 类名：`PascalCase`
-- 常量：`UPPER_SNAKE_CASE`
-- API 路由文件：`api_<domain>_routes.py`
-- 服务文件：按业务域命名，例如 `media_fetch.py`、`task_center.py`
+- File names: `snake_case.py`
+- Function names: `snake_case`
+- Class names: `PascalCase`
+- Constants: `UPPER_SNAKE_CASE`
+- API route files: `api_<domain>_routes.py` (legacy convention); new routes go in `backend/api/routes/<domain>.py`
+- Service files: Named by business domain, e.g., `media_fetch.py`, `task_center.py`
 
-示例：
+Example:
 
 ```python
 def run_fetch_analyze_slice_job(...):
@@ -44,15 +46,15 @@ class MediaAgentService:
     ...
 ```
 
-## 前端
+## Frontend
 
-- React 组件：`PascalCase.tsx`
-- hooks：`useSomething.ts`
-- 普通工具：`camelCase.ts`
-- 测试：与被测文件同名，后缀 `.test.ts` 或 `.test.tsx`
-- 应用窗口组件：`<Name>App.tsx`
+- React components: `PascalCase.tsx`
+- hooks: `useSomething.ts`
+- General utilities: `camelCase.ts`
+- Tests: Same name as the tested file, with `.test.ts` or `.test.tsx` suffix
+- Application window components: `<Name>App.tsx`
 
-示例：
+Example:
 
 ```text
 DownloaderApp.tsx
@@ -63,18 +65,18 @@ DownloaderTaskTable.tsx
 
 ## API
 
-REST 路径使用短横线或清晰的业务名，避免暴露内部文件名。响应字段使用 JSON 常见的 `snake_case`，与后端模型保持一致。
+REST paths should use hyphens or clear business names; avoid exposing internal file names. Response fields use JSON-standard `snake_case`, consistent with backend models.
 
-建议：
+Suggestions:
 
 - `/api/media/...`
 - `/api/workspace/...`
 - `/api/task-center/...`
 - `/api/filebrowser/...`
 
-## 工作区目录
+## Workspace Directories
 
-工作区子目录使用小写复数名：
+Workspace subdirectories use lowercase plural names:
 
 - `inputs`
 - `downloads`
@@ -90,9 +92,9 @@ REST 路径使用短横线或清晰的业务名，避免暴露内部文件名。
 - `manifests`
 - `exports`
 
-## 外部工具
+## External Tools
 
-工具名按上游官方写法：
+Tool names follow the upstream official style:
 
 - `yt-dlp`
 - `FFmpeg`
@@ -102,7 +104,7 @@ REST 路径使用短横线或清晰的业务名，避免暴露内部文件名。
 - `capcut-mate`
 - `filebrowser`
 
-代码中的变量名使用安全形式：
+Variable names in code use a safe form:
 
 ```python
 ytdlp_path
@@ -111,10 +113,10 @@ umcli_path
 capcut_mate_base_url
 ```
 
-## 文档
+## Documentation
 
-- 根入口：`README.md`
-- 当前工作流：`WORKFLOW.md`
-- 当前架构：`ARCHITECTURE.md`
-- 专题文档：放在 `docs/`，文件名使用大写下划线或清晰小写目录。
-- 第三方原文：保留在 `vendor/`，不改名以便跟随上游。
+- Root entry: `README.md`
+- Current workflow: `WORKFLOW.md`
+- Current architecture: `ARCHITECTURE.md`
+- Specialized documents: Place in `docs/`, using UPPER_SNAKE_CASE or clear lowercase directory names.
+- Third-party originals: Keep in `vendor/`, do not rename, to track upstream changes.

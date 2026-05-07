@@ -1,64 +1,66 @@
-# vendor 目录组织
+# Vendor Directory Organization
 
-`vendor/` 用于存放第三方源码、嵌入工具和上游文档。这里不是 MediaTools 自有业务代码的主要维护位置。
+> [中文版](./VENDOR_ORGANIZATION.zh.md) · Chinese
 
-## 当前常见目录
+The `vendor/` directory is used for third-party source code, embedded tools, and upstream documentation. This is not the primary location for MediaTools' own business code.
 
-| 目录 | 用途 |
+## Common Directories
+
+| Directory | Purpose |
 |---|---|
-| `vendor/yt-dlp/` | yt-dlp 上游源码、二进制或相关资料 |
-| `vendor/ffmpeg/` | FFmpeg 相关说明或本地资源 |
-| `vendor/filebrowser/` | filebrowser 上游项目 |
-| `vendor/capcut-mate/` | capcut-mate 上游项目 |
-| `vendor/adobe/` | Adobe 桥接、插件、COM/CEP 资料 |
-| `vendor/auditor/` | 素材审核工具 |
-| `vendor/um-cli/` | Unlock Music CLI 相关资料 |
+| `vendor/yt-dlp/` | yt-dlp upstream source, binaries, or related materials |
+| `vendor/ffmpeg/` | FFmpeg-related documentation or local resources |
+| `vendor/filebrowser/` | filebrowser upstream project |
+| `vendor/capcut-mate/` | capcut-mate upstream project |
+| `vendor/adobe/` | Adobe bridging, plugins, COM/CEP materials |
+| `vendor/auditor/` | Asset auditing tool |
+| `vendor/um-cli/` | Unlock Music CLI related materials |
 
-## 原则
+## Principles
 
-- 上游源码尽量保持原样，便于更新和对比。
-- MediaTools 自己的适配代码优先放在 `adapters/`、`modules/` 或 `services/`。
-- 第三方 README、CHANGELOG、LICENSE 属于上游文档，不进入项目主文档索引。
-- 对上游的本地修改应尽量通过补丁或清晰提交记录维护。
-- 不把运行时产物、缓存和本机私有配置提交到 `vendor/`。
+- Upstream source code should be kept as-is for easy updates and comparison.
+- MediaTools' own adapter code should go in `adapters/`, `modules/`, or `services/`.
+- Third-party README, CHANGELOG, and LICENSE files are upstream documentation and are not part of the project's main documentation index.
+- Local modifications to upstream code should be maintained via patches or clearly documented commits.
+- Runtime artifacts, caches, and private configurations should not be committed to `vendor/`.
 
-## 推荐结构
+## Recommended Structure
 
-复杂第三方工具可按需采用：
+Complex third-party tools can optionally follow:
 
 ```text
 vendor/<tool>/
-├── README.md                 # 上游或本地简要说明
-├── source/                   # 上游源码
-├── bin/                      # 构建产物或可执行文件
-├── patches/                  # 本地补丁
-└── LICENSES.txt              # 许可汇总
+├── README.md                 # Upstream or local brief description
+├── source/                   # Upstream source code
+├── bin/                      # Build artifacts or executables
+├── patches/                  # Local patches
+└── LICENSES.txt              # License summary
 ```
 
-不是每个工具都必须完全匹配该结构。以可维护、可更新、可审计为准。
+Not every tool needs to exactly match this structure. Maintainability, updatability, and auditability are the criteria.
 
-## 更新流程
+## Update Process
 
-1. 确认要更新的工具和上游来源。
-2. 记录当前版本或 commit。
-3. 更新上游源码或二进制。
-4. 重新应用本地补丁。
-5. 跑最小状态检查和相关测试。
-6. 更新 `LICENSES/` 或工具说明。
+1. Confirm the tool and upstream source to update.
+2. Record the current version or commit.
+3. Update the upstream source or binary.
+4. Re-apply local patches.
+5. Run minimal status checks and relevant tests.
+6. Update `LICENSES/` or tool documentation.
 
-## 文档边界
+## Documentation Boundary
 
-项目自有文档放在：
+Project-owned documentation goes in:
 
-- 根 `README.md`
+- Root `README.md`
 - `WORKFLOW.md`
 - `ARCHITECTURE.md`
 - `docs/`
 
-第三方文档保留在：
+Third-party documentation stays in:
 
 - `vendor/<tool>/README.md`
 - `vendor/<tool>/CHANGELOG.md`
 - `vendor/<tool>/docs/`
 
-引用第三方行为时，应注明该说明来自上游或当前本机集成。
+When citing third-party behavior, note whether the explanation comes from upstream or from the project's local integration.

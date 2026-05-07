@@ -1,91 +1,91 @@
-# 工具路线和集成状态
+# Tool Routes and Integration Status
 
-本文说明 MediaTools 中几条外部工具路线的定位。它不是产品路线承诺，只用于判断当前应该优先依赖哪条链路。
+> [中文版](./TOOL_FACTIONS.zh.md) · Chinese
 
-## 总览
+This document explains the positioning of several external tool routes within MediaTools. It is not a product roadmap commitment; it is used to determine which pipeline should be prioritized.
 
-| 路线 | 当前定位 | 稳定性 | 主要入口 |
+## Overview
+
+| Route | Current Positioning | Stability | Primary Entry |
 |---|---|---|---|
-| FFmpeg + yt-dlp | 核心生产主线 | 高 | `fetcher`, `encoder`, `workbench` |
-| AI 字幕分析 | 核心增强能力 | 中高，取决于模型和字幕 | `services/agent*`, `modules/fetcher/analyzer.py` |
-| Adobe / Photoshop / After Effects | 专业软件自动化扩展 | 环境相关 | `modules/adobe`, `services/api_adobe_routes.py`, `services/api_photoshop_routes.py` |
-| capcut-mate / CapCut | 实验剪辑联动 | 中低 | `modules/editor`, `services/editor_runtime.py` |
-| auditor | 素材审核扩展 | 环境相关 | `modules/auditor`, `services/auditor.py` |
-| filebrowser | 文件管理扩展 | 中 | `modules/filebrowser`, `services/filebrowser_runtime.py` |
+| FFmpeg + yt-dlp | Core production mainline | High | `fetcher`, `encoder`, `workbench` |
+| AI subtitle analysis | Core enhancement capability | Medium-high, depends on model and subtitles | `backend/agent/`, `modules/fetcher/analyzer.py` |
+| Adobe / Photoshop / After Effects | Professional software automation extension | Environment-dependent | `modules/adobe`, `backend/api/routes/adobe.py`, `backend/api/routes/photoshop.py` |
+| capcut-mate / CapCut | Experimental editing integration | Medium-low | `modules/editor`, runtime service |
+| auditor | Asset auditing extension | Environment-dependent | `modules/auditor`, `backend/services/auditor.py` |
+| filebrowser | File management extension | Medium | `modules/filebrowser`, `backend/services/runtime/filebrowser.py` |
 
-## 推荐主线
+## Recommended Mainline
 
-日常可稳定依赖的链路是：
+The pipeline that can be stably relied on day-to-day:
 
 ```text
-yt-dlp 下载
--> 字幕清洗/分析
--> FFmpeg 切片或转码
--> 工作台复核
--> 工作区素材管理
+yt-dlp downloading
+-> Subtitle cleaning / analysis
+-> FFmpeg slicing or transcoding
+-> Workbench review
+-> Workspace asset management
 ```
 
-这条路线的优点：
+Advantages:
 
-- 不依赖大型桌面软件
-- 容易测试和排查
-- CLI 和 Web 都能复用
-- 失败时通常能通过日志和命令行复现
+- Does not depend on large desktop applications
+- Easy to test and troubleshoot
+- Reused by both CLI and Web
+- Failures are typically reproducible via logs and command-line
 
-## Adobe 路线
+## Adobe Route
 
-适合：
+Suitable for:
 
-- Photoshop 批量处理
-- After Effects 工程扫描、票据化修改和执行
-- 本机已安装并配置 Adobe 软件的专业工作流
+- Photoshop batch processing
+- After Effects project scanning, ticketized modifications, and execution
+- Professional workflows where Adobe software is already installed and configured
 
-特点：
+Characteristics:
 
-- 能力强，但强依赖本机软件、权限、插件和版本。
-- COM/ExtendScript/CEP 的细节应隔离在 Adobe 模块和 runtime 里。
-- 相关专题见 `docs/adobe/`。
+- Powerful but heavily depends on local software, permissions, plugins, and versions.
+- COM/ExtendScript/CEP details should be isolated in Adobe modules and runtime services.
+- Related specialized docs are in `docs/adobe/`.
 
-当前主要代码：
+Current primary code:
 
 - `modules/adobe/`
 - `modules/photoshop/`
-- `services/api_adobe_routes.py`
-- `services/api_photoshop_routes.py`
-- `adapters/adobe_runtime.py`
-- `adapters/photoshop_runtime.py`
-- `adapters/after_effects_runtime.py`
+- `backend/api/routes/adobe.py`
+- `backend/api/routes/photoshop.py`
+- `backend/services/photoshop.py`
+- `backend/services/photoshop_state.py`
 
-## CapCut / capcut-mate 路线
+## CapCut / capcut-mate Route
 
-适合：
+Suitable for:
 
-- 快速剪辑实验
-- 研究 CapCut/剪映自动化
-- 非核心生产链路的辅助导出
+- Quick editing experiments
+- Exploring CapCut / JianYing automation
+- Auxiliary export paths outside the core production pipeline
 
-当前限制：
+Current limitations:
 
-- 上游接口和本机环境变化较多。
-- 自动化稳定性不如 FFmpeg 主线。
-- 不建议作为唯一导出路径。
+- Upstream interfaces and local environment change frequently.
+- Automation stability is not as reliable as the FFmpeg mainline.
+- Should not be the sole export path.
 
-当前主要代码：
+Current primary code:
 
 - `modules/editor/`
-- `services/editor_runtime.py`
 - `vendor/capcut-mate/`
 
-## 选择建议
+## Selection Guide
 
-- 只需要下载、分析、切片：选 FFmpeg + yt-dlp。
-- 需要专业图像或 AE 工程处理：选 Adobe 路线。
-- 需要探索剪映联动：使用 capcut-mate，但保留 FFmpeg 备选。
-- 需要审查素材合规或质量：使用 auditor。
-- 需要浏览、预览和整理工作区文件：使用内置文件管理和 filebrowser。
+- Need downloading, analysis, and slicing only: Choose FFmpeg + yt-dlp.
+- Need professional image or AE project processing: Choose the Adobe route.
+- Need to explore CapCut integration: Use capcut-mate, but keep FFmpeg as a fallback.
+- Need to audit material compliance or quality: Use the auditor.
+- Need to browse, preview, and organize workspace files: Use built-in file management and filebrowser.
 
-## 文档边界
+## Documentation Boundary
 
-- 当前实现状态以 `ARCHITECTURE.md` 和代码为准。
-- 第三方工具自身能力以 `vendor/` 中上游文档为准。
-- 本文只说明 MediaTools 对这些工具的集成定位。
+- Current implementation status is governed by `ARCHITECTURE.md` and the code.
+- Third-party intrinsic capabilities are documented in `vendor/` upstream docs.
+- This document only describes MediaTools' integration positioning of these tools.

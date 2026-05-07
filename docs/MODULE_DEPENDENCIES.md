@@ -1,8 +1,10 @@
-# 模块依赖
+# Module Dependencies
 
-本文描述当前推荐的依赖方向，用于维护时判断代码应放在哪里。
+> [中文版](./MODULE_DEPENDENCIES.zh.md) · Chinese
 
-## 分层
+This document describes the currently recommended dependency direction, used to determine where code should be placed during maintenance.
+
+## Layering
 
 ```text
 frontend
@@ -12,7 +14,7 @@ frontend
   -> adapters/core/vendor/bin
 ```
 
-CLI 路径：
+CLI path:
 
 ```text
 cli/main.py
@@ -20,65 +22,66 @@ cli/main.py
   -> modules/* or backend/services/
 ```
 
-依赖原则：
-- 前端只调用 API，不直接理解 Python 模块结构。
-- API 路由负责请求/响应，不承载复杂业务。
-- 跨模块流程放在 `backend/services/`。
-- 单一能力放在 `modules/`。
-- 外部工具细节放在 `adapters/`、`core/` 或 `backend/services/runtime/`。
+Dependency principles:
 
-## 主要模块关系
+- The frontend only calls APIs; it does not directly understand Python module structure.
+- API routes handle request/response; they should not carry complex business logic.
+- Cross-module workflows go in `backend/services/`.
+- Single capabilities go in `modules/`.
+- External tool details go in `adapters/`, `core/`, or `backend/services/runtime/`.
 
-| 能力 | 主要服务 | 底层模块/工具 |
+## Main Module Relationships
+
+| Capability | Primary Service | Underlying Module / Tool |
 |---|---|---|
-| 下载和字幕 | `backend/services/fetcher.py` | `modules/fetcher`, `yt-dlp` |
-| 转码和切片 | `backend/services/encoder.py` | `modules/encoder`, `FFmpeg` |
-| 下载分析切片 | `backend/services/media/workflows.py` | `fetcher`, `encoder`, AI API |
-| 解密 | `backend/services/decryptor.py` | `modules/decryptor`, `um-cli` |
-| 工作区 | `backend/services/workspace.py` | filesystem |
-| 工作台 | `backend/services/workbench.py` | `fetcher`, `encoder`, AI API |
-| 素材扫描 | API routes / assets services | `modules/assets` |
-| AI 助手 | `backend/agent/` | media/workspace/assets services |
+| Downloading and subtitles | `backend/services/fetcher.py` | `modules/fetcher`, `yt-dlp` |
+| Transcoding and slicing | `backend/services/encoder.py` | `modules/encoder`, `FFmpeg` |
+| Download-analyze-slice | `backend/services/media/workflows.py` | `fetcher`, `encoder`, AI API |
+| Decryption | `backend/services/decryptor.py` | `modules/decryptor`, `um-cli` |
+| Workspace | `backend/services/workspace.py` | filesystem |
+| Workbench | `backend/services/workbench.py` | `fetcher`, `encoder`, AI API |
+| Asset scanning | API routes / assets services | `modules/assets` |
+| AI Assistant | `backend/agent/` | media/workspace/assets services |
 | Photoshop | `backend/services/photoshop.py` | `modules/adobe`, Adobe runtime |
 | After Effects | `backend/api/routes/adobe.py` | `modules/adobe`, Adobe runtime |
-| 审核 | `backend/services/auditor.py` | `modules/auditor`, `vendor/auditor` |
+| Auditing | `backend/services/auditor.py` | `modules/auditor`, `vendor/auditor` |
 | filebrowser | `backend/services/runtime/filebrowser.py` | `modules/filebrowser`, `vendor/filebrowser` |
-| 浏览器控制 | `backend/services/browser_manager.py` | CDP, 系统浏览器 |
+| Browser control | `backend/services/browser_manager.py` | CDP, system browser |
 
-## 推荐放置位置
+## Recommended Placement
 
-### 新增 API
+### New API
 
-1. 在 `backend/api/routes/` 中增加路由文件并在 `setup.py` 注册。
-2. 请求和响应模型放在 `backend/api/models.py` 或相近模块。
-3. 复杂逻辑下沉到 `backend/services/` 服务函数。
-4. 长任务接入 `backend/services/task_center.py`。
+1. Add routes in `backend/api/routes/` and register in `setup.py`.
+2. Place request/response models in `backend/api/models.py` or the relevant domain module.
+3. Push complex logic down to service functions.
+4. Connect long-running tasks to `backend/services/task_center.py`.
 
-### 新增媒体流程
+### New Media Workflows
 
-1. 单步能力放在 `modules/`。
-2. 多步骤编排放在 `backend/services/media/workflows.py` 或相近服务文件。
-3. 输出路径必须走工作区和路径校验工具。
-4. Web 和 AI 助手复用同一个服务函数。
+1. Single-step capabilities go in `modules/`.
+2. Multi-step orchestration goes in `backend/services/media/workflows.py` or a similar service file.
+3. Output paths must go through workspace and path validation utilities.
+4. Web and AI assistant should reuse the same service function.
 
-### 新增外部工具
+### New External Tools
 
-1. 工具发现、版本检查、命令执行放在 `backend/services/runtime/` 或 adapter。
-2. CLI 封装放在 `modules/<tool>/cli.py`。
-3. Web 路由只暴露状态、启动、停止、任务结果等产品语义。
-4. 相关说明写入 `docs/EXTERNAL_TOOLS.md`。
+1. Tool discovery, version checking, and command execution go in `backend/services/runtime/` or an adapter.
+2. CLI wrappers go in `modules/<tool>/cli.py`.
+3. Web routes should only expose status, start/stop, and task results.
+4. Write relevant notes in `docs/EXTERNAL_TOOLS.md`.
 
-## 避免的依赖
+## Dependencies to Avoid
 
-- `frontend/` 不应依赖 Python 文件路径。
-- `backend/api/routes/` 不应直接拼复杂 shell 命令。
-- `modules/` 不应依赖前端概念。
-- `vendor/` 中上游代码不应反向依赖项目服务。
-- 外部工具路径不应散落在多个业务文件里。
+- `frontend/` should not depend on Python file paths.
+- `backend/api/routes/` should not concatenate complex shell commands.
+- `modules/` should not depend on frontend concepts.
+- Upstream code in `vendor/` should not reverse-depend on project services.
+- External tool paths should not be scattered across multiple business files.
 
-## 测试边界
+## Testing Boundaries
 
-- 模块级逻辑：写 `tests/test_<module>.py`。
-- API 路由：写 `tests/test_api_*routes.py`。
-- 长任务和工作区：覆盖状态、路径、安全校验和失败分支。
-- 外部工具：优先 mock adapter/runtime，避免测试强依赖本机软件。
+- Module-level logic: Write `tests/test_<module>.py`.
+- API routes: Write `tests/test_api_*routes.py`.
+- Long-running tasks and workspaces: Cover state, paths, security validation, and failure branches.
+- External tools: Prefer mocking adapters/runtime to avoid testing that is strongly dependent on local software.

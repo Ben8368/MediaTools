@@ -1,36 +1,38 @@
-# MediaTools 工作流
+# MediaTools Workflow
 
-这份文档描述当前推荐使用的真实流程。旧的 Gradio/GUI 文档、早期方案和第三方工具说明不再作为主入口；需要查专题资料时从 `docs/README.md` 进入。
+> [中文版](./WORKFLOW.zh.md) · Chinese
 
-## 1. 启动工作台
+This document describes the currently recommended real-world workflows. Old Gradio/GUI documentation, early proposals, and third-party tool guides are no longer primary entry points; consult `docs/README.md` when looking for specialized materials.
+
+## 1. Launch the Workstation
 
 ```powershell
 python app.py
 ```
 
-默认访问：
+Default URLs:
 
-- 工作台：`http://127.0.0.1:7860`
-- API 文档：`http://127.0.0.1:7860/docs`
+- Workstation: `http://127.0.0.1:7860`
+- API docs: `http://127.0.0.1:7860/docs`
 
-开发时可同时启动前端：
+During development, you can also run the frontend simultaneously:
 
 ```powershell
 cd frontend
 npm run dev
 ```
 
-后端绑定到非本机地址前，应设置 `API_SECRET_KEY`。
+Set `API_SECRET_KEY` before binding the backend to a non-localhost address.
 
-## 2. 设置工作区
+## 2. Set Up Workspace
 
-MediaTools 使用“当前工作区”组织下载、分析、导出和素材扫描结果。工作区状态保存在：
+MediaTools uses a "current workspace" to organize downloads, analysis, exports, and asset scan results. The workspace state is stored in:
 
 ```text
 runtime/workspace.json
 ```
 
-推荐结构：
+Recommended structure:
 
 ```text
 projects/default/
@@ -49,65 +51,65 @@ projects/default/
 └── exports/
 ```
 
-常见约定：
+Common conventions:
 
-- `downloads/`：下载的视频和原始字幕
-- `subtitles/`：可分析/可复用字幕
-- `analysis/`：AI 分析 JSON 或片段建议
-- `clips/`、`exports/`：自动切片和工作台导出结果
-- `decrypted/`：解密输出
-- `assets/`：整理后可复用素材
+- `downloads/`: downloaded videos and original subtitles
+- `subtitles/`: analyzable and reusable subtitles
+- `analysis/`: AI analysis JSON or segment suggestions
+- `clips/`, `exports/`: auto-sliced clips and workbench export results
+- `decrypted/`: decrypted output
+- `assets/`: curated reusable assets
 
-## 3. 主流程：下载、分析、切片
+## 3. Main Pipeline: Download, Analyze, Slice
 
-最稳的生产链路是：
+The most stable production pipeline is:
 
 ```text
-设置工作区
--> 下载视频和字幕
--> 清洗/转换字幕
--> AI 分析片段亮点
--> FFmpeg 自动切片
--> 工作台复核
--> 导出 clips
+Set workspace
+-> Download video and subtitles
+-> Clean / transform subtitles
+-> AI analysis of segment highlights
+-> FFmpeg auto-slicing
+-> Workbench review
+-> Export clips
 ```
 
-推荐做法：
+Recommended practice:
 
-1. 在下载器/媒体获取功能中输入视频 URL。
-2. 同时下载视频和字幕，字幕优先保存为 SRT。
-3. 使用 AI 助手或工作台生成片段建议。
-4. 让系统自动扩边并用 FFmpeg 导出。
-5. 在工作台里检查时间点、原文和中文简介。
-6. 需要时手动微调后重新导出。
+1. Enter the video URL in the downloader / media acquisition section.
+2. Download both video and subtitles simultaneously; prefer SRT format.
+3. Use the AI assistant or workbench to generate segment suggestions.
+4. Let the system auto-pad edges and export via FFmpeg.
+5. Check timestamps, original text, and Chinese summaries in the workbench.
+6. Fine-tune manually and re-export if necessary.
 
-AI 助手可使用类似任务：
+The AI assistant can handle tasks like:
 
 ```text
-下载这个视频，获取可分析字幕，找出最值得切的 3 个片段，并导出到当前工作区。
+Download this video, get analyzable subtitles, find the top 3 most worthwhile segments, and export them to the current workspace.
 https://www.youtube.com/watch?v=xxxx
 ```
 
-## 4. 工作台复核
+## 4. Workbench Review
 
-工作台负责把字幕分析结果变成可复核的片段列表。
+The workbench turns subtitle analysis results into a reviewable segment list.
 
-典型操作：
+Typical operations:
 
-1. 载入当前工作区的视频和字幕。
-2. 设置片段数量。
-3. 分析字幕，生成片段建议。
-4. 查看建议 JSON、片段表和时间轴概览。
-5. 调整开始时间、结束时间、中文简介和原文。
-6. 批量导出。
+1. Load the current workspace's video and subtitles.
+2. Set segment count.
+3. Analyze subtitles and generate segment suggestions.
+4. Review suggestion JSON, segment tables, and timeline overview.
+5. Adjust start time, end time, Chinese summary, and original text.
+6. Batch export.
 
-当自动链路已经跑完，但需要人工判断节奏、语义或边界时，优先回到工作台复核。
+When the automated pipeline completes but human judgment is needed for rhythm, semantics, or boundaries, always return to the workbench for review.
 
-## 5. 转码和手动切片
+## 5. Transcoding and Manual Slicing
 
-FFmpeg 能力由 `encoder` 模块和后端媒体服务提供。
+FFmpeg capabilities are provided by the `encoder` module and backend media services.
 
-CLI 示例：
+CLI examples:
 
 ```powershell
 python main.py encoder to-h265 input.mp4 --crf 28
@@ -115,62 +117,62 @@ python main.py encoder extract-audio input.mp4
 python main.py encoder slice input.mp4 --start 00:00:10 --end 00:00:25
 ```
 
-适合场景：
+Suitable for:
 
-- 单独转码
-- 提取音频
-- 快速导出一个明确时间段
-- 自动链路失败时手动补救
+- Standalone transcoding
+- Audio extraction
+- Quick export of a precise time range
+- Manual recovery when the auto pipeline fails
 
-## 6. 音乐/媒体解密
+## 6. Music / Media Decryption
 
-解密流程由 `decryptor` 模块和 `services/media_decrypt.py` 支撑。
+Decryption is handled by the `decryptor` module and `services/media_decrypt.py`.
 
-CLI 示例：
+CLI examples:
 
 ```powershell
 python main.py decryptor run -i song.ncm
 python main.py decryptor run -i .\encrypted_music\ -o .\projects\default\decrypted\
 ```
 
-推荐将成功解密后的素材复制或输出到当前工作区的 `assets/` 或 `decrypted/`，再通过素材管理扫描。
+Copy or output successfully decrypted materials to the workspace `assets/` or `decrypted/`, then scan them via asset management.
 
-## 7. 素材和文件管理
+## 7. Asset and File Management
 
-素材管理更像“当前工作区索引器”，不是重型资产数据库。
+Asset management functions as a "current workspace indexer," not a heavy asset database.
 
-推荐扫描整个工作区，而不只是 `assets/`：
+It is recommended to scan the entire workspace rather than just `assets/`:
 
 ```text
 projects/default/
 ```
 
-这样可以同时看到：
+This way you can simultaneously see:
 
-- 下载结果
-- 字幕和分析文件
-- 转码产物
-- clips 和 exports
-- 解密素材
+- Download results
+- Subtitles and analysis files
+- Transcoded outputs
+- Clips and exports
+- Decrypted materials
 
-文件管理和预览能力用于浏览工作区、选择路径、检查输出文件。
+File management and preview capabilities are used for browsing workspaces, selecting paths, and inspecting output files.
 
-## 8. Adobe 和扩展能力
+## 8. Adobe and Extended Capabilities
 
-Adobe、Photoshop、After Effects、素材审核、朋友圈图生成、capcut-mate 等能力已经纳入项目，但依赖本机环境。
+Adobe, Photoshop, After Effects, asset auditing, WeChat moments image generation, and capcut-mate capabilities are already integrated but depend on the local environment.
 
-使用前先检查：
+Before use, verify:
 
-- 相关软件是否安装并允许自动化
-- `vendor/` 或 `bin/` 中工具是否存在
-- 端口和权限是否正确
-- API/插件配置是否完整
+- Whether the relevant software is installed and automation is allowed
+- Whether tools exist in `vendor/` or `bin/`
+- Whether ports and permissions are correct
+- Whether API/plugin configurations are complete
 
-`capcut-mate` 当前仍是实验链路；稳定导出优先使用 FFmpeg。
+`capcut-mate` remains an experimental link; prefer FFmpeg for stable exports.
 
-## 9. CLI 的定位
+## 9. CLI Positioning
 
-CLI 适合批处理、调试、工具状态检查和脚本化任务。完整日常工作流优先使用 Web 工作台。
+CLI is suitable for batch processing, debugging, tool status checks, and scripted tasks. For complete daily workflows, prefer the Web workstation.
 
 ```powershell
 python main.py --help
@@ -179,20 +181,20 @@ python main.py photoshop status
 python main.py auditor status
 ```
 
-## 10. 排查顺序
+## 10. Troubleshooting Order
 
-遇到问题时建议按这个顺序查：
+When encountering issues, follow this order:
 
-1. 看 Web 任务中心和日志。
-2. 打开 `http://127.0.0.1:7860/docs` 验证 API 是否可用。
-3. 检查 `.env` 中的模型、API、端口和工作区配置。
-4. 检查 `bin/` 或系统 `PATH` 中的 `ffmpeg`、`ffprobe`、`yt-dlp`、`um-cli`。
-5. 用 CLI 跑对应模块的 `status` 或最小命令。
-6. 运行相关测试。
+1. Check the Web task center and logs.
+2. Open `http://127.0.0.1:7860/docs` to verify API availability.
+3. Check model, API, port, and workspace configurations in `.env`.
+4. Check `ffmpeg`, `ffprobe`, `yt-dlp`, and `um-cli` in `bin/` or system `PATH`.
+5. Run the corresponding module's `status` or minimal CLI command.
+6. Run relevant tests.
 
-## 11. 已知边界
+## 11. Known Boundaries
 
-- 字幕分析强依赖平台字幕质量。
-- 自动扩边能减少截断，但关键片段仍建议人工复核。
-- CLI 和 Web 的能力覆盖正在收敛，最新完整链路通常先出现在 Web 服务层。
-- 第三方工具文档在 `vendor/` 中，仅代表上游项目。
+- Subtitle analysis heavily depends on the quality of the original subtitles.
+- Auto-padding reduces truncation, but critical segments still benefit from human review.
+- CLI and Web capabilities are converging; the latest complete pipeline usually appears in the Web service layer first.
+- Third-party tool documentation in `vendor/` represents upstream projects only.

@@ -1,78 +1,80 @@
-# 补丁系统
+# Patch System
 
-MediaTools 使用补丁配置来管理外部工具和本机环境差异。补丁系统的目标是让项目能跟随上游工具更新，同时保留必要的本地规则。
+> [中文版](./PATCH_SYSTEM.zh.md) · Chinese
 
-## 配置加载顺序
+MediaTools uses patch configuration to manage external tool and local environment differences. The patch system's goal is to let the project stay aligned with upstream tool updates while retaining necessary local rules.
 
-补丁规则通常按以下顺序加载：
+## Configuration Loading Order
+
+Patch rules are typically loaded in the following order:
 
 1. `patches/tool_patches.json`
 2. `runtime/tool_patches.json`
 3. `projects/<current-workspace>/manifests/tool_patches.json`
 
-后加载的规则可以覆盖先加载的规则。
+Later-loaded rules can override earlier ones.
 
-## 使用场景
+## Use Cases
 
-- 指定外部工具可执行文件位置
-- 覆盖某个工具的默认参数
-- 适配本机安装路径
-- 临时规避上游工具行为变化
-- 为特定工作区使用不同工具版本或参数
+- Specifying external tool executable locations
+- Overriding default parameters for a specific tool
+- Adapting to local installation paths
+- Temporarily working around upstream tool behavior changes
+- Using different tool versions or parameters for a specific workspace
 
-## 全局规则
+## Global Rules
 
-放在：
+Located in:
 
 ```text
 patches/tool_patches.json
 ```
 
-适合保存项目级默认规则。示例文件可放在：
+Suitable for project-level defaults. Example files can be placed at:
 
 ```text
 patches/tool_patches.example.json
 ```
 
-## 运行时规则
+## Runtime Rules
 
-放在：
+Located in:
 
 ```text
 runtime/tool_patches.json
 ```
 
-适合保存本机临时规则。该目录通常不提交。
+Suitable for machine-local temporary rules. This directory is typically not committed.
 
-## 工作区规则
+## Workspace Rules
 
-放在：
+Located in:
 
 ```text
 projects/<current-workspace>/manifests/tool_patches.json
 ```
 
-适合保存某个项目特有的工具偏好，例如固定某次制作使用的 FFmpeg 参数。
+Suitable for workspace-specific tool preferences, such as locking FFmpeg parameters to a specific production's requirements.
 
-## 维护建议
+## Maintenance Guidelines
 
-- 能写入 `.env` 的本机私密配置，不要写入补丁文件。
-- 全局补丁应尽量少，只放跨开发者稳定适用的规则。
-- 工作区补丁应随工作区含义命名和说明，避免半年后看不懂。
-- 改补丁加载逻辑时，必须更新测试和本文档。
+- Machine-private secrets that can go in `.env` should not be written to patch files.
+- Global patches should be kept minimal, containing only stable rules that apply across developers.
+- Workspace patches should be named and documented according to their workspace context, to remain understandable months later.
+- When changing the patch loading logic, tests and this document must be updated.
 
-## 相关代码
+## Related Code
 
 - `patches/tool_patches.py`
 - `tests/test_tool_patches.py`
 - `docs/EXTERNAL_TOOLS.md`
 
-## 排查
+## Troubleshooting
 
-如果工具行为异常：
+If a tool behaves unexpectedly:
 
-1. 先检查当前工作区。
-2. 查看工作区 `manifests/tool_patches.json`。
-3. 查看 `runtime/tool_patches.json`。
-4. 查看 `patches/tool_patches.json`。
-5. 用 CLI 或 API 状态接口确认最终解析到的工具路径和参数。
+1. Check the current workspace first.
+2. Review the workspace `manifests/tool_patches.json`.
+3. Review `runtime/tool_patches.json`.
+4. Review `patches/tool_patches.json`.
+5. Confirm the final resolved tool path and parameters via the CLI or API status interface.

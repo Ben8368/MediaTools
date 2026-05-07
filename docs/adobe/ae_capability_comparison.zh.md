@@ -1,5 +1,7 @@
 # After Effects 能力对比：CEP/Atom 与 COM
 
+> 中文专有文档，暂无英文版本。
+
 MediaTools 当前的 After Effects 自动化主要走 COM + ExtendScript 路线。Atom/CEP 资料用于能力对照和实现参考。
 
 ## 对比

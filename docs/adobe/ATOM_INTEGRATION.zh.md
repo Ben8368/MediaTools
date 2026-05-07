@@ -1,5 +1,7 @@
 # Atom 集成说明
 
+> 中文专有文档，暂无英文版本。
+
 Atom 是 After Effects 的第三方 CEP 插件。MediaTools 当前没有把 Atom 作为后端必需组件；Atom 相关资料只作为 Adobe 自动化路线的参考。
 
 ## 当前状态

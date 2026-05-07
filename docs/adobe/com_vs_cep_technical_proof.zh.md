@@ -1,5 +1,7 @@
 # COM vs CEP 技术说明
 
+> 中文专有文档，暂无英文版本。
+
 本文说明为什么 MediaTools 可以用 COM + ExtendScript 实现一部分 CEP/Atom 能力。
 
 ## 核心结论
