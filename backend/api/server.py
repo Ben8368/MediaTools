@@ -259,47 +259,6 @@ async def shutdown_server(request: Request):
     return JSONResponse({"ok": True, "message": "server shutting down"})
 
 
-@app.post("/api/system/restart")
-async def restart_server(request: Request):
-    """Restart the server. Triggers file change to activate --reload in dev mode,
-    or uses watchdog restart in production mode."""
-    client_host = request.client.host if request.client else ""
-    if not _is_loopback_address(client_host):
-        return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
-
-    def _delayed_restart():
-        time.sleep(1)  # Increased delay to allow graceful shutdown
-        # Trigger file change to cause reload in dev mode
-        restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
-        restart_trigger.parent.mkdir(exist_ok=True)
-        restart_trigger.write_text(str(time.time()))
-
-        # Check if running under reloader (parent is also python)
-        parent_pid = os.getppid()
-        try:
-            import psutil
-            parent = psutil.Process(parent_pid)
-            parent_name = parent.name().lower()
-            if 'python' in parent_name:
-                # In reload mode: file change will trigger restart automatically
-                # Terminate parent to let uvicorn reloader restart it
-                parent.terminate()
-                try:
-                    parent.wait(timeout=3)
-                except psutil.TimeoutExpired:
-                    parent.kill()
-                return
-        except Exception as e:
-            logging.debug(f"Failed to check parent process: {e}")
-
-        # Not in reload mode: exit with code 3 to signal restart to watchdog
-        # Use os._exit to force immediate termination
-        os._exit(3)
-
-    threading.Thread(target=_delayed_restart, daemon=True).start()
-    return JSONResponse({"ok": True, "message": "server restarting"})
-
-
 configure_application_routes(
     app,
     job_registry=job_registry,

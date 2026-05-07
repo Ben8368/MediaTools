@@ -1,4 +1,4 @@
-import { restartSystem, shutdownSystem } from '@/api'
+import { shutdownSystem } from '@/api'
 import { getAppIcon } from '@/icon-library'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
@@ -11,9 +11,8 @@ export function LeftNavbar() {
   const minimizeWindow = useWindowStore((state) => state.minimizeWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)
   const [showPowerMenu, setShowPowerMenu] = useState(false)
-  const [isRestarting, setIsRestarting] = useState(false)
   const [isShuttingDown, setIsShuttingDown] = useState(false)
-  const [powerComplete, setPowerComplete] = useState<'restart' | 'shutdown' | null>(null)
+  const [powerComplete, setPowerComplete] = useState<'shutdown' | null>(null)
 
   const uniqueRunningApps = windows.filter(
     (windowItem, index, allWindows) =>
@@ -52,22 +51,7 @@ export function LeftNavbar() {
     }
   }
 
-  async function doRestart() {
-    if (isRestarting) return
-    if (!window.confirm('确认重启 MediaTools 后端服务吗？')) return
-
-    setIsRestarting(true)
-    try {
-      await restartSystem()
-      setPowerComplete('restart')
-    } catch (error: any) {
-      window.alert(error?.message || '重启失败，请稍后重试')
-      setIsRestarting(false)
-    }
-  }
-
   if (powerComplete) {
-    const isRestart = powerComplete === 'restart'
     return (
       <div
         style={{
@@ -93,12 +77,10 @@ export function LeftNavbar() {
           }}
         >
           <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}>
-            {isRestart ? 'MediaTools 正在重启' : 'MediaTools 已关闭'}
+            MediaTools 已关闭
           </div>
           <div style={{ color: 'rgba(255,255,255,.72)', lineHeight: 1.6, marginBottom: 18 }}>
-            {isRestart
-              ? '后端服务正在重新启动。等待几秒后点击下面的按钮重新连接。'
-              : '后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。'}
+            后端服务已经停止。你可以直接关闭这个页面，或者在重新启动 MediaTools 后点击下面的按钮重新连接。
           </div>
           <button
             type="button"
@@ -186,10 +168,10 @@ export function LeftNavbar() {
         <Btn
           ariaLabel="power-menu"
           icon={<IconPower />}
-          tooltip={isRestarting ? '重启中...' : isShuttingDown ? '关闭中...' : '电源'}
+          tooltip={isShuttingDown ? '关闭中...' : '电源'}
           active={showPowerMenu}
           onClick={() => setShowPowerMenu((visible) => !visible)}
-          disabled={isRestarting || isShuttingDown}
+          disabled={isShuttingDown}
         />
       </div>
       {showPowerMenu && (
@@ -208,15 +190,6 @@ export function LeftNavbar() {
             boxShadow: '0 18px 44px rgba(0,0,0,.34)',
           }}
         >
-          <PowerMenuButton
-            ariaLabel="restart-backend"
-            icon={<IconRestart />}
-            label="重启"
-            onClick={() => {
-              setShowPowerMenu(false)
-              void doRestart()
-            }}
-          />
           <PowerMenuButton
             ariaLabel="shutdown-backend"
             icon={<IconPower />}
