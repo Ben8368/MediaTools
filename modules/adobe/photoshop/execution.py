@@ -4,6 +4,7 @@ import shutil
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from modules.adobe.common.execution import AdobeExecutionState, _executions, _executions_guard
@@ -86,7 +87,17 @@ def start_ticket_execution_impl(
                         break
 
                     target_name = output_name or photoshop_service._default_output_name(source_psd)
-                    output_path = photoshop_service._exports_dir(workspace) / ticket_id / target_name
+                    # Save output next to the source PSD to keep it accessible; fall back to exports dir if not writable
+                    source_dir = Path(source_psd).parent
+                    try:
+                        source_dir.mkdir(parents=True, exist_ok=True)
+                        candidate = source_dir / target_name
+                        # Never overwrite the source PSD itself
+                        if candidate.resolve() == Path(source_psd).resolve():
+                            candidate = source_dir / photoshop_service._default_output_name(source_psd)
+                        output_path = candidate
+                    except Exception:
+                        output_path = photoshop_service._exports_dir(workspace) / ticket_id / target_name
                     output_path.parent.mkdir(parents=True, exist_ok=True)
 
                     if not dry_run:
@@ -96,8 +107,6 @@ def start_ticket_execution_impl(
                         if not connector.app.Documents.Count:
                             raise RuntimeError("No open Photoshop document found for dry run")
                         doc = connector.app.ActiveDocument
-
-                    scan_rows = runtime["scan_document_for_ticket"](connector, doc, source_psd)
 
                     for task in tasks:
                         if state.cancel_event.is_set():
@@ -111,27 +120,22 @@ def start_ticket_execution_impl(
                         if on_progress:
                             on_progress(state.message, state.progress)
 
-                        row = photoshop_service._find_scan_row_for_task(scan_rows, task)
-                        if row is None:
-                            task.status = "error"
-                            task.notes = (
-                                "SMART_OBJECT_TEXT_NOT_FOUND"
-                                if photoshop_service._is_smart_object_task(task)
-                                else "Layer id not found during execution"
-                            )
-                            continue
-
                         mapping = runtime["TextMapping"](
                             match_mode="exact",
-                            original_text=row.raw_text,
+                            original_text=task.original_text,
                             new_text=(task.target_text or "").strip() or None,
                             font=(task.target_font or "").strip() or None,
                         )
 
-                        if getattr(row, "smart_object_layer_id", 0):
-                            result = runtime["modify_smart_object_text_layer"](connector, doc, row, mapping, params)
+                        if photoshop_service._is_smart_object_task(task):
+                            result = runtime["modify_smart_object_text_layer"](connector, doc, task, mapping, params)
                         else:
-                            result = runtime["modify_text_layer"](connector, row.layer_obj, mapping, params)
+                            layer_obj = connector.find_layer_by_id(doc, int(getattr(task, "layer_id", 0) or 0))
+                            if layer_obj is None:
+                                task.status = "error"
+                                task.notes = "Layer id not found during execution"
+                                continue
+                            result = runtime["modify_text_layer"](connector, layer_obj, mapping, params)
                         task.status = "done" if result.success else "error"
                         task.notes = result.message or ""
 

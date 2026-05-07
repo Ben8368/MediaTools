@@ -142,14 +142,21 @@ def _resolve_font(ps: PhotoshopConnector, text_item, font_spec: str) -> str:
         original_font = text_item.Font
         from font_weight_mapper import find_closest_weight
         available = ps.get_available_weights(font_spec)
+        # If not found with spaces, try compact form (e.g. "Noto Sans" -> "NotoSans")
+        compact_spec = font_spec
+        if not available and " " in font_spec:
+            compact_spec = font_spec.replace(" ", "")
+            available = ps.get_available_weights(compact_spec)
         if not available:
             raise ValueError(f"目标字体家族未安装: {font_spec}")
-        sep = ps.get_font_separator(font_spec)
-        resolved = find_closest_weight(original_font, font_spec, available, separator=sep)
+        sep = ps.get_font_separator(compact_spec)
+        resolved = find_closest_weight(original_font, compact_spec, available, separator=sep)
         print(f"        [字重映射] {original_font} -> {resolved}")
         return resolved
     except Exception as e:
-        fallback = f"{font_spec}-Regular"
+        # Build a valid PostScript name: remove spaces so "Noto Sans" -> "NotoSans-Regular"
+        compact = font_spec.replace(" ", "")
+        fallback = f"{compact}-Regular"
         print(f"        [字重映射失败] {e}，使用 {fallback}")
         return fallback
 
@@ -183,6 +190,11 @@ def modify_text_layer(
     layer_name = layer.Name
 
     # --- 记录原始状态 ---
+    # Ensure TypeUnits is px before any Size read/write; PS may reset it when switching documents
+    try:
+        ps.app.Preferences.TypeUnits = 5  # psTypePixels
+    except Exception:
+        pass
     original_text = _get_text_content(layer)
     original_width, original_height = _get_bounds_wh(ps, layer)
 
@@ -247,7 +259,11 @@ def modify_text_layer(
         try:
             text_item.Font = resolved_font
             _wait_ps()
-            # 换字体后 PS 可能重置 Leading，立即恢复
+            # PS may reset TypeUnits and Leading after a font change; restore both
+            try:
+                ps.app.Preferences.TypeUnits = 5  # psTypePixels
+            except Exception:
+                pass
             try:
                 text_item.Leading = original_leading
             except Exception:

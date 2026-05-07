@@ -255,6 +255,11 @@ class PhotoshopConnector:
         desc = win32com.client.Dispatch("Photoshop.ActionDescriptor")
         self.app.ExecuteAction(self.app.StringIDToTypeID("placedLayerEditContents"), desc, psDisplayNoDialogs)
         time.sleep(0.6)
+        # PS resets TypeUnits when switching documents; re-lock to px so Size reads/writes are consistent
+        try:
+            self.app.Preferences.TypeUnits = psTypePixels
+        except Exception:
+            pass
         return self.app.ActiveDocument
 
     # ========== 多画板(Artboard)支持 ==========

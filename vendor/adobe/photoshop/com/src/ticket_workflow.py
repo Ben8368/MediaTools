@@ -285,12 +285,13 @@ def modify_smart_object_text_layer(
     except Exception:
         pass
 
+    raw_text = getattr(row, "raw_text", None) or getattr(row, "original_text", "")
     smart_layer = ps.find_layer_by_id(parent_doc, row.smart_object_layer_id)
     if smart_layer is None:
         return ModifyResult(
             layer_name=row.layer_name,
-            original_text=row.raw_text,
-            new_text=row.raw_text,
+            original_text=raw_text,
+            new_text=raw_text,
             original_font_size=row.font_size,
             final_font_size=row.font_size,
             original_tracking=row.tracking,
@@ -329,8 +330,8 @@ def modify_smart_object_text_layer(
         if target_layer is None:
             return ModifyResult(
                 layer_name=row.layer_name,
-                original_text=row.raw_text,
-                new_text=row.raw_text,
+                original_text=raw_text,
+                new_text=raw_text,
                 original_font_size=row.font_size,
                 final_font_size=row.font_size,
                 original_tracking=row.tracking,
