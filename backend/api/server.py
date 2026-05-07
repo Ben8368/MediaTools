@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -248,33 +249,10 @@ async def shutdown_server(request: Request):
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "shutdown only allowed from localhost"}, status_code=403)
 
-    import signal
-
     def _delayed_shutdown():
         time.sleep(0.5)
-        parent_pid = os.getppid()
-        current_pid = os.getpid()
-
-        # Check if running under reloader (parent is also python)
-        try:
-            import psutil
-            parent = psutil.Process(parent_pid)
-            if 'python' in parent.name().lower():
-                # In reload mode: gracefully terminate parent reloader
-                # First send SIGTERM to allow cleanup
-                parent.terminate()
-                # Wait for graceful shutdown
-                try:
-                    parent.wait(timeout=3)
-                except psutil.TimeoutExpired:
-                    # If still running after 3 seconds, force kill
-                    parent.kill()
-            else:
-                # Not in reload mode: kill current process
-                os.kill(current_pid, signal.SIGTERM)
-        except:
-            # Fallback: kill current process
-            os.kill(current_pid, signal.SIGTERM)
+        # Force exit with code 0 to signal normal shutdown
+        os._exit(0)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server shutting down"})
@@ -288,29 +266,33 @@ async def restart_server(request: Request):
     if not _is_loopback_address(client_host):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
-    import signal
-
     def _delayed_restart():
         time.sleep(0.5)
-        # Trigger file change to cause reload
+        # Trigger file change to cause reload in dev mode
         restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
         restart_trigger.parent.mkdir(exist_ok=True)
         restart_trigger.write_text(str(time.time()))
 
-        # Check if running under reloader
+        # Check if running under reloader (parent is also python)
         parent_pid = os.getppid()
         try:
             import psutil
             parent = psutil.Process(parent_pid)
-            if 'python' in parent.name().lower():
+            parent_name = parent.name().lower()
+            if 'python' in parent_name:
                 # In reload mode: file change will trigger restart automatically
-                # Don't send SIGTERM as it conflicts with the reload mechanism
+                # Terminate parent to let uvicorn reloader restart it
+                parent.terminate()
+                try:
+                    parent.wait(timeout=3)
+                except psutil.TimeoutExpired:
+                    parent.kill()
                 return
-        except:
-            pass
+        except Exception as e:
+            logging.debug(f"Failed to check parent process: {e}")
 
-        # Not in reload mode: gracefully terminate current process
-        os.kill(os.getpid(), signal.SIGTERM)
+        # Not in reload mode: exit with code 3 to signal restart to watchdog
+        os._exit(3)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
     return JSONResponse({"ok": True, "message": "server restarting"})

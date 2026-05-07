@@ -50,16 +50,6 @@ def _is_loopback_host(host: str) -> bool:
         return False
 
 
-# Global flag to signal restart request
-_restart_requested = False
-
-
-def request_restart():
-    """Signal that the application should restart after shutdown."""
-    global _restart_requested
-    _restart_requested = True
-
-
 def main():
     configure_windows_event_loop()
     root_dir = Path(__file__).parent.resolve()
@@ -87,10 +77,6 @@ def main():
         reload_dirs=[str(root_dir)] if args.reload else None,
         access_log=False,
     )
-
-    # Exit with code 3 if restart was requested
-    if _restart_requested:
-        sys.exit(3)
 
 
 if __name__ == "__main__":
