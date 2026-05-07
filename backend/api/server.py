@@ -268,7 +268,7 @@ async def restart_server(request: Request):
         return JSONResponse({"ok": False, "error": "restart only allowed from localhost"}, status_code=403)
 
     def _delayed_restart():
-        time.sleep(0.5)
+        time.sleep(1)  # Increased delay to allow graceful shutdown
         # Trigger file change to cause reload in dev mode
         restart_trigger = BASE_DIR / "runtime" / ".restart_trigger"
         restart_trigger.parent.mkdir(exist_ok=True)

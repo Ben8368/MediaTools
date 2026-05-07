@@ -10,6 +10,7 @@ MediaTools Web 服务入口
 import argparse
 import asyncio
 import ipaddress
+import socket
 import sys
 from pathlib import Path
 
@@ -50,6 +51,16 @@ def _is_loopback_host(host: str) -> bool:
         return False
 
 
+class ReuseAddrUvicornServer(uvicorn.Server):
+    """Uvicorn server with SO_REUSEADDR socket option enabled."""
+
+    def _create_socket(self):
+        """Create socket with SO_REUSEADDR option."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return sock
+
+
 def main():
     configure_windows_event_loop()
     root_dir = Path(__file__).parent.resolve()
@@ -68,7 +79,7 @@ def main():
     print(f"本地访问: http://{args.host}:{args.port}")
     print(f"API 文档: http://{args.host}:{args.port}/docs")
 
-    uvicorn.run(
+    config = uvicorn.Config(
         "backend.api.server:app",
         host=args.host,
         port=args.port,
@@ -78,6 +89,9 @@ def main():
         server_header=False,
         timeout_graceful_shutdown=3,
     )
+
+    server = ReuseAddrUvicornServer(config)
+    server.run()
 
 
 if __name__ == "__main__":
