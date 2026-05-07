@@ -251,7 +251,8 @@ async def shutdown_server(request: Request):
 
     def _delayed_shutdown():
         time.sleep(0.5)
-        # Force exit with code 0 to signal normal shutdown
+        # Use os._exit(0) to force immediate exit
+        # This ensures the process terminates and releases the port
         os._exit(0)
 
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
@@ -292,6 +293,7 @@ async def restart_server(request: Request):
             logging.debug(f"Failed to check parent process: {e}")
 
         # Not in reload mode: exit with code 3 to signal restart to watchdog
+        # Use os._exit to force immediate termination
         os._exit(3)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()

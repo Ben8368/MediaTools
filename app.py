@@ -73,9 +73,10 @@ def main():
         host=args.host,
         port=args.port,
         reload=args.reload,
-
         reload_dirs=[str(root_dir)] if args.reload else None,
         access_log=False,
+        server_header=False,
+        timeout_graceful_shutdown=3,
     )
 
 
