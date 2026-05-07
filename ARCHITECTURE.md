@@ -1,280 +1,135 @@
 # MediaTools Architecture
 
-> [中文版](./ARCHITECTURE.zh.md) · Chinese
-
-This document describes the current architecture of the MediaTools project.
+> [中文版](./ARCHITECTURE.zh.md)
 
 ## Overview
 
-MediaTools is a comprehensive media processing platform with a frontend WebUI, a backend CLI toolkit, and an AI Agent.
-
-```text
+```
 Entry Layer
-├── app.py (Web service)
-├── cli/main.py (CLI tool)
-└── backend/api/server.py (API server)
+├── app.py              # Web service (FastAPI + Uvicorn)
+├── cli/main.py         # CLI dispatcher
+└── backend/agent/      # AI agent
 
 Backend Layer
-├── backend/config/ - Configuration management
-├── backend/agent/ - AI Agent layer
-├── backend/api/ - API layer
-│   ├── server.py - FastAPI application
-│   ├── routes/ - API routes (16)
-│   ├── runtime.py - Runtime management
-│   └── models.py - Data models
-├── backend/services/ - Business service layer
-│   ├── media/ - Media processing services
-│   ├── runtime/ - Runtime management
-│   └── ... - Other services
-└── modules/ - Functional module layer
+├── backend/api/routes/ # API routes (request/response only)
+├── backend/services/   # Business logic and workflows
+├── backend/config/     # Configuration
+└── modules/            # CLI-callable capability modules
 
-Infrastructure Layer
-├── core/ - Core utilities (FFmpeg, logging, auth)
-├── adapters/ - External tool adapters
-├── patches/ - Tool patch system
-└── vendor/ - Third-party code
+Infrastructure
+├── adapters/           # External tool adapters
+├── core/               # Utilities (auth, logging, ffmpeg)
+└── patches/            # Tool patch rules
 
-Frontend Layer
-└── frontend/ - React + TypeScript + Vite
+Frontend
+└── frontend/           # React + TypeScript + Vite
 ```
 
 ## Design Principles
 
-1. **Clear layered architecture**
-   - Entry layer: CLI / API / Agent
-   - Business layer: Services
-   - Functional layer: Modules
-   - Infrastructure layer: Core / Adapters
+1. **Routes handle requests only** - no complex business logic
+2. **Services orchestrate workflows** - cross-module logic in `backend/services/`
+3. **Modules are independently callable** - CLI, API, and agent reuse the same modules
+4. **Adapter isolates external tools** - platform differences contained in `adapters/`
+5. **Frontend communicates via HTTP API only**
 
-2. **Agent as an independent layer**
-   - `backend/agent/` independently manages AI capabilities
-   - Contains complete service, tools, routes, etc.
-
-3. **Centralized API routes**
-   - All API routes are centralized under `backend/api/routes/`
-   - Easy to find and maintain
-
-4. **Modules are independently callable**
-   - Each module under `modules/` has its own CLI entry
-   - Callable by CLI, API, or Agent
-
-5. **Frontend is fully independent**
-   - Separate build process
-   - Communicates with backend via HTTP API
-
-## Directory Structure
-
-### backend/ - Backend Code
+## Backend Structure
 
 ```
 backend/
-├── config/              # Configuration management
-│   ├── __init__.py
-│   └── settings.py      # Global configuration
-│
-├── agent/               # AI Agent layer
-│   ├── service.py       # Agent service
-│   ├── tools.py         # Agent tool implementations
-│   ├── tool_specs.py    # Tool specification definitions
-│   ├── helpers.py       # Helper functions
-│   └── routes.py        # Agent routes
-│
-├── api/                 # API layer
-│   ├── server.py        # FastAPI application
-│   ├── setup.py         # Route configuration
-│   ├── runtime.py       # Runtime management
-│   ├── models.py        # Pydantic models
-│   └── routes/          # API routes
-│       ├── media.py     # Media processing
-│       ├── workspace.py # Workspace management
-│       ├── workbench.py # Workbench
-│       ├── assets.py    # Asset management
-│       ├── files.py     # File operations
-│       ├── photoshop.py # Photoshop automation
-│       ├── adobe.py     # Adobe general
-│       ├── auditor.py   # Auditing
-│       ├── wechat.py    # WeChat Moments
-│       ├── system.py    # System info
-│       ├── filebrowser.py # File browser
-│       ├── browser.py   # Browser control
-│       ├── path_picker.py # Path picker
-│       ├── task_center.py # Task center
-│       └── log.py       # Log viewer
-│
-└── services/            # Business service layer
-    ├── media/           # Media services
-    │   ├── core.py      # Compatibility facade
-    │   ├── fetch.py     # Video acquisition
-    │   ├── encoding.py  # Transcoding and slicing
-    │   ├── decrypt.py   # Decryption
-    │   ├── workflows.py # Combined workflows
-    │   └── helpers.py   # Helper functions
-    ├── runtime/         # Runtime management
-    │   ├── editor.py    # Editor runtime
-    │   └── filebrowser.py # File browser runtime
-    ├── workspace.py     # Workspace management
-    ├── workbench.py     # Workbench service
-    ├── task_center.py   # Task center
-    ├── photoshop.py     # Photoshop service
-    ├── auditor.py       # Auditing service
-    └── ... # Other services
+├── api/
+│   ├── server.py       # FastAPI app
+│   ├── setup.py        # Route registration
+│   ├── models.py       # Pydantic models
+│   └── routes/         # Route files by domain
+├── services/
+│   ├── media/          # Media workflows (fetch, encode, decrypt)
+│   ├── runtime/        # External tool runtimes
+│   ├── workspace.py    # Workspace management
+│   ├── workbench.py    # Workbench service
+│   └── task_center.py  # Long-running tasks
+├── agent/
+│   ├── service.py      # Agent service
+│   ├── tools.py        # Agent tools
+│   ├── tool_specs.py   # Tool definitions
+│   └── routes.py       # Agent API routes
+└── config/
+    └── settings.py     # Global configuration
 ```
 
-### cli/ - CLI Entry
+## Frontend Structure
 
 ```
-cli/
-├── __init__.py
-└── main.py              # CLI main entry
-```
-
-### modules/ - Functional Modules
-
-```
-modules/
-├── fetcher/             # Video downloading, subtitle processing
-├── encoder/             # Transcoding, slicing
-├── decryptor/           # Decryption
-├── assets/              # Asset management
-├── workbench/           # Workbench
-├── editor/              # CapCut integration
-├── photoshop/           # Photoshop automation
-├── adobe/               # Adobe general
-├── auditor/             # Auditing
-├── generator/           # Asset generation
-└── filebrowser/         # File browser
-```
-
-### frontend/ - Frontend
-
-```
-frontend/
-├── src/
-│   ├── main.tsx         # Entry
-│   ├── App.tsx          # Main application
-│   ├── apps/            # Application modules
-│   ├── components/      # Shared components
-│   ├── stores/          # State management (Zustand)
-│   ├── services/        # API calls
-│   └── i18n/            # Internationalization
-└── dist/                # Build output
+frontend/src/
+├── apps/               # Desktop-style application windows
+│   ├── DownloaderApp.tsx
+│   ├── WorkbenchApp.tsx
+│   ├── FileManagerApp.tsx
+│   ├── BrowserApp.tsx
+│   ├── AIAssistantApp.tsx
+│   ├── PhotoshopApp.tsx
+│   ├── AEApp.tsx
+│   └── AuditorApp.tsx
+├── api.ts              # API calls
+├── store.ts            # Global state (Zustand)
+└── windowStore.ts      # Window state
 ```
 
 ## Main Data Flows
 
-### 1. Download to Slicing Pipeline
+### Download → Analyze → Slice
 
-```text
-Frontend / AI Assistant / CLI
+```
+Frontend / CLI / Agent
 → backend/api/routes/media.py
 → backend/services/media/workflows.py
-→ backend/services/media/fetch.py
-→ modules/fetcher
-→ backend/services/media/encoding.py
-→ modules/encoder
+→ modules/fetcher → modules/encoder
 → projects/<workspace>/clips
 ```
 
-### 2. Workbench Review Pipeline
+### AI Assistant
 
-```text
-Frontend Workbench
-→ backend/api/routes/workbench.py
-→ backend/services/workbench.py
-→ modules/fetcher/analyzer.py
-→ modules/encoder/transcoder.py
-→ projects/<workspace>/clips
 ```
-
-### 3. AI Assistant Task Execution
-
-```text
 Frontend AI Assistant
 → backend/agent/routes.py
 → backend/agent/service.py
-→ backend/agent/tools.py
-→ backend/services/* (media/workspace/assets)
+→ backend/services/* → modules/*
 ```
 
-## Launch Methods
+## Configuration
 
-### Web Service
+In `backend/config/settings.py`, override via `.env`:
 
-```bash
-# Production mode
-python app.py
-
-# Development mode (auto-reload)
-python app.py --reload
-
-# Custom port
-python app.py --port 8080
 ```
-
-### CLI Tool
-
-```bash
-# New method (recommended)
-python -m cli.main fetcher download <url>
-
-# Old method (compatible)
-python main.py fetcher download <url>
-```
-
-### Frontend Development
-
-```bash
-cd frontend
-npm run dev          # Start development server
-npm run build        # Build production version
-```
-
-## Configuration Management
-
-Configuration is located in `backend/config/settings.py`, and can be overridden via `.env`:
-
-```bash
-# .env example
 TEC_CHI_API_KEY=your_api_key
 GUI_SERVER_PORT=7860
 WORKSPACE_ALLOWED_ROOTS=/path/to/projects
 ```
 
-## Backward Compatibility
+## Compatibility
 
-Layers are preserved for backward compatibility:
-
-- `config.py` → `backend.config` (proxies new path)
-- `main.py` → `cli.main` (proxies new path)
-- `services/` directory retained for compatibility
-
-These files may show DeprecationWarning. Migration to the new import paths is recommended over time.
+- `config.py` → proxies `backend.config`
+- `main.py` → proxies `cli.main`
+- These show DeprecationWarning; new code should use new paths
 
 ## Development Guidelines
 
-1. **New cross-module business logic**: Place in `backend/services/`
-2. **Reusable underlying capabilities**: Place in `modules/`, keep them CLI-testable
-3. **External software differences**: Place in `adapters/` or `backend/services/runtime/`
-4. **Web routes**: Only handle request parsing, validation, and response formatting
-5. **Long-running tasks**: Integrate with `task_center` so the frontend can display status and logs
-6. **Workspace paths**: Always apply security validation and test coverage
+1. New business logic → `backend/services/`
+2. Reusable capabilities → `modules/` (CLI-testable)
+3. External tool differences → `adapters/` or `backend/services/runtime/`
+4. Long-running tasks → integrate with `task_center`
+5. File paths → always validate against allowed roots
 
 ## Testing
 
-```bash
-# Run test suite
-pytest tests/ -v
-
-# Run with coverage
-pytest tests/ --cov=. --cov-report=html
-
-# Type checking
-mypy backend/ --ignore-missing-imports
+```powershell
+python -m pytest
+cd frontend && npm run typecheck && npm test
 ```
 
-## Current Boundaries
+## Boundaries
 
-- The Web service is the most complete entry point for capabilities; CLI is for batch processing and auxiliary tasks
-- Asset management is a workspace indexer, not a full asset database
-- CapCut-Mate, Adobe automation, and auditing tools depend on the local environment
-- Third-party code in `vendor/` should not be maintained as part of the project's own business layer
+- Web service is the most complete entry; CLI for batch/auxiliary tasks
+- Asset management is a workspace indexer, not a full database
+- CapCut, Adobe, and auditing depend on local environment
+- `vendor/` is third-party code, not project business layer
