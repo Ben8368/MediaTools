@@ -8,7 +8,7 @@ import { useModelConfig } from '@/modelConfigStore'
 type TestResult = { ok: boolean; message: string } | null
 
 export function SettingsApp() {
-  const { config, setConfig } = useModelConfig()
+  const { config, hasSavedConfig, saveConfig, clearSavedConfig } = useModelConfig()
   const [baseUrl, setBaseUrl] = useState(config.baseUrl)
   const [model, setModel] = useState(config.model)
   const [apiKey, setApiKey] = useState(config.apiKey)
@@ -18,16 +18,27 @@ export function SettingsApp() {
   const dirty = baseUrl !== config.baseUrl || model !== config.model || apiKey !== config.apiKey
 
   function save() {
-    setConfig({ baseUrl, model, apiKey })
+    const nextConfig = {
+      baseUrl: baseUrl.trim(),
+      model: model.trim(),
+      apiKey: apiKey.trim(),
+    }
+    saveConfig(nextConfig)
+    setBaseUrl(nextConfig.baseUrl)
+    setModel(nextConfig.model)
+    setApiKey(nextConfig.apiKey)
     setTestResult(null)
   }
 
-  function reset() {
-    setBaseUrl(config.baseUrl)
-    setModel(config.model)
-    setApiKey(config.apiKey)
+  function clearSaved() {
+    clearSavedConfig()
+    setBaseUrl('')
+    setModel('')
+    setApiKey('')
     setTestResult(null)
   }
+
+  const canClearSaved = hasSavedConfig || dirty || Boolean(config.baseUrl || config.model || config.apiKey)
 
   async function testConnection() {
     if (testing) return
@@ -66,8 +77,8 @@ export function SettingsApp() {
               <p>覆盖后端默认的 LLM 接入参数。留空时使用服务端配置。</p>
             </div>
             <div className="settings-badge">
-              <span>临时配置</span>
-              <small>刷新后失效</small>
+              <span>{hasSavedConfig ? '已保存配置' : '服务端默认'}</span>
+              <small>{hasSavedConfig ? '刷新后仍生效' : '未保存自定义模型'}</small>
             </div>
           </div>
 
@@ -103,8 +114,8 @@ export function SettingsApp() {
                 />
               </Field>
               <div className="settings-actions">
-                <PrimaryButton onClick={save} disabled={!dirty}>保存到会话</PrimaryButton>
-                <ToolbarButton onClick={reset} disabled={!dirty}>撤销</ToolbarButton>
+                <PrimaryButton onClick={save} disabled={!dirty}>保存</PrimaryButton>
+                <ToolbarButton onClick={clearSaved} disabled={!canClearSaved}>清除保存</ToolbarButton>
                 <ToolbarButton onClick={() => void testConnection()} disabled={testing}>
                   {testing ? '测试中...' : '测试连接'}
                 </ToolbarButton>
@@ -119,7 +130,7 @@ export function SettingsApp() {
             <section className="settings-card settings-card--summary">
               <div className="settings-section-head">
                 <h3>当前生效配置</h3>
-                <p>保存后立即作用于当前前端会话。</p>
+                <p>保存后立即作用于 AI 助手和 Agent 请求，并在刷新后保留。</p>
               </div>
               <ConfigRow label="Base URL" value={config.baseUrl || '使用服务端默认'} />
               <ConfigRow label="模型" value={config.model || '使用服务端默认'} />

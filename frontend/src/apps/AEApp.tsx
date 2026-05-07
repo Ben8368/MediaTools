@@ -351,12 +351,18 @@ export function AEApp() {
             <div className="ae-section-head">
               <div>
                 <h3>当前工单操作</h3>
-                <p>逐项确认要替换的文本、字体和输出工程；标记为跳过的任务不会执行。</p>
+                <p>逐条检查合成文本、目标字体和输出工程；打开任务即可精修替换内容。</p>
               </div>
               <div className="ae-actions">
                 <ToolbarButton onClick={() => setSelected(executableIndexes)} disabled={!tasks.length}>选择可执行</ToolbarButton>
                 <ToolbarButton onClick={() => setSelected([])} disabled={!tasks.length}>清空选择</ToolbarButton>
               </div>
+            </div>
+            <div className="ae-task-guide">
+              <span><b>1</b> 打开任务</span>
+              <span><b>2</b> 改文案和字体</span>
+              <span><b>3</b> 保存后执行</span>
+              <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
             <div className="ae-task-list">
               {tasks.length ? tasks.map((task, index) => {

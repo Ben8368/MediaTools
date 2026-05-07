@@ -20,6 +20,7 @@ psDoNotSaveChanges = 2
 
 # LayerKind
 psTextLayer = 2
+psSmartObjectLayer = 17
 
 # Units
 psPixels = 1
@@ -130,6 +131,79 @@ class PhotoshopConnector:
         return (float(bounds[0]), float(bounds[1]),
                 float(bounds[2]), float(bounds[3]))
 
+    def get_layer_id(self, layer) -> int:
+        """Return Photoshop's stable layer id for an ArtLayer/LayerSet."""
+        if layer is None:
+            return 0
+        for attr in ("id", "ID"):
+            try:
+                value = getattr(layer, attr)
+                return int(value)
+            except Exception:
+                pass
+        return 0
+
+    def select_layer_by_id(self, layer_id: int) -> None:
+        """Select a layer by id using Action Manager, required for smart object commands."""
+        ref = win32com.client.Dispatch("Photoshop.ActionReference")
+        ref.PutIdentifier(self.app.CharIDToTypeID("Lyr "), int(layer_id))
+        desc = win32com.client.Dispatch("Photoshop.ActionDescriptor")
+        desc.PutReference(self.app.CharIDToTypeID("null"), ref)
+        self.app.ExecuteAction(self.app.CharIDToTypeID("slct"), desc, psDisplayNoDialogs)
+
+    def get_layer_descriptor(self, layer):
+        """Read a layer ActionDescriptor; returns None when Photoshop refuses the query."""
+        layer_id = self.get_layer_id(layer)
+        if not layer_id:
+            return None
+        try:
+            ref = win32com.client.Dispatch("Photoshop.ActionReference")
+            ref.PutIdentifier(self.app.StringIDToTypeID("layer"), layer_id)
+            return self.app.ExecuteActionGet(ref)
+        except Exception:
+            return None
+
+    def is_smart_object_layer(self, layer) -> bool:
+        """Detect smart objects using both COM LayerKind and ActionDescriptor metadata."""
+        try:
+            if int(layer.Kind) == psSmartObjectLayer:
+                return True
+        except Exception:
+            pass
+
+        desc = self.get_layer_descriptor(layer)
+        if desc is None:
+            return False
+        for key_name in ("smartObject", "smartObjectMore"):
+            try:
+                if desc.HasKey(self.app.StringIDToTypeID(key_name)):
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def find_layer_by_id(self, container, layer_id: int):
+        """Recursively find an ArtLayer or LayerSet by Photoshop layer id."""
+        target = int(layer_id or 0)
+        if not target:
+            return None
+        try:
+            for layer in container.ArtLayers:
+                if self.get_layer_id(layer) == target:
+                    return layer
+        except Exception:
+            pass
+        try:
+            for layer_set in container.LayerSets:
+                if self.get_layer_id(layer_set) == target:
+                    return layer_set
+                found = self.find_layer_by_id(layer_set, target)
+                if found is not None:
+                    return found
+        except Exception:
+            pass
+        return None
+
     def collect_text_layers(self, container) -> list:
         """递归收集所有文字图层"""
         text_layers = []
@@ -150,6 +224,38 @@ class PhotoshopConnector:
             pass
 
         return text_layers
+
+    def collect_smart_object_layers(self, container) -> list:
+        """Recursively collect smart object art layers."""
+        smart_layers = []
+        try:
+            for layer in container.ArtLayers:
+                try:
+                    if self.is_smart_object_layer(layer):
+                        smart_layers.append(layer)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        try:
+            for layer_set in container.LayerSets:
+                smart_layers.extend(self.collect_smart_object_layers(layer_set))
+        except Exception:
+            pass
+
+        return smart_layers
+
+    def open_smart_object_contents(self, layer):
+        """Open the selected smart object's embedded document and return the active document."""
+        layer_id = self.get_layer_id(layer)
+        if not layer_id:
+            raise RuntimeError("Smart object layer has no id")
+        self.select_layer_by_id(layer_id)
+        desc = win32com.client.Dispatch("Photoshop.ActionDescriptor")
+        self.app.ExecuteAction(self.app.StringIDToTypeID("placedLayerEditContents"), desc, psDisplayNoDialogs)
+        time.sleep(0.6)
+        return self.app.ActiveDocument
 
     # ========== 多画板(Artboard)支持 ==========
 
@@ -224,6 +330,31 @@ class PhotoshopConnector:
             pass
 
         return text_layers
+
+    def collect_smart_object_layers_outside_artboards(self, doc, artboard_ids: set) -> list:
+        """Collect smart objects outside artboards (top-level and non-artboard groups)."""
+        smart_layers = []
+        try:
+            for layer in doc.ArtLayers:
+                try:
+                    if self.is_smart_object_layer(layer):
+                        smart_layers.append(layer)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        try:
+            for layer_set in doc.LayerSets:
+                try:
+                    if self.get_layer_id(layer_set) not in artboard_ids:
+                        smart_layers.extend(self.collect_smart_object_layers(layer_set))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        return smart_layers
 
     def export_artboard_png(self, doc, artboard, output_path: str) -> None:
         """

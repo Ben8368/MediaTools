@@ -83,11 +83,11 @@
 .ae-operation {
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 10px;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 24px 28px 32px;
+  padding: 14px 18px 20px;
   background:
     radial-gradient(circle at 100% 0, rgba(118,87,255,.14), transparent 30%),
     rgba(16,17,21,.92);
@@ -203,33 +203,38 @@
 .ae-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .ae-metric {
-  display: grid;
-  gap: 6px;
-  border-color: rgba(148,119,255,.19);
-  border-radius: 12px;
-  background: rgba(19,20,39,.84);
-  padding: 16px 18px;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-color: rgba(148,119,255,.17);
+  border-radius: 999px;
+  background: rgba(19,20,39,.68);
+  padding: 8px 12px;
 }
 
 .ae-metric span {
   color: rgba(229,226,255,.62);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .ae-metric strong {
   color: #fbfaff;
-  font-size: 26px;
+  font-size: 17px;
   line-height: 1;
 }
 
 .ae-panel {
   border-color: rgba(148,119,255,.18);
   border-radius: 16px;
-  background: rgba(19,20,39,.78);
+  background:
+    linear-gradient(180deg, rgba(24,25,48,.84), rgba(13,14,30,.76));
   padding: 14px;
 }
 
@@ -252,14 +257,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .ae-section-head h3 {
   margin: 0 0 4px;
   color: #fbfaff;
-  font-size: 15px;
-  font-weight: 850;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.02em;
 }
 
 .ae-section-head p {
@@ -391,8 +397,8 @@
 
 .ae-workspace {
   display: grid;
-  grid-template-columns: minmax(280px, .86fr) minmax(360px, 1.14fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
 }
 
@@ -403,14 +409,14 @@
 
 .ae-import-file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  align-items: stretch;
-  margin-bottom: 12px;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
   border: 1px solid rgba(148,119,255,.18);
   border-radius: 12px;
   background: rgba(6,8,18,.34);
-  padding: 12px;
+  padding: 10px;
 }
 
 .ae-import-file .mt-field,
@@ -433,6 +439,9 @@
 
 .ae-import-file > .mt-btn {
   justify-self: end;
+  min-height: 38px;
+  width: 100%;
+  font-weight: 900;
 }
 
 .ae-tools {
@@ -449,8 +458,7 @@
 
 .ae-ticket-panel {
   grid-area: auto;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   min-height: 0;
   overflow: hidden;
 }
@@ -470,13 +478,54 @@
 }
 
 .ae-ticket-list {
-  flex: 1;
   min-height: 0;
   gap: 2px;
+  max-height: 154px;
 }
 
 .ae-task-list {
-  max-height: min(48vh, 560px);
+  max-height: min(60vh, 720px);
+}
+
+.ae-task-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ae-task-guide span,
+.ae-task-guide em {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  border: 1px solid rgba(174,154,255,.13);
+  border-radius: 999px;
+  background: rgba(6,8,18,.34);
+  color: rgba(229,226,255,.70);
+  padding: 0 11px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ae-task-guide b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(118,87,255,.22);
+  color: #c6bbff;
+  font-size: 11px;
+}
+
+.ae-task-guide em {
+  border-color: rgba(48,209,88,.18);
+  color: #55e483;
 }
 
 .ae-ticket {
@@ -574,21 +623,21 @@
 .ae-empty {
   border: 1px dashed rgba(174,154,255,.18);
   border-radius: 12px;
-  padding: 18px;
+  padding: 14px;
   background: rgba(6,8,18,.36);
   text-align: center;
 }
 
 .ae-task {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
   border: 1px solid rgba(174,154,255,.16);
-  border-radius: 22px;
+  border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(18,18,41,.80), rgba(8,9,22,.64)),
     rgba(6,8,18,.54);
-  padding: 18px 20px;
+  padding: 12px 14px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
 }
 
@@ -601,16 +650,16 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 72px;
+  gap: 46px;
   padding-top: 2px;
   color: rgba(229,226,255,.58);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .ae-task-check input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   accent-color: #7657ff;
 }
 
@@ -618,23 +667,23 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .ae-task-title strong {
   display: block;
   color: #fbfaff;
-  font-size: 20px;
-  line-height: 1.18;
+  font-size: 16px;
+  line-height: 1.2;
   letter-spacing: -.02em;
 }
 
 .ae-task-title small {
   display: block;
-  margin-top: 7px;
+  margin-top: 4px;
   color: rgba(229,226,255,.68);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -643,8 +692,8 @@
   border-radius: 999px;
   background: rgba(255,159,10,.14);
   color: #ffbd5a;
-  padding: 8px 13px;
-  font-size: 13px;
+  padding: 5px 9px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 800;
 }
@@ -656,8 +705,8 @@
 
 .ae-task-preview {
   display: grid;
-  grid-template-columns: minmax(250px, 1.08fr) minmax(280px, .98fr) minmax(220px, .82fr) 124px;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(240px, 1fr) minmax(180px, .75fr) 104px;
+  gap: 8px;
   align-items: stretch;
 }
 
@@ -665,15 +714,15 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 9px;
-  min-height: 96px;
+  gap: 6px;
+  min-height: 74px;
   border: 1px solid rgba(174,154,255,.13);
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(180deg, rgba(255,255,255,.052), rgba(255,255,255,.026));
-  padding: 10px 12px 11px;
+  padding: 8px 10px;
   overflow: hidden;
   color: rgba(242,243,255,.88);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -681,17 +730,17 @@
 
 .ae-task-preview b {
   color: rgba(229,226,255,.48);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: .02em;
 }
 
 .ae-task-preview > .mt-btn {
   align-self: stretch;
-  min-height: 96px;
-  border-radius: 14px;
+  min-height: 74px;
+  border-radius: 12px;
   background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.2;
 }
@@ -786,8 +835,14 @@
   }
 
   .ae-metrics,
+  .ae-import-file,
+  .ae-task-guide,
   .ae-task-preview {
     grid-template-columns: 1fr;
+  }
+
+  .ae-section-head {
+    flex-direction: column;
   }
 
   .ae-task {

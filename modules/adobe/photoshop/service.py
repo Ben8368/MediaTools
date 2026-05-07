@@ -257,6 +257,7 @@ def scan_photoshop_document(
             ticket_path = _ticket_path(ticket_id, workspace)
             runtime["save_ticket_json"](ticket, str(ticket_path))
             artboards = sorted({row.artboard for row in scan_rows})
+            smart_text_layer_count = sum(1 for row in scan_rows if getattr(row, "smart_object_layer_id", 0))
             result_queue.put(
                 (
                     "ok",
@@ -267,6 +268,7 @@ def scan_photoshop_document(
                         "ticket": ticket.to_dict(),
                         "source_psd": source_path,
                         "layer_count": len(scan_rows),
+                        "smart_text_layer_count": smart_text_layer_count,
                         "artboard_count": len(artboards),
                         "artboards": artboards,
                     },

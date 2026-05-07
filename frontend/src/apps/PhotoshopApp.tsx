@@ -204,7 +204,18 @@ export function PhotoshopApp() {
       setExecution('请先勾选至少一个任务')
       return
     }
-    setExecution(await executePhotoshopTicket(ticketId, dryRun, selected))
+    if (!ticketId) return
+    try {
+      setExecution(dryRun ? '正在保存工单并执行 Dry Run...' : '正在保存工单并执行，完成后会在 Photoshop 中打开输出 PSD...')
+      const saved = await updatePhotoshopTicket(ticketId, JSON.parse(ticketText || '{}'))
+      setTicketText(JSON.stringify(saved.ticket, null, 2))
+      setActivePanel('result')
+      setResult(saved)
+      setExecution(await executePhotoshopTicket(ticketId, dryRun, selected))
+      await refresh()
+    } catch (err: any) {
+      setExecution({ ok: false, error: err?.message || '执行失败，请检查工单内容' })
+    }
   }
 
   async function refreshExecution() {
@@ -360,6 +371,11 @@ export function PhotoshopApp() {
                   </button>
                 )) : <span className="ps-language-empty">原始任务</span>}
               </div>
+              <div className="ps-language-presets" aria-label="常用目标语言">
+                {['zh-CN', 'en-US', 'ja-JP', 'ko-KR'].map((language) => (
+                  <button type="button" key={language} onClick={() => addTargetLanguages(language)}>{language}</button>
+                ))}
+              </div>
               <div className="ps-language-add">
                 <input
                   value={languageDraft}
@@ -387,12 +403,18 @@ export function PhotoshopApp() {
             <div className="ps-section-head">
               <div>
                 <h3>当前工单操作</h3>
-                <p>逐项确认要替换的文本、字体和输出名；标记为跳过的任务不会执行。</p>
+                <p>按图层逐项改文案、换字体、确认输出；已确认的任务会自动进入执行选择。</p>
               </div>
               <div className="ps-actions">
                 <ToolbarButton onClick={() => setSelected(executableIndexes)} disabled={!tasks.length}>选择可执行</ToolbarButton>
                 <ToolbarButton onClick={() => setSelected([])} disabled={!tasks.length}>清空选择</ToolbarButton>
               </div>
+            </div>
+            <div className="ps-task-guide">
+              <span><b>1</b> 填替换文案</span>
+              <span><b>2</b> 选择字体和输出名</span>
+              <span><b>3</b> 确认后执行</span>
+              <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
             <div className="ps-task-list">
               {tasks.length ? tasks.map((task, index) => {
@@ -448,6 +470,17 @@ export function PhotoshopApp() {
                   </div>
                 )
               }) : <div className="ps-empty">等待扫描或选择工单。</div>}
+            </div>
+            <div className="ps-execute-dock" aria-label="工单执行操作">
+              <div>
+                <strong>{selectedExecutableCount ? `${selectedExecutableCount} 个任务已准备执行` : '确认任务后执行'}</strong>
+                <small>确认修改会自动勾选任务；点击右侧按钮会先保存工单，再生成并打开输出 PSD。</small>
+              </div>
+              <div className="ps-execute-dock-actions">
+                <ToolbarButton onClick={save} disabled={!ticketId}>只保存</ToolbarButton>
+                <ToolbarButton onClick={() => void execute(true)} disabled={!ticketId || !selected.length}>Dry Run</ToolbarButton>
+                <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>保存并执行</PrimaryButton>
+              </div>
             </div>
           </section>
         </div>

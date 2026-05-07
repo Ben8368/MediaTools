@@ -43,6 +43,9 @@ class TicketScanRow:
     raw_text: str
     original_text: str
     layer_obj: object | None = None
+    smart_object_layer_id: int = 0
+    smart_object_name: str = ""
+    smart_object_inner_layer_name: str = ""
 
 
 @dataclass
@@ -121,7 +124,7 @@ def scan_document_for_ticket(ps, doc, source_psd: str) -> list[TicketScanRow]:
     rows: list[TicketScanRow] = []
     layer_id = 1
 
-    def append_row(layer, artboard_name: str):
+    def append_row(layer, artboard_name: str, smart_layer=None, inner_layer_name: str = ""):
         nonlocal layer_id
         try:
             ti = layer.TextItem
@@ -137,7 +140,7 @@ def scan_document_for_ticket(ps, doc, source_psd: str) -> list[TicketScanRow]:
                 layer_id=layer_id,
                 source_psd=os.path.basename(source_psd),
                 artboard=artboard_name,
-                layer_name=layer.Name,
+                layer_name=f"{smart_layer.Name} / {layer.Name}" if smart_layer is not None else layer.Name,
                 line_count=line_count,
                 alignment=_get_alignment(ti),
                 font_size=round(float(ti.Size), 2),
@@ -149,11 +152,34 @@ def scan_document_for_ticket(ps, doc, source_psd: str) -> list[TicketScanRow]:
                 source_font_weight=_guess_font_weight(font),
                 raw_text=raw_text.strip(),
                 original_text=_normalize_display_text(raw_text.strip()),
-                layer_obj=layer,
+                layer_obj=None if smart_layer is not None else layer,
+                smart_object_layer_id=ps.get_layer_id(smart_layer) if smart_layer is not None else 0,
+                smart_object_name=smart_layer.Name if smart_layer is not None else "",
+                smart_object_inner_layer_name=inner_layer_name or (layer.Name if smart_layer is not None else ""),
             ))
             layer_id += 1
         except Exception:
             return
+
+    def append_smart_object_rows(container, artboard_name: str):
+        for smart_layer in ps.collect_smart_object_layers(container):
+            smart_doc = None
+            try:
+                smart_doc = ps.open_smart_object_contents(smart_layer)
+                for inner_layer in ps.collect_text_layers(smart_doc):
+                    append_row(inner_layer, artboard_name, smart_layer=smart_layer, inner_layer_name=inner_layer.Name)
+            except Exception:
+                continue
+            finally:
+                if smart_doc is not None:
+                    try:
+                        ps.close_document(smart_doc, save=False)
+                    except Exception:
+                        pass
+                    try:
+                        doc.Activate()
+                    except Exception:
+                        pass
 
     artboards = ps.collect_artboards(doc)
     if artboards:
@@ -165,14 +191,111 @@ def scan_document_for_ticket(ps, doc, source_psd: str) -> list[TicketScanRow]:
                 pass
             for layer in ps.collect_text_layers_in_artboard(ab):
                 append_row(layer, ab.Name)
+            append_smart_object_rows(ab, ab.Name)
 
         for layer in ps.collect_text_layers_outside_artboards(doc, artboard_ids):
             append_row(layer, "(画板外)")
+        for smart_layer in ps.collect_smart_object_layers_outside_artboards(doc, artboard_ids):
+            smart_doc = None
+            try:
+                smart_doc = ps.open_smart_object_contents(smart_layer)
+                for inner_layer in ps.collect_text_layers(smart_doc):
+                    append_row(inner_layer, "(画板外)", smart_layer=smart_layer, inner_layer_name=inner_layer.Name)
+            except Exception:
+                continue
+            finally:
+                if smart_doc is not None:
+                    try:
+                        ps.close_document(smart_doc, save=False)
+                    except Exception:
+                        pass
+                    try:
+                        doc.Activate()
+                    except Exception:
+                        pass
     else:
         for layer in ps.collect_text_layers(doc):
             append_row(layer, "(无画板)")
+        append_smart_object_rows(doc, "(无画板)")
 
     return rows
+
+
+def modify_smart_object_text_layer(ps, parent_doc, row: TicketScanRow, mapping: TextMapping, params: AdjustParams) -> ModifyResult:
+    """Open a smart object, modify its matching inner text layer, then save it back to the parent PSD."""
+    try:
+        parent_doc.Activate()
+    except Exception:
+        pass
+
+    smart_layer = ps.find_layer_by_id(parent_doc, row.smart_object_layer_id)
+    if smart_layer is None:
+        return ModifyResult(
+            layer_name=row.layer_name,
+            original_text=row.raw_text,
+            new_text=row.raw_text,
+            original_font_size=row.font_size,
+            final_font_size=row.font_size,
+            original_tracking=row.tracking,
+            final_tracking=row.tracking,
+            original_width=row.width_px,
+            final_width=row.width_px,
+            original_height=row.height_px,
+            final_height=row.height_px,
+            success=False,
+            message="Smart object layer not found",
+        )
+
+    smart_doc = None
+    try:
+        smart_doc = ps.open_smart_object_contents(smart_layer)
+        candidates = ps.collect_text_layers(smart_doc)
+        target_layer = None
+        for layer in candidates:
+            try:
+                if layer.Name == row.smart_object_inner_layer_name and _normalize_display_text(layer.TextItem.Contents.strip()) == row.original_text:
+                    target_layer = layer
+                    break
+            except Exception:
+                continue
+        if target_layer is None:
+            for layer in candidates:
+                try:
+                    if _normalize_display_text(layer.TextItem.Contents.strip()) == row.original_text:
+                        target_layer = layer
+                        break
+                except Exception:
+                    continue
+        if target_layer is None:
+            return ModifyResult(
+                layer_name=row.layer_name,
+                original_text=row.raw_text,
+                new_text=row.raw_text,
+                original_font_size=row.font_size,
+                final_font_size=row.font_size,
+                original_tracking=row.tracking,
+                final_tracking=row.tracking,
+                original_width=row.width_px,
+                final_width=row.width_px,
+                original_height=row.height_px,
+                final_height=row.height_px,
+                success=False,
+                message="Text layer inside smart object not found",
+            )
+        result = modify_text_layer(ps, target_layer, mapping, params)
+        if result.success:
+            smart_doc.Save()
+        return result
+    finally:
+        if smart_doc is not None:
+            try:
+                ps.close_document(smart_doc, save=False)
+            except Exception:
+                pass
+            try:
+                parent_doc.Activate()
+            except Exception:
+                pass
 
 
 def write_scan_layers_csv(rows: list[TicketScanRow], output_path: str) -> None:

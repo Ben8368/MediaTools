@@ -102,6 +102,7 @@ class PhotoshopAutomationAdapter:
         return {
             "PhotoshopConnector": importlib.import_module("ps_connector").PhotoshopConnector,
             "scan_document_for_ticket": importlib.import_module("ticket_workflow").scan_document_for_ticket,
+            "modify_smart_object_text_layer": importlib.import_module("ticket_workflow").modify_smart_object_text_layer,
             "AdjustParams": importlib.import_module("text_modifier").AdjustParams,
             "modify_text_layer": importlib.import_module("text_modifier").modify_text_layer,
             "TextMapping": importlib.import_module("config_reader").TextMapping,

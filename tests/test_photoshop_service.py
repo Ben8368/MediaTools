@@ -124,6 +124,7 @@ def fake_runtime(rows: list[FakeScanRow] | None = None, pythoncom: FakePythonCom
         "pythoncom": pythoncom or FakePythonCom(),
         "PhotoshopConnector": FakeConnector,
         "scan_document_for_ticket": Mock(return_value=rows if rows is not None else [FakeScanRow()]),
+        "modify_smart_object_text_layer": Mock(),
         "TicketTask": FakeTicketTask,
         "TicketMeta": FakeTicketMeta,
         "Ticket": FakeTicket,

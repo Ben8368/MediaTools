@@ -77,7 +77,8 @@ def start_ticket_execution_impl(
                 connector = runtime["PhotoshopConnector"]()
                 connector.connect()
 
-                for output_name, tasks in grouped_tasks.items():
+                grouped_items = list(grouped_tasks.items())
+                for group_index, (output_name, tasks) in enumerate(grouped_items):
                     if state.cancel_event.is_set():
                         state.status = "cancelled"
                         state.message = "Execution cancelled before writing output"
@@ -123,7 +124,10 @@ def start_ticket_execution_impl(
                             font=(task.target_font or "").strip() or None,
                         )
 
-                        result = runtime["modify_text_layer"](connector, row.layer_obj, mapping, params)
+                        if getattr(row, "smart_object_layer_id", 0):
+                            result = runtime["modify_smart_object_text_layer"](connector, doc, row, mapping, params)
+                        else:
+                            result = runtime["modify_text_layer"](connector, row.layer_obj, mapping, params)
                         task.status = "done" if result.success else "error"
                         task.notes = result.message or ""
 
@@ -137,7 +141,9 @@ def start_ticket_execution_impl(
 
                     if not dry_run and doc is not None:
                         doc.Save()
-                        connector.close_document(doc, save=False)
+                        leave_open = group_index == len(grouped_items) - 1
+                        if not leave_open:
+                            connector.close_document(doc, save=False)
                         doc = None
                         output_paths.append(str(output_path))
 
@@ -153,7 +159,7 @@ def start_ticket_execution_impl(
                 state.status = "done"
                 state.progress = 100.0
                 state.output_paths = output_paths
-                state.message = "Photoshop execution completed"
+                state.message = "Photoshop execution completed. The latest output PSD is open in Photoshop."
                 state.finished_at = time.time()
                 if on_finish:
                     on_finish(True, {"status": "done", "output_paths": output_paths, "ticket_id": ticket_id, "dry_run": dry_run})
