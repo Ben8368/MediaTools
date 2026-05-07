@@ -309,9 +309,7 @@ async def restart_server(request: Request):
         except:
             pass
 
-        # Not in reload mode: use watchdog restart
-        import app
-        app.request_restart()
+        # Not in reload mode: gracefully terminate current process
         os.kill(os.getpid(), signal.SIGTERM)
 
     threading.Thread(target=_delayed_restart, daemon=True).start()
