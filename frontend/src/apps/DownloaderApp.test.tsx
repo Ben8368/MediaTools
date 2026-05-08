@@ -12,7 +12,14 @@ const apiMocks = vi.hoisted(() => ({
   runFetcherDownload: vi.fn(),
 }))
 
+const openWindowMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@/api', () => apiMocks)
+
+vi.mock('@/windowStore', () => ({
+  useWindowStore: (selector: (state: { openWindow: ReturnType<typeof vi.fn> }) => unknown) =>
+    selector({ openWindow: openWindowMock }),
+}))
 
 vi.mock('@/apps/FileManagerApp', () => ({
   DirectoryPickerDialog: () => null,

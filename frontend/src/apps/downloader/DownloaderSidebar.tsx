@@ -6,9 +6,17 @@ type DownloaderSidebarProps = {
   selectedCategory: CategoryKey
   stats: TaskStats
   onSelectCategory: (category: CategoryKey) => void
+  miniAiOpen: boolean
+  onToggleMiniAi: () => void
 }
 
-export function DownloaderSidebar({ selectedCategory, stats, onSelectCategory }: DownloaderSidebarProps) {
+export function DownloaderSidebar({
+  selectedCategory,
+  stats,
+  onSelectCategory,
+  miniAiOpen,
+  onToggleMiniAi,
+}: DownloaderSidebarProps) {
   return (
     <aside className="dl-sidebar">
       <nav className="dl-nav">
@@ -25,7 +33,12 @@ export function DownloaderSidebar({ selectedCategory, stats, onSelectCategory }:
         ))}
       </nav>
       <div className="dl-sidebar-bottom">
-        <button type="button" className="dl-nav-item">
+        <button
+          type="button"
+          className={`dl-nav-item ${miniAiOpen ? 'dl-nav-item--active' : ''}`}
+          aria-pressed={miniAiOpen}
+          onClick={onToggleMiniAi}
+        >
           <AiIcon />
           <span>AI</span>
         </button>

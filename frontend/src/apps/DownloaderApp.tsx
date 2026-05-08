@@ -6,6 +6,7 @@ import {
   runFetcherDownload,
 } from '@/api'
 import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
+import { WORKBENCH_PREFILL_STORAGE_KEY, type WorkbenchPrefillPayload } from '@/apps/workbench/prefill'
 import { DownloaderAddForm } from '@/apps/downloader/DownloaderAddForm'
 import { DownloaderDetailDrawer } from '@/apps/downloader/DownloaderDetailDrawer'
 import {
@@ -16,18 +17,24 @@ import {
   extractTaskRequestSnapshot,
   getCategoryForTask,
   getPlatformOption,
+  getTaskDisplayTitle,
   getTaskSearchHaystack,
+  getTaskSourceUrl,
+  getTaskSubtitleFilePath,
+  getTaskVideoFilePath,
   isTaskCancellable,
   isTaskClearable,
   isTaskRetryable,
   mergeTasks,
 } from '@/apps/downloader/helpers'
+import { DownloaderMiniAiChat } from '@/apps/downloader/DownloaderMiniAiChat'
 import { DownloaderSidebar } from '@/apps/downloader/DownloaderSidebar'
 import { DownloaderStatusBar } from '@/apps/downloader/DownloaderStatusBar'
 import { DownloaderTaskTable } from '@/apps/downloader/DownloaderTaskTable'
 import { DownloaderToolbar } from '@/apps/downloader/DownloaderToolbar'
-import type { CategoryKey, DownloadPlatform, DownloadTask } from '@/apps/downloader/types'
+import type { CategoryKey, DownloadPlatform, DownloadTask, DownloaderRowMenuAction } from '@/apps/downloader/types'
 import { useDownloaderTaskData } from '@/apps/downloader/useDownloaderTaskData'
+import { useWindowStore } from '@/windowStore'
 
 export { computeStats, isTaskCancellable } from '@/apps/downloader/helpers'
 
@@ -47,8 +54,10 @@ export function DownloaderApp() {
   const [submitError, setSubmitError] = useState('')
   const [actionError, setActionError] = useState('')
   const [detailOpen, setDetailOpen] = useState(false)
+  const [miniAiOpen, setMiniAiOpen] = useState(false)
   const selectionAnchorIdRef = useRef<string | null>(null)
   const { historyTasks, queueTasks, mergedTasks, fetchHistoryTasks, refreshLists, setOptimisticTasks } = useDownloaderTaskData()
+  const openWindow = useWindowStore((state) => state.openWindow)
 
   useEffect(() => {
     if (['completed', 'paused', 'error'].includes(selectedCategory)) {
@@ -106,6 +115,15 @@ export function DownloaderApp() {
     () => mergedTasks.find((task) => task.id === selectedTaskId) ?? null,
     [mergedTasks, selectedTaskId],
   )
+
+  const taskContextLine = useMemo(() => {
+    if (!selectedTask) return null
+    const url = getTaskSourceUrl(selectedTask)
+    const title = getTaskDisplayTitle(selectedTask)
+    const bits = [`当前任务：${title}`, `状态：${selectedTask.status}`]
+    if (url) bits.push(`链接：${url}`)
+    return bits.join(' · ')
+  }, [selectedTask])
 
   const hasBulkSelection = selectedIds.size > 0
   const selectedTasks = useMemo(() => {
@@ -234,6 +252,75 @@ export function DownloaderApp() {
     }
   }, [canRetrySelected, selectedTasks, submitTaskPayloads])
 
+  const handleRowMenuAction = useCallback(
+    async (action: DownloaderRowMenuAction, task: DownloadTask) => {
+      setActionError('')
+      if (action === 'ai_analyze') {
+        if (task.status !== 'completed') {
+          setActionError('请先等待任务下载完成后再分析字幕。')
+          return
+        }
+        const sub = getTaskSubtitleFilePath(task)
+        if (!sub) {
+          setActionError('未找到字幕文件路径，请确认下载任务包含字幕。')
+          return
+        }
+        const vid = getTaskVideoFilePath(task)
+        const payload: WorkbenchPrefillPayload = {
+          subtitlePath: sub,
+          highlight: 'analyze',
+          ...(vid ? { videoPath: vid } : {}),
+        }
+        sessionStorage.setItem(WORKBENCH_PREFILL_STORAGE_KEY, JSON.stringify(payload))
+        openWindow('workbench')
+        return
+      }
+      if (action === 'ai_slice') {
+        if (task.status !== 'completed') {
+          setActionError('请先等待任务下载完成后再进行切片。')
+          return
+        }
+        const vid = getTaskVideoFilePath(task)
+        if (!vid) {
+          setActionError('未找到本地视频文件路径。')
+          return
+        }
+        const sub = getTaskSubtitleFilePath(task)
+        const payload: WorkbenchPrefillPayload = {
+          videoPath: vid,
+          highlight: 'export',
+          ...(sub ? { subtitlePath: sub } : {}),
+        }
+        sessionStorage.setItem(WORKBENCH_PREFILL_STORAGE_KEY, JSON.stringify(payload))
+        openWindow('workbench')
+        return
+      }
+      if (action === 'copy_url') {
+        const url = getTaskSourceUrl(task)
+        if (!url) {
+          setActionError('该任务没有可复制的链接')
+          return
+        }
+        try {
+          await navigator.clipboard.writeText(url)
+        } catch {
+          setActionError('复制失败，请检查浏览器剪贴板权限')
+        }
+        return
+      }
+      if (action === 'retry') {
+        try {
+          const payload = buildRetryPayload(task)
+          if (!payload) throw new Error('无法重试：缺少原始链接参数')
+          await submitTaskPayloads([payload])
+        } catch (err: any) {
+          setActionError(err?.message || '重新提交失败')
+        }
+      }
+    },
+    [openWindow, refreshLists, submitTaskPayloads],
+  )
+
   const handleRowClick = useCallback(
     (taskId: string, index: number, event: MouseEvent<HTMLDivElement>) => {
       if (event.shiftKey && selectionAnchorIdRef.current) {
@@ -279,12 +366,16 @@ export function DownloaderApp() {
       <DownloaderSidebar
         selectedCategory={selectedCategory}
         stats={stats}
+        miniAiOpen={miniAiOpen}
+        onToggleMiniAi={() => setMiniAiOpen((open) => !open)}
         onSelectCategory={(category) => {
           setSelectedCategory(category)
           setSelectedIds(new Set())
           selectionAnchorIdRef.current = null
         }}
       />
+
+      <DownloaderMiniAiChat open={miniAiOpen} onClose={() => setMiniAiOpen(false)} taskContextLine={taskContextLine} />
 
       <main className={`dl-panel ${showAddForm ? 'dl-panel--with-form' : ''}`}>
         <DownloaderToolbar
@@ -335,6 +426,7 @@ export function DownloaderApp() {
                 selectedIds={selectedIds}
                 selectedTaskId={selectedTaskId}
                 onRowClick={handleRowClick}
+                onRowMenuAction={handleRowMenuAction}
               />
             </section>
           </div>

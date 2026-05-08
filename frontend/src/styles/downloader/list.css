@@ -18,10 +18,10 @@
 .dl-table-scroll::-webkit-scrollbar-track { background: transparent; }
 .dl-table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
 
-/* 下载队列：无勾选框，状态图标贴近标题 */
+/* 下载队列：无勾选框，状态图标贴近标题；末尾为行内菜单 */
 .dl-table--queue .dl-head,
 .dl-table--queue .dl-row {
-  grid-template-columns: 22px minmax(220px, 1fr) minmax(170px, .42fr) 126px;
+  grid-template-columns: 22px minmax(200px, 1fr) minmax(150px, 0.38fr) 104px 30px;
   column-gap: 8px;
 }
 
@@ -203,6 +203,70 @@
   padding-inline-end: 3px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dl-col-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.dl-row-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255,255,255,.38);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+
+.dl-row-menu-trigger:hover,
+.dl-row-menu-trigger--open {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.92);
+}
+
+.dl-row-menu-trigger__icon {
+  display: block;
+}
+
+.dl-row-menu-portal {
+  position: fixed;
+  z-index: 4000;
+  width: 180px;
+  padding: 4px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(22,24,30,.98);
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+}
+
+.dl-row-menu-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.88);
+  text-align: left;
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.dl-row-menu-item:hover:not(:disabled) {
+  background: rgba(255,255,255,.06);
+}
+
+.dl-row-menu-item:disabled {
+  cursor: not-allowed;
+  color: rgba(255,255,255,.32);
 }
 
 .dl-empty {

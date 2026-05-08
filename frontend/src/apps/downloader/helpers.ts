@@ -71,6 +71,13 @@ export function inferPlatformFromExtractor(extractor: string): DownloadPlatform 
   return null
 }
 
+/** 任务提交时的来源 URL（用于复制、重试等） */
+export function getTaskSourceUrl(task: DownloadTask): string {
+  const params = task.params ?? {}
+  if (typeof params.url === 'string' && params.url.trim()) return params.url.trim()
+  return (task.name || '').trim()
+}
+
 export function extractTaskInfo(task: DownloadTask): Record<string, unknown> {
   const items = Array.isArray(task.result?.items) ? task.result.items : []
   const firstItem = items[0]
@@ -78,6 +85,30 @@ export function extractTaskInfo(task: DownloadTask): Record<string, unknown> {
     return ((firstItem as Record<string, unknown>).info as Record<string, unknown>) ?? {}
   }
   return {}
+}
+
+/** yt-dlp 结果中的本地视频路径（用于工作台切片等） */
+export function getTaskVideoFilePath(task: DownloadTask): string {
+  const info = extractTaskInfo(task)
+  const p = info.local_path
+  return typeof p === 'string' && p.trim().length > 0 ? p.trim() : ''
+}
+
+/** 本地字幕路径（用于工作台 AI 分析字幕） */
+export function getTaskSubtitleFilePath(task: DownloadTask): string {
+  const info = extractTaskInfo(task)
+  const p = info.subtitle_path
+  return typeof p === 'string' && p.trim().length > 0 ? p.trim() : ''
+}
+
+/** 是否可向工作台跳转并做「AI 分析字幕」 */
+export function canWorkbenchAiAnalyze(task: DownloadTask): boolean {
+  return task.status === 'completed' && Boolean(getTaskSubtitleFilePath(task))
+}
+
+/** 是否可向工作台跳转并做「AI 切片 / 导出片段」（需本地视频） */
+export function canWorkbenchAiSlice(task: DownloadTask): boolean {
+  return task.status === 'completed' && Boolean(getTaskVideoFilePath(task))
 }
 
 /** 列表主行展示用：优先 yt-dlp 解析出的标题，未就绪时退回任务名（多为链接）。 */

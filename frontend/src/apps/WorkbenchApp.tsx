@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { AppLayout } from '@/AppLayout'
 import {
@@ -6,6 +6,7 @@ import {
   exportWorkbenchClips,
   fetchWorkbenchMedia,
 } from '@/api'
+import { WORKBENCH_PREFILL_STORAGE_KEY, type WorkbenchPrefillPayload } from '@/apps/workbench/prefill'
 import {
   Field,
   PathInput,
@@ -25,6 +26,8 @@ export function WorkbenchApp() {
   const [result, setResult] = useState<unknown>('等待分析字幕')
   const [exportResult, setExportResult] = useState<unknown>('等待导出片段')
 
+  const prefillAnalyzeRef = useRef<HTMLElement>(null)
+  const prefillExportRef = useRef<HTMLElement>(null)
   const videos: AnyRecord[] = media?.video_rows || []
   const subtitles: AnyRecord[] = media?.subtitle_rows || []
   const exports: AnyRecord[] = media?.export_rows || []
@@ -51,6 +54,27 @@ export function WorkbenchApp() {
 
   useEffect(() => { void refreshMedia() }, [])
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(WORKBENCH_PREFILL_STORAGE_KEY)
+      if (!raw) return
+      sessionStorage.removeItem(WORKBENCH_PREFILL_STORAGE_KEY)
+      const data = JSON.parse(raw) as WorkbenchPrefillPayload
+      if (data.subtitlePath) setSubtitlePath(data.subtitlePath)
+      if (data.videoPath) setVideoPath(data.videoPath)
+      if (typeof data.clipCount === 'number' && Number.isFinite(data.clipCount) && data.clipCount > 0) {
+        setClipCount(Math.floor(data.clipCount))
+      }
+      const target =
+        data.highlight === 'export' ? prefillExportRef : data.highlight === 'analyze' ? prefillAnalyzeRef : null
+      requestAnimationFrame(() => {
+        target?.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    } catch {
+      /* 忽略损坏的预填数据 */
+    }
+  }, [])
+
   return (
     <AppLayout>
       <div className="wb-app">
@@ -74,7 +98,7 @@ export function WorkbenchApp() {
         </div>
 
         <div className="wb-workspace">
-          <section className="wb-panel">
+          <section ref={prefillAnalyzeRef} className="wb-panel">
             <div className="wb-section-head">
               <div>
                 <h3>素材选择</h3>
@@ -122,7 +146,7 @@ export function WorkbenchApp() {
           </section>
         </div>
 
-        <section className="wb-panel">
+        <section ref={prefillExportRef} className="wb-panel">
           <div className="wb-section-head">
             <div>
               <h3>片段确认</h3>
