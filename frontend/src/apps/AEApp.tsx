@@ -19,6 +19,7 @@ import {
   scanAETicket,
   startAERender,
   updateAETicket,
+  wsUrl,
 } from '@/api'
 import {
   Field,
@@ -36,6 +37,7 @@ import {
 } from '@/apps/mediatools/automation'
 
 type AnyRecord = Record<string, any>
+type TaskFilter = 'all' | 'pending' | 'ready' | 'warning'
 
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
   if (!result && !execution) return <div className="ae-empty">暂无执行记录。</div>
@@ -83,6 +85,13 @@ export function AEApp() {
   const [renderComp, setRenderComp] = useState(1)
   const [renderOutput, setRenderOutput] = useState('')
   const [renderTemplate, setRenderTemplate] = useState('Best Settings')
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanStartedAt, setScanStartedAt] = useState<number | null>(null)
+  const [scanElapsedSec, setScanElapsedSec] = useState(0)
+  const [scanJob, setScanJob] = useState<AnyRecord | null>(null)
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
+  const [taskSearch, setTaskSearch] = useState('')
+  const [bulkFont, setBulkFont] = useState('')
 
   const parsedTicket = useMemo(() => {
     try {
@@ -97,10 +106,30 @@ export function AEApp() {
   const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
   const sourceProject = activeTicket?.source_project || parsedTicket?.meta?.source_project || ''
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
+  const warningTaskCount = tasks.filter(hasTaskWarning).length
+  const filteredTaskEntries = useMemo(() => (
+    tasks
+      .map((task, index) => ({ task, index }))
+      .filter(({ task }) => matchesTaskFilter(task, taskFilter))
+      .filter(({ task }) => matchesTaskSearch(task, taskSearch))
+  ), [tasks, taskFilter, taskSearch])
+  const visibleIndexes = filteredTaskEntries.map(({ index }) => index)
 
   function updateTask(index: number, patch: AnyRecord) {
     const nextTicket = patchAutomationTask(parsedTicket, index, patch)
     if (!nextTicket) return
+    setTicketText(JSON.stringify(nextTicket, null, 2))
+  }
+
+  function updateTasks(indexes: number[], patch: AnyRecord) {
+    if (!parsedTicket || !Array.isArray(parsedTicket.tasks)) return
+    const indexSet = new Set(indexes)
+    const nextTicket = {
+      ...parsedTicket,
+      tasks: parsedTicket.tasks.map((task: AnyRecord, index: number) => (
+        indexSet.has(index) ? { ...task, ...patch } : task
+      )),
+    }
     setTicketText(JSON.stringify(nextTicket, null, 2))
   }
 
@@ -114,6 +143,23 @@ export function AEApp() {
   function saveTaskDialog(index: number, patch: AnyRecord, checked: boolean) {
     updateTask(index, patch)
     toggleTask(index, checked)
+  }
+
+  function confirmTask(index: number) {
+    updateTask(index, { status: 'confirmed' })
+    toggleTask(index, true)
+  }
+
+  function confirmVisibleTasks() {
+    if (!visibleIndexes.length) return
+    updateTasks(visibleIndexes, { status: 'confirmed' })
+    setSelected((items) => uniqueNumbers([...items, ...visibleIndexes]))
+  }
+
+  function applyBulkFontToVisibleTasks() {
+    const font = bulkFont.trim()
+    if (!font || !visibleIndexes.length) return
+    updateTasks(visibleIndexes, { target_font: font })
   }
 
   async function refresh() {
@@ -146,17 +192,35 @@ export function AEApp() {
   }
 
   async function scan() {
-    const data = sourceMode === 'folder'
-      ? await scanAEFolder({ directory: projectFolder, recursive: true, max_files: 30 })
-      : await scanAETicket({ file_path: projectPath })
-    setResult(data)
-    if (data.ok) {
-      const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
-      setTicketId(data.ticket_id)
-      setTicketText(JSON.stringify(data.ticket, null, 2))
-      setSelected(automationTaskIndexes(nextTasks))
-      setActivePanel('import')
-      await refresh()
+    if (isScanning) return
+    setIsScanning(true)
+    setScanStartedAt(Date.now())
+    setScanElapsedSec(0)
+    setScanJob(null)
+    setResult({
+      ok: null,
+      status: 'scanning',
+      message: 'After Effects 正在扫描文本图层，请保持 After Effects 打开。',
+      source_mode: sourceMode,
+    })
+    try {
+      const data = sourceMode === 'folder'
+        ? await scanAEFolder({ directory: projectFolder, recursive: true, max_files: 30 })
+        : await scanAETicket({ file_path: projectPath })
+      setResult(data)
+      if (data.ok) {
+        const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+        setTicketId(data.ticket_id)
+        setTicketText(JSON.stringify(data.ticket, null, 2))
+        setSelected(automationTaskIndexes(nextTasks))
+        setActivePanel('import')
+        await refresh()
+      }
+    } catch (err: any) {
+      setResult({ ok: false, status: 'error', error: err?.message || 'AE 扫描失败' })
+    } finally {
+      setIsScanning(false)
+      setScanStartedAt(null)
     }
   }
 
@@ -199,7 +263,18 @@ export function AEApp() {
       setExecution('请先勾选至少一个任务')
       return
     }
-    setExecution(await executeAETicket(ticketId, dryRun, selected))
+    if (!ticketId) return
+    try {
+      setExecution('正在保存工单并执行...')
+      const saved = await updateAETicket(ticketId, JSON.parse(ticketText || '{}'))
+      setTicketText(JSON.stringify(saved.ticket, null, 2))
+      setActivePanel('result')
+      setResult(saved)
+      setExecution(await executeAETicket(ticketId, dryRun, selected))
+      await refresh()
+    } catch (err: any) {
+      setExecution({ ok: false, error: err?.message || '执行失败，请检查工单内容' })
+    }
   }
 
   async function refreshExecution() {
@@ -253,6 +328,35 @@ export function AEApp() {
   useEffect(() => { void refresh() }, [])
 
   useEffect(() => {
+    if (!isScanning || !scanStartedAt) return undefined
+    const timer = window.setInterval(() => {
+      setScanElapsedSec(Math.floor((Date.now() - scanStartedAt) / 1000))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [isScanning, scanStartedAt])
+
+  useEffect(() => {
+    if (!isScanning || typeof WebSocket === 'undefined') return undefined
+    const socket = new WebSocket(wsUrl('/ws/jobs'))
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data)
+        const jobs = Array.isArray(payload?.jobs) ? payload.jobs : []
+        const runningScan = jobs
+          .filter((job: AnyRecord) => (
+            ['ae_scan', 'ae_scan_folder'].includes(job.type)
+            && ['pending', 'running'].includes(job.status)
+          ))
+          .at(-1)
+        if (runningScan) setScanJob(runningScan)
+      } catch {
+        // Ignore malformed websocket frames; elapsed time still keeps the scan UI useful.
+      }
+    }
+    return () => socket.close()
+  }, [isScanning])
+
+  useEffect(() => {
     void fetchSystemFonts({ limit: 700 }).then((data) => {
       const names = (data.items || []).map((item: AnyRecord) => item.name).filter(Boolean)
       setFonts(names)
@@ -301,11 +405,11 @@ export function AEApp() {
               <h3>扫描工单</h3>
               <p>选择 `.aep` 来源并扫描文本图层，扫描成功后会自动导入为当前工单。</p>
             </div>
-            <ToolbarButton onClick={() => void refresh()}>刷新状态</ToolbarButton>
+            <ToolbarButton onClick={() => void refresh()} disabled={isScanning}>刷新状态</ToolbarButton>
           </div>
           <div className="ae-source-tabs" role="tablist" aria-label="After Effects source mode">
-            <button className={`ae-source-tab ${sourceMode === 'file' ? 'ae-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('file')}>单文件</button>
-            <button className={`ae-source-tab ${sourceMode === 'folder' ? 'ae-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('folder')}>文件夹批量</button>
+            <button className={`ae-source-tab ${sourceMode === 'file' ? 'ae-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('file')} disabled={isScanning}>单文件</button>
+            <button className={`ae-source-tab ${sourceMode === 'folder' ? 'ae-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('folder')} disabled={isScanning}>文件夹批量</button>
           </div>
           <div className="ae-form-grid">
             {sourceMode === 'folder' ? (
@@ -325,7 +429,18 @@ export function AEApp() {
               />
             </Field>
           </div>
-          <PrimaryButton onClick={scan}>扫描并生成工单</PrimaryButton>
+          {isScanning ? (
+            <div className="ae-scan-progress" role="status" aria-live="polite">
+              <div className="ae-scan-progress-top">
+                <span>扫描进行中</span>
+                <strong>{formatDuration(scanElapsedSec)}</strong>
+              </div>
+              <div className="ae-scan-progress-bar" aria-hidden="true"><span /></div>
+              <p>{scanJob?.stage || scanProgressMessage(scanElapsedSec, sourceMode)}</p>
+              <small>分析合成和图层时 After Effects 可能短暂卡顿，请不要手动切换或关闭工程。</small>
+            </div>
+          ) : null}
+          <PrimaryButton onClick={() => void scan()} disabled={isScanning}>{isScanning ? '扫描中，请稍候...' : '扫描并生成工单'}</PrimaryButton>
         </section>
 
         <div className={`ae-workspace ${activePanel === 'import' ? '' : 'ae-workspace--hidden'}`}>
@@ -354,8 +469,8 @@ export function AEApp() {
                       <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
                       <small>{ticket.task_count || 0} 个任务</small>
                     </span>
+                    <span className="ae-ticket-time">建立：{formatTicketTime(ticket.created_at, ticket.updated_at)}</span>
                     <span>{ticket.source_project || '未记录工程'}</span>
-                    <small>{ticket.confirmed_count || 0} 已确认</small>
                   </button>
                   <button
                     type="button"
@@ -378,25 +493,75 @@ export function AEApp() {
             <div className="ae-section-head">
               <div>
                 <h3>当前工单操作</h3>
-                <p>逐条检查合成文本、目标字体和输出工程；打开任务即可精修替换内容。</p>
+                <p>按图层逐项改文案、换字体、确认输出；已确认的任务会自动进入执行选择。</p>
               </div>
               <div className="ae-actions">
                 <ToolbarButton onClick={() => setSelected(executableIndexes)} disabled={!tasks.length}>选择可执行</ToolbarButton>
+                <ToolbarButton onClick={() => setSelected(visibleIndexes.filter((index) => executableIndexes.includes(index)))} disabled={!visibleIndexes.length}>选择当前筛选</ToolbarButton>
                 <ToolbarButton onClick={() => setSelected([])} disabled={!tasks.length}>清空选择</ToolbarButton>
               </div>
             </div>
             <div className="ae-task-guide">
-              <span><b>1</b> 打开任务</span>
-              <span><b>2</b> 改文案和字体</span>
-              <span><b>3</b> 保存后执行</span>
+              <span><b>1</b> 填替换文案</span>
+              <span><b>2</b> 选择字体和输出名</span>
+              <span><b>3</b> 确认后执行</span>
               <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
+            <div className="ae-task-controls">
+              <div className="ae-task-controls__search">
+                <input
+                  className="ae-task-search"
+                  aria-label="搜索 AE 任务"
+                  value={taskSearch}
+                  onChange={(event) => setTaskSearch(event.target.value)}
+                  placeholder="搜索原文、图层名、合成或字体"
+                />
+              </div>
+              <div className="ae-task-controls__filters">
+                <div className="ae-task-filter" role="tablist" aria-label="AE 任务分类">
+                  {taskFilters.map((filter) => (
+                    <button
+                      type="button"
+                      key={filter.id}
+                      className={taskFilter === filter.id ? 'ae-filter--active' : ''}
+                      onClick={() => setTaskFilter(filter.id)}
+                    >
+                      {filter.label}
+                      <span>{filterCount(tasks, filter.id)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="ae-task-controls__bulk">
+                <FontPicker
+                  compact
+                  hideLabels
+                  ariaLabel="批量目标字体"
+                  value={bulkFont}
+                  sourceFont=""
+                  fonts={fonts}
+                  onChange={setBulkFont}
+                />
+                <ToolbarButton onClick={applyBulkFontToVisibleTasks} disabled={!bulkFont.trim() || !visibleIndexes.length}>批量设置字体</ToolbarButton>
+                <ToolbarButton onClick={confirmVisibleTasks} disabled={!visibleIndexes.length}>批量确认当前筛选</ToolbarButton>
+              </div>
+              {warningTaskCount ? <p className="ae-task-warning">有 {warningTaskCount} 个任务带错误或备注，建议筛选“有错误/警告”后复核。</p> : null}
+            </div>
             <div className="ae-task-list">
-              {tasks.length ? tasks.map((task, index) => {
+              {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => {
                 const ready = isAutomationTaskExecutable(task)
+                const originalLine = String(task.original_text || '').trim()
+                const primaryCopy = originalLine || String(task.layer_name || '').trim() || `任务 ${index + 1}`
+                const taskWarning = hasTaskWarning(task)
+                const checkState = taskWarning ? 'warning' : ready ? 'ready' : 'pending'
+                const checkTitle = taskWarning
+                  ? `任务 ${index + 1} · 有错误/警告`
+                  : ready
+                    ? `任务 ${index + 1} · 可执行`
+                    : `任务 ${index + 1} · 待确认`
                 return (
                   <div className={`ae-task ${selected.includes(index) ? 'ae-task--selected' : ''}`} key={index}>
-                    <label className="ae-task-check">
+                    <label className={`ae-task-check ae-task-check--${checkState}`} title={checkTitle}>
                       <input
                         type="checkbox"
                         checked={selected.includes(index)}
@@ -406,46 +571,64 @@ export function AEApp() {
                       <span>{index + 1}</span>
                     </label>
                     <div className="ae-task-main">
-                      <div className="ae-task-title">
-                        <div>
-                          <strong>{task.layer_name || `任务 ${index + 1}`}</strong>
-                          <small>{task.comp_name || '未命名合成'} · {task.source_font || '未知字体'} · {task.original_text || '未读取原文'}</small>
-                        </div>
-                        <em className={ready ? 'ae-badge ae-badge--ready' : 'ae-badge'}>{ready ? '可执行' : '待确认'}</em>
-                      </div>
-                      <div className="ae-task-preview">
-                        <label>
-                          <b>替换</b>
+                      <div className="ae-task-head">
+                        <div className="ae-task-head-main">
                           <input
-                            aria-label={`AE 替换文本 ${index + 1}`}
+                            className="ae-task-copy-input"
+                            aria-label={`替换文本 ${index + 1}`}
                             value={task.target_text || ''}
                             onChange={(event) => updateTask(index, { target_text: event.target.value })}
-                            placeholder="待填写"
+                            placeholder={primaryCopy}
+                            title={primaryCopy}
                           />
-                        </label>
-                        <FontPicker
-                          compact
-                          ariaLabel={`AE 目标字体 ${index + 1}`}
-                          value={task.target_font || ''}
-                          sourceFont={task.source_font}
-                          fonts={fontOptionsForTask(fonts, task)}
-                          onChange={(font: string) => updateTask(index, { target_font: font })}
-                        />
-                        <label>
-                          <b>输出</b>
+                        </div>
+                        <div className="ae-task-badges">
+                          <em className={ready ? 'ae-badge ae-badge--ready' : 'ae-badge ae-badge--pending'}>{ready ? '可执行' : '待确认'}</em>
+                          {taskWarning ? <em className="ae-badge ae-badge--warning">有错误/警告</em> : null}
+                        </div>
+                      </div>
+                      <div className="ae-task-context">
+                        <span>{task.comp_name || '未命名合成'}</span>
+                        <span>{task.layer_name || '未命名图层'}</span>
+                        <span>{task.source_font || '未知字体'}</span>
+                      </div>
+                      <div className="ae-task-toolbar">
+                        <div className="ae-task-field ae-task-field--fonts">
+                          <FontPicker
+                            compact
+                            hideLabels
+                            accent="purple"
+                            ariaLabel={`目标字体 ${index + 1}`}
+                            value={task.target_font || ''}
+                            sourceFont={task.source_font}
+                            fonts={fontOptionsForTask(fonts, task)}
+                            onChange={(font: string) => updateTask(index, { target_font: font })}
+                          />
+                        </div>
+                        <div className="ae-task-field ae-task-field--output">
                           <input
-                            aria-label={`AE 输出名称 ${index + 1}`}
+                            aria-label={`输出名称 ${index + 1}`}
                             value={task.output_name || ''}
                             onChange={(event) => updateTask(index, { output_name: event.target.value })}
-                            placeholder="默认命名"
+                            placeholder="输出 · 默认命名"
                           />
-                        </label>
-                        <ToolbarButton onClick={() => setEditingTaskIndex(index)}>确认修改</ToolbarButton>
+                        </div>
+                        <ToolbarButton className="ae-task-confirm-btn" type="button" onClick={() => confirmTask(index)}>确认修改</ToolbarButton>
                       </div>
                     </div>
                   </div>
                 )
-              }) : <div className="ae-empty">等待扫描或选择工单。</div>}
+              }) : <div className="ae-empty">{tasks.length ? '当前筛选没有匹配任务。' : '等待扫描或选择工单。'}</div>}
+            </div>
+            <div className="ae-execute-dock" aria-label="工单执行操作">
+              <div>
+                <strong>{selectedExecutableCount ? `${selectedExecutableCount} 个任务已准备执行` : '确认任务后执行'}</strong>
+                <small>确认修改会自动勾选任务；点击右侧按钮会先保存工单，再执行。</small>
+              </div>
+              <div className="ae-execute-dock-actions">
+                <ToolbarButton onClick={save} disabled={!ticketId}>只保存</ToolbarButton>
+                <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>保存并执行</PrimaryButton>
+              </div>
             </div>
           </section>
         </div>
@@ -534,6 +717,70 @@ export function AEApp() {
       </div>
     </AppLayout>
   )
+}
+
+function uniqueNumbers(items: number[]) {
+  return Array.from(new Set(items))
+}
+
+const taskFilters: { id: TaskFilter, label: string }[] = [
+  { id: 'all', label: '全部' },
+  { id: 'pending', label: '待确认' },
+  { id: 'ready', label: '可执行' },
+  { id: 'warning', label: '有错误/警告' },
+]
+
+function hasTaskWarning(task: AnyRecord) {
+  return task.status === 'error' || Boolean(String(task.notes || '').trim())
+}
+
+function matchesTaskFilter(task: AnyRecord, filter: TaskFilter) {
+  if (filter === 'all') return true
+  if (filter === 'pending') return !isAutomationTaskExecutable(task)
+  if (filter === 'ready') return isAutomationTaskExecutable(task)
+  return hasTaskWarning(task)
+}
+
+function matchesTaskSearch(task: AnyRecord, search: string) {
+  const needle = search.trim().toLowerCase()
+  if (!needle) return true
+  return [
+    task.layer_name,
+    task.comp_name,
+    task.original_text,
+    task.target_text,
+    task.source_font,
+    task.target_font,
+  ].some((value) => String(value || '').toLowerCase().includes(needle))
+}
+
+function filterCount(tasks: AnyRecord[], filter: TaskFilter) {
+  return tasks.filter((task) => matchesTaskFilter(task, filter)).length
+}
+
+function formatTicketTime(createdAt: unknown, updatedAt: unknown) {
+  const raw = String(createdAt || '').trim()
+  const updatedRaw = String(updatedAt || '').trim()
+  const timestamp = raw || (updatedRaw && /^\d+(\.\d+)?$/.test(updatedRaw) ? new Date(Number(updatedRaw) * 1000).toISOString() : updatedRaw)
+  if (!timestamp) return '未知时间'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return raw || '未知时间'
+  const pad = (value: number) => value.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return minutes ? `${minutes}分${seconds.toString().padStart(2, '0')}秒` : `${seconds}秒`
+}
+
+function scanProgressMessage(elapsedSec: number, sourceMode: 'file' | 'folder') {
+  const sourceLabel = sourceMode === 'folder' ? 'AE 工程文件夹' : 'AE 工程文件'
+  if (elapsedSec < 4) return `正在连接 After Effects 并读取${sourceLabel}...`
+  if (elapsedSec < 12) return '正在收集文本图层、合成和字体信息...'
+  if (elapsedSec < 30) return '正在分析合成结构和图层属性...'
+  return '仍在扫描合成内容；大型工程或嵌套合成可能需要更久。'
 }
 
 function fontOptionsForTask(fonts: string[], task: AnyRecord): string[] {
