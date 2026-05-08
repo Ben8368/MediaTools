@@ -35,6 +35,23 @@ export function joinPath(base: string, name: string): string {
   return `${base.replace(/[\\/]+$/, '')}${separator}${name}`
 }
 
+/** 所选路径是否为当前浏览目录本身或其下层路径（换到其他目录时需清掉无效的子路径选择）。 */
+export function cwdCoversSelection(cwd: string, selected: string): boolean {
+  const norm = (p: string) => {
+    const t = p.trim().replace(/\\/g, '/')
+    if (t === '/') return '/'
+    return t.replace(/\/+$/, '')
+  }
+  const c = norm(cwd)
+  const s = norm(selected)
+  if (!c || !s) return false
+  const cl = c.toLowerCase()
+  const sl = s.toLowerCase()
+  if (sl === cl) return true
+  const base = cl.endsWith('/') ? cl : `${cl}/`
+  return sl.startsWith(base)
+}
+
 export function entryType(entry: FileEntry): string {
   if (entry.type === 'directory') return '文件夹'
   return entry.extension?.replace('.', '').toUpperCase() || '文件'

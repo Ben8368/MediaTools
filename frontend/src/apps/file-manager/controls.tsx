@@ -25,6 +25,14 @@ export const TrashIcon = () => <svg viewBox="0 0 24 24"><path d="M4 6h16" /><pat
 export const MoreIcon = () => <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /></svg>
 export const CloseIcon = () => <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
 export const SortIcon = () => <svg viewBox="0 0 24 24"><path d="M7 4v14" /><path d="M4 15l3 3 3-3" /><path d="M14 6h6M14 12h4M14 18h2" /></svg>
+
+/** 返回上一级目录（水平线 + 向上箭头）。 */
+export const ParentDirIcon = () => (
+  <svg viewBox="0 0 24 24">
+    <path d="M4 19h16" />
+    <path d="M12 17V7M8 11l4-4 4 4" />
+  </svg>
+)
 export const ListIcon = () => <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></svg>
 export const GridIcon = () => <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg>
 export const TuneIcon = () => <svg viewBox="0 0 24 24"><path d="M4 7h11M19 7h1M4 12h4M12 12h8M4 17h9M17 17h3" /><circle cx="17" cy="7" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="15" cy="17" r="2" /></svg>

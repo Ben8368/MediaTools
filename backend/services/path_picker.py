@@ -8,6 +8,7 @@ from typing import Any
 
 from backend.config import BASE_DIR, WORKSPACE_ALLOWED_ROOTS
 from backend.services.workspace import get_current_workspace
+from modules.filebrowser import resolve_filebrowser_path as _resolve_under_filebrowser_roots
 
 
 def _dedupe_roots(items: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -55,7 +56,7 @@ def _resolve_child(root: Path, relative_path: str) -> Path:
 
 
 def resolve_allowed_path(path: str, workspace: dict | None = None) -> Path:
-    """Resolve a user supplied path under one of the configured picker roots."""
+    """解析用户路径：先匹配工作区/path-picker 根目录，再放宽到 filebrowser 可选盘符路径。"""
     ws = workspace or get_current_workspace()
     raw = Path(path or ws["project_root"]).expanduser()
     target = raw if raw.is_absolute() else Path(ws["project_root"]) / raw
@@ -67,6 +68,11 @@ def resolve_allowed_path(path: str, workspace: dict | None = None) -> Path:
             return target
         except ValueError:
             continue
+    # 目录选择器等 UI 可走 filebrowser 盘符列表；写入类 API 应与可见范围一致。
+    try:
+        return _resolve_under_filebrowser_roots(target)
+    except ValueError:
+        pass
     raise ValueError("Path is outside allowed roots")
 
 

@@ -2,7 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from backend.services.path_picker import get_path_picker_roots, list_path_picker_directory
+import modules.filebrowser.service as fb_svc
+
+from backend.services.path_picker import get_path_picker_roots, list_path_picker_directory, resolve_allowed_path
 
 
 def _workspace(root: Path) -> dict[str, str]:
@@ -55,3 +57,39 @@ def test_path_picker_rejects_traversal(tmp_path):
 
     with pytest.raises(ValueError):
         list_path_picker_directory(root_id="workspace", path="../outside", workspace=_workspace(project))
+
+
+def test_resolve_allowed_path_accepts_paths_under_filebrowser_roots(tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    project.mkdir()
+    outside = tmp_path / "outside_pick"
+    outside.mkdir()
+    workspace = _workspace(project)
+
+    monkeypatch.setattr(
+        fb_svc,
+        "_WINDOWS_DRIVE_CACHE",
+        [{"name": "Root", "path": str(tmp_path)}],
+    )
+
+    resolved = resolve_allowed_path(str(outside), workspace)
+    assert resolved == outside.resolve()
+
+
+def test_resolve_allowed_path_rejects_paths_outside_filebrowser_roots(tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    project.mkdir()
+    allowed_root = tmp_path / "allowed_disk"
+    allowed_root.mkdir()
+    nowhere = tmp_path / "blocked" / "x"
+    nowhere.mkdir(parents=True)
+    workspace = _workspace(project)
+
+    monkeypatch.setattr(
+        fb_svc,
+        "_WINDOWS_DRIVE_CACHE",
+        [{"name": "Allowed", "path": str(allowed_root)}],
+    )
+
+    with pytest.raises(ValueError, match="outside allowed roots"):
+        resolve_allowed_path(str(nowhere), workspace)

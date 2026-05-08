@@ -215,11 +215,24 @@ describe('FileManagerApp', () => {
 
     render(<DirectoryPickerDialog open value="" mode="directory" onClose={onClose} onPick={onPick} />)
 
-    expect(await screen.findByText('当前目录')).toBeInTheDocument()
+    expect(await screen.findByRole('textbox', { name: '当前路径' })).toHaveValue('D:\\')
     fireEvent.click(screen.getByRole('button', { name: '确认' }))
 
     expect(onPick).toHaveBeenCalledWith('D:\\')
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('creates a new folder from directory picker drive bar', async () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('picked-subdir')
+    mockDirectory('D:\\')
+    render(<DirectoryPickerDialog open value="" mode="directory" onClose={vi.fn()} onPick={vi.fn()} />)
+
+    await screen.findByRole('textbox', { name: '当前路径' })
+    fireEvent.click(screen.getByRole('button', { name: '新建文件夹' }))
+
+    await waitFor(() => {
+      expect(apiMocks.createFilebrowserDirectory).toHaveBeenCalledWith('D:\\picked-subdir')
+    })
   })
 
   it('requires selecting a file when directory picker runs in file mode', async () => {

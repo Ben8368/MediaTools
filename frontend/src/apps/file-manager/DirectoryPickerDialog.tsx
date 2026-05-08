@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { fetchFilebrowserDisks, getWorkspace } from '@/api'
+import { createFilebrowserDirectory, fetchFilebrowserDisks, getWorkspace } from '@/api'
 import {
   BackIcon,
   CloseIcon,
   DriveIcon,
   FileIcon,
   FolderIcon,
+  FolderPlusIcon,
   ForwardIcon,
   IconButton,
+  ParentDirIcon,
   RefreshIcon,
   SearchIcon,
-  SortIcon,
 } from '@/apps/file-manager/controls'
 import type { DirectoryPickerDialogProps, DiskInfo } from '@/apps/file-manager/types'
-import { displayDiskName, entryType, formatDate, formatSize, isPathOnDisk, locationLabel, parentPath, resolveInitialPath } from '@/apps/file-manager/utils'
+import { displayDiskName, entryType, formatDate, formatSize, cwdCoversSelection, isPathOnDisk, joinPath, locationLabel, parentPath, resolveInitialPath } from '@/apps/file-manager/utils'
 import { useFilebrowserNavigator } from '@/apps/file-manager/useFilebrowserNavigator'
 
 export function DirectoryPickerDialog({
@@ -32,6 +33,7 @@ export function DirectoryPickerDialog({
     files,
     loading,
     error,
+    setError,
     navigate,
     resetHistory,
     goBack,
@@ -43,6 +45,9 @@ export function DirectoryPickerDialog({
   const [selectedPath, setSelectedPath] = useState('')
   const [activeDiskPath, setActiveDiskPath] = useState('')
   const [searchText, setSearchText] = useState('')
+  const [mkdirBusy, setMkdirBusy] = useState(false)
+  const [addressDraft, setAddressDraft] = useState('')
+  const addressFocusedRef = useRef(false)
 
   const canPickDirectory = mode === 'directory' || mode === 'any'
   const canPickFile = mode === 'file' || mode === 'any'
@@ -80,6 +85,26 @@ export function DirectoryPickerDialog({
     }
   }, [canPickDirectory, navigate, open, resetHistory, value])
 
+  useEffect(() => {
+    if (!addressFocusedRef.current) setAddressDraft(currentPath)
+  }, [currentPath])
+
+  const commitAddress = useCallback(async () => {
+    const raw = addressDraft.trim()
+    if (!raw) {
+      setAddressDraft(currentPath)
+      return
+    }
+    if (raw === currentPath) return
+    const data = await navigate(raw)
+    if (data?.path) {
+      if (canPickDirectory) setSelectedPath(data.path)
+      setAddressDraft(data.path)
+    } else {
+      setAddressDraft(currentPath)
+    }
+  }, [addressDraft, canPickDirectory, currentPath, navigate])
+
   const filteredDirectories = useMemo(() => {
     const keyword = searchText.trim().toLowerCase()
     if (!keyword) return directories
@@ -96,10 +121,45 @@ export function DirectoryPickerDialog({
   const confirmedPath = selectedPath || (canPickDirectory ? currentPath : '')
   const searchPlaceholder = mode === 'directory' ? '搜索文件夹' : '搜索文件或文件夹'
 
+  const handleNewFolder = async () => {
+    if (!currentPath || mkdirBusy) return
+    const name = window.prompt('请输入新文件夹名称', '新建文件夹')
+    if (name == null) return
+    const trimmed = name.trim()
+    if (!trimmed) return
+    if (trimmed === '.' || trimmed === '..') {
+      setError('无效的文件夹名称')
+      return
+    }
+    if (/[<>:"/\\|?*\x00-\x1f]/.test(trimmed)) {
+      setError('名称不能包含 \\ / : * ? " < > | 等字符')
+      return
+    }
+    const newPath = joinPath(currentPath, trimmed)
+    setMkdirBusy(true)
+    setError('')
+    try {
+      await createFilebrowserDirectory(newPath)
+      await navigate(currentPath, false)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setMkdirBusy(false)
+    }
+  }
+
   useEffect(() => {
     if (!currentPath) return
     setActiveDiskPath((current) => disks.find((disk) => isPathOnDisk(currentPath, disk.path))?.path || current)
   }, [currentPath, disks])
+
+  useEffect(() => {
+    if (!canPickDirectory || !currentPath) return
+    setSelectedPath((prev) => {
+      if (!prev) return currentPath
+      return cwdCoversSelection(currentPath, prev) ? prev : currentPath
+    })
+  }, [canPickDirectory, currentPath])
 
   if (!open) return null
 
@@ -110,7 +170,9 @@ export function DirectoryPickerDialog({
           <div>
             <strong>{title}</strong>
             <div className="fm-picker__hint">
-              {mode === 'directory' ? '双击进入文件夹，单击选择后确认。' : '双击进入文件夹，单击文件后确认。'}
+              {mode === 'directory'
+                ? '顶部地址栏可直接粘贴路径，按 Enter 或失焦跳转；双击进入文件夹，单击文件夹后确认。'
+                : '顶部地址栏可直接粘贴路径，按 Enter 或失焦跳转；双击进入文件夹，单击文件后确认。'}
             </div>
           </div>
           <button type="button" className="fm-icon-btn" title="关闭" onClick={onClose}>
@@ -127,14 +189,36 @@ export function DirectoryPickerDialog({
               <IconButton disabled={!canGoForward} title="前进" onClick={goForward}>
                 <ForwardIcon />
               </IconButton>
-              <IconButton disabled={!currentParent} title="上一级" onClick={() => currentParent && void navigate(currentParent)}>
-                <SortIcon />
+              <IconButton disabled={!currentParent} title="返回上一级目录" onClick={() => currentParent && void navigate(currentParent)}>
+                <ParentDirIcon />
               </IconButton>
               <IconButton disabled={!currentPath} title="刷新" onClick={() => void navigate(currentPath, false)}>
                 <RefreshIcon />
               </IconButton>
             </div>
-            <div className="fm-picker__address">{currentPath || '选择路径'}</div>
+            <input
+              type="text"
+              className="fm-picker__address-input"
+              value={addressDraft}
+              onChange={(e) => setAddressDraft(e.target.value)}
+              onFocus={() => {
+                addressFocusedRef.current = true
+              }}
+              onBlur={() => {
+                addressFocusedRef.current = false
+                void commitAddress()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  ;(e.target as HTMLInputElement).blur()
+                }
+              }}
+              spellCheck={false}
+              autoComplete="off"
+              aria-label="当前路径"
+              placeholder={currentPath ? '编辑路径后按 Enter 跳转' : '加载中…'}
+            />
             <label className="fm-search fm-picker__search">
               <SearchIcon />
               <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder={searchPlaceholder} />
@@ -142,33 +226,39 @@ export function DirectoryPickerDialog({
           </div>
 
           <div className="fm-picker__drives">
-            {disks.map((disk) => (
-              <button
-                key={disk.path}
-                type="button"
-                className={`fm-picker__drive ${activeDiskPath === disk.path || isPathOnDisk(currentPath, disk.path) ? 'fm-picker__drive--active' : ''}`}
-                onClick={() => {
-                  setActiveDiskPath(disk.path)
-                  void navigate(disk.path)
-                }}
-              >
-                <DriveIcon />
-                <span>{displayDiskName(disk.name)}</span>
-                <small>{formatSize(disk.free)}</small>
-              </button>
-            ))}
-          </div>
-
-          {canPickDirectory && currentPath && (
+            <div className="fm-picker__drives-disks">
+              {disks.map((disk) => (
+                <button
+                  key={disk.path}
+                  type="button"
+                  className={`fm-picker__drive fm-picker__drive--disk ${activeDiskPath === disk.path || isPathOnDisk(currentPath, disk.path) ? 'fm-picker__drive--active' : ''}`}
+                  onClick={() => {
+                    setActiveDiskPath(disk.path)
+                    void navigate(disk.path)
+                  }}
+                >
+                  <span className="fm-picker__drive-icon" aria-hidden>
+                    <DriveIcon />
+                  </span>
+                  <span className="fm-picker__drive-label">{displayDiskName(disk.name)}</span>
+                  <small className="fm-picker__drive-meta">{formatSize(disk.free)}</small>
+                </button>
+              ))}
+            </div>
             <button
               type="button"
-              className={`fm-picker__current ${selectedPath === currentPath ? 'fm-picker__current--active' : ''}`}
-              onClick={() => setSelectedPath(currentPath)}
+              className="fm-picker__drive fm-picker__drive--new-folder"
+              disabled={!currentPath || loading || mkdirBusy}
+              title="在本目录下新建文件夹"
+              aria-label="新建文件夹"
+              onClick={() => void handleNewFolder()}
             >
-              <strong>当前目录</strong>
-              <span>{currentPath}</span>
+              <span className="fm-picker__drive-icon fm-picker__drive-icon--compact" aria-hidden>
+                <FolderPlusIcon />
+              </span>
+              <span className="fm-picker__drive-label">新建文件夹</span>
             </button>
-          )}
+          </div>
 
           <div className="fm-picker__list">
             {loading && <div className="fm-empty">正在加载...</div>}

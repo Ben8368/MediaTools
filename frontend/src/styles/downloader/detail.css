@@ -81,6 +81,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dl-detail-header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .dl-detail-header strong {
@@ -90,10 +97,19 @@
 }
 
 .dl-detail-header small {
-  display: block;
   margin-top: 4px;
   color: rgba(255,255,255,.48);
   font-size: 11px;
+  font-weight: 500;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-height: 3.1em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .dl-detail-badge {
@@ -107,6 +123,7 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  flex: 0 0 auto;
 }
 
 .dl-detail-badge--running { color: #6dffc1; background: rgba(34,197,94,.14); }
@@ -142,6 +159,8 @@
   border: 1px solid rgba(255,255,255,.06);
   border-radius: 12px;
   background: rgba(255,255,255,.025);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dl-detail-card--snapshots {
@@ -150,8 +169,8 @@
 
 .dl-detail-row {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 10px 14px;
   align-items: start;
   border-bottom: 1px solid rgba(255,255,255,.05);
   padding: 0 0 8px;
@@ -165,6 +184,8 @@
 .dl-detail-row span {
   color: rgba(255,255,255,.42);
   font-size: 11px;
+  line-height: 1.35;
+  padding-top: 1px;
 }
 
 .dl-detail-row strong {
