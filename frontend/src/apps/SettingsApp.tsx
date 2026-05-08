@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AppLayout } from '@/AppLayout'
 import { runAgent, testAgentConnection } from '@/api'
-import { Field, PrimaryButton, ToolbarButton } from '@/apps/mediatools/primitives'
+import { Field, PrimaryButton } from '@/apps/mediatools/primitives'
 import { useModelConfig } from '@/modelConfigStore'
 
 type TestResult = { ok: boolean; message: string } | null
 
 type ProbeMessage = { id: string; role: 'user' | 'assistant'; content: string }
 
-const PROBE_INTRO_MESSAGE: ProbeMessage = {
-  id: 'settings-probe-intro',
-  role: 'assistant',
-  content:
-    '在此处发送一条消息，将使用上方表单里的 Base URL、模型与 API Key 调用 Agent（无需先保存）。适合快速确认模型能否正常回复。',
+function trimCfg(c: { baseUrl: string; model: string; apiKey: string }) {
+  return {
+    baseUrl: c.baseUrl.trim(),
+    model: c.model.trim(),
+    apiKey: c.apiKey.trim(),
+  }
 }
 
 export function SettingsApp() {
@@ -25,10 +26,23 @@ export function SettingsApp() {
   const [saving, setSaving] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [testResult, setTestResult] = useState<TestResult>(null)
-  const [probeMessages, setProbeMessages] = useState<ProbeMessage[]>([PROBE_INTRO_MESSAGE])
+  const [probeMessages, setProbeMessages] = useState<ProbeMessage[]>([])
   const [probeDraft, setProbeDraft] = useState('')
   const [probeSending, setProbeSending] = useState(false)
   const probeListRef = useRef<HTMLDivElement>(null)
+
+  const persistFromForm = useCallback(async () => {
+    setSaving(true)
+    setTestResult(null)
+    try {
+      await saveConfig(trimCfg({ baseUrl, model, apiKey }))
+      setTestResult({ ok: true, message: '已保存' })
+    } catch (err: any) {
+      setTestResult({ ok: false, message: err?.message || '保存失败' })
+    } finally {
+      setSaving(false)
+    }
+  }, [apiKey, baseUrl, model, saveConfig])
 
   useEffect(() => {
     loadConfig()
@@ -40,52 +54,27 @@ export function SettingsApp() {
     setApiKey(config.apiKey)
   }, [config])
 
-  const dirty = baseUrl !== config.baseUrl || model !== config.model || apiKey !== config.apiKey
+  useEffect(() => {
+    if (isLoading) return
+    const next = trimCfg({ baseUrl, model, apiKey })
+    const cur = trimCfg(config)
+    if (next.baseUrl === cur.baseUrl && next.model === cur.model && next.apiKey === cur.apiKey) return
 
-  async function save() {
-    if (saving) return
-    setTestResult(null)
-    setSaving(true)
-    try {
-      await saveConfig({
-        baseUrl: baseUrl.trim(),
-        model: model.trim(),
-        apiKey: apiKey.trim(),
-      })
-      setTestResult({ ok: true, message: '配置已保存' })
-    } catch (err: any) {
-      setTestResult({ ok: false, message: err?.message || '保存失败' })
-    } finally {
-      setSaving(false)
-    }
-  }
+    const id = window.setTimeout(() => {
+      void persistFromForm()
+    }, 480)
+    return () => window.clearTimeout(id)
+  }, [apiKey, baseUrl, config, isLoading, model, persistFromForm])
 
-  async function clearSaved() {
-    if (clearing) return
-    setTestResult(null)
-    setClearing(true)
-    try {
-      await clearSavedConfig()
-      setTestResult({ ok: true, message: '配置已清除' })
-    } catch (err: any) {
-      setTestResult({ ok: false, message: err?.message || '清除失败' })
-    } finally {
-      setClearing(false)
-    }
-  }
-
-  const canClearSaved = hasSavedConfig || dirty || Boolean(config.baseUrl || config.model || config.apiKey)
+  const trimmedLive = trimCfg({ baseUrl, model, apiKey })
+  const canClearSaved =
+    hasSavedConfig || Boolean(trimmedLive.baseUrl || trimmedLive.model || trimmedLive.apiKey)
 
   useEffect(() => {
     const el = probeListRef.current
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [probeMessages, probeSending])
-
-  function clearProbeConversation() {
-    setProbeMessages([PROBE_INTRO_MESSAGE])
-    setProbeDraft('')
-  }
 
   async function sendProbeMessage() {
     const task = probeDraft.trim()
@@ -126,6 +115,20 @@ export function SettingsApp() {
     }
   }
 
+  async function clearSaved() {
+    if (clearing) return
+    setTestResult(null)
+    setClearing(true)
+    try {
+      await clearSavedConfig()
+      setTestResult({ ok: true, message: '配置已清除' })
+    } catch (err: any) {
+      setTestResult({ ok: false, message: err?.message || '清除失败' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
   async function testConnection() {
     if (testing) return
     setTesting(true)
@@ -136,7 +139,11 @@ export function SettingsApp() {
         model: model || undefined,
         api_key: apiKey || undefined,
       })
-      setTestResult({ ok: Boolean(result?.ok), message: result?.message || (result?.ok ? '连接成功' : '连接失败') })
+      const ok = Boolean(result?.ok)
+      setTestResult({
+        ok,
+        message: ok ? '测试通过' : result?.message || '连接失败',
+      })
     } catch (err: any) {
       setTestResult({ ok: false, message: err?.message || '请求失败' })
     } finally {
@@ -144,21 +151,32 @@ export function SettingsApp() {
     }
   }
 
-  const badgeSubtitleDefault = isLoading
-    ? '正在从服务器加载配置'
-    : hasSavedConfig
-      ? '已持久化到服务器'
-      : '未保存自定义模型'
-
   useEffect(() => {
     if (!testResult) return
-    const ms = testResult.ok ? 3200 : 9000
+    const shortFlash =
+      testResult.ok &&
+      (testResult.message === '已保存' ||
+        testResult.message === '已自动保存' ||
+        testResult.message === '测试通过')
+    const ms = !testResult.ok ? 9000 : shortFlash ? 2200 : 3200
     const id = window.setTimeout(() => setTestResult(null), ms)
     return () => window.clearTimeout(id)
   }, [testResult])
 
-  const badgeSubtitle = testResult?.message ?? badgeSubtitleDefault
+  const badgeLine = (() => {
+    if (testResult) return testResult.message
+    if (isLoading) return '正在加载配置…'
+    if (testing) return '正在测试连接…'
+    if (saving) return '正在保存…'
+    return '测试连接'
+  })()
+
   const badgeModifier = testResult ? (testResult.ok ? 'settings-badge--notice-ok' : 'settings-badge--notice-error') : ''
+
+  const badgeHitTitle =
+    testResult !== null || saving || testing || isLoading
+      ? badgeLine
+      : '测试连接 · 使用当前表单中的 Base URL、模型与 API Key'
 
   return (
     <AppLayout>
@@ -176,33 +194,25 @@ export function SettingsApp() {
           <div className="settings-toolbar">
             <div>
               <h2>AI 模型配置</h2>
-              <p>覆盖后端默认的 LLM 接入参数。留空时使用服务端配置。</p>
+              <p>覆盖后端默认的 LLM 接入参数。留空时使用服务端配置。修改后自动保存。</p>
             </div>
-            <div className={['settings-badge', badgeModifier].filter(Boolean).join(' ')}>
-              <span>{isLoading ? '加载中...' : hasSavedConfig ? '已保存配置' : '服务端默认'}</span>
-              <small>{badgeSubtitle}</small>
+            <div className={['settings-badge settings-badge--interactive', badgeModifier].filter(Boolean).join(' ')}>
+              <button
+                type="button"
+                className="settings-badge__hit"
+                onClick={() => void testConnection()}
+                disabled={testing || isLoading}
+                title={badgeHitTitle}
+                aria-label="测试模型连接"
+              >
+                <span className="settings-badge__line">{badgeLine}</span>
+              </button>
             </div>
           </div>
 
           <div className="settings-content">
             <section className="settings-card">
-              <div className="settings-section-head settings-section-head--with-model">
-                <div className="settings-section-head__copy">
-                  <h3>连接参数</h3>
-                  <p>这些参数会自动带入 AI 助手和 Agent 请求，保存后持久存储于服务器。</p>
-                </div>
-                <div className="settings-section-head__model">
-                  <input
-                    type="text"
-                    aria-label="模型"
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                    placeholder="模型，例如 gpt-4o"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-              <div className="settings-fields-inline">
+              <div className="settings-fields-inline settings-fields-inline--triple">
                 <Field label="Base URL">
                   <input
                     type="url"
@@ -212,77 +222,81 @@ export function SettingsApp() {
                     disabled={isLoading}
                   />
                 </Field>
-                <Field label="API Key">
+                <Field label="模型">
                   <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(event) => setApiKey(event.target.value)}
-                    placeholder="sk-..."
-                    autoComplete="off"
+                    type="text"
+                    aria-label="模型"
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    placeholder="例如 gpt-4o"
                     disabled={isLoading}
                   />
                 </Field>
-              </div>
-              <div className="settings-actions">
-                <PrimaryButton onClick={save} disabled={!dirty || saving}>
-                  {saving ? '保存中...' : '保存'}
-                </PrimaryButton>
-                <ToolbarButton onClick={clearSaved} disabled={!canClearSaved || clearing}>
-                  {clearing ? '清除中...' : '清除保存'}
-                </ToolbarButton>
-                <ToolbarButton onClick={() => void testConnection()} disabled={testing}>
-                  {testing ? '测试中...' : '测试连接'}
-                </ToolbarButton>
-              </div>
-            </section>
-
-            <section className="settings-card settings-chat-probe" aria-label="对话验证">
-              <header className="settings-chat-probe__header">
-                <h3>对话验证</h3>
-                <p>临时会话，仅用于在当前页面快速试一句；不会写入 AI 助手侧边栏的历史会话。</p>
-              </header>
-
-              <div className="settings-chat-probe__panel">
-                <div ref={probeListRef} className="settings-chat-probe__thread">
-                  {probeMessages.map((message) => (
-                    <article key={message.id} className={`ai-message ai-message--${message.role}`}>
-                      <span>{message.role === 'user' ? '你' : 'AI'}</span>
-                      <p>{message.content}</p>
-                    </article>
-                  ))}
-                  {probeSending && (
-                    <article className="ai-message ai-message--assistant settings-chat-probe__typing">
-                      <span>AI</span>
-                      <p>正在调用 Agent...</p>
-                    </article>
-                  )}
-                </div>
-
-                <div className="settings-chat-probe__composer">
-                  <div className="settings-chat-probe__composer-shell">
-                    <textarea
-                      className="settings-chat-probe__input"
-                      value={probeDraft}
-                      onChange={(event) => setProbeDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) void sendProbeMessage()
-                      }}
-                      placeholder="输入一句话试试模型回复…"
-                      disabled={isLoading || probeSending}
-                      rows={2}
+                <Field label="API Key">
+                  <div className="settings-field-with-clear">
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(event) => setApiKey(event.target.value)}
+                      placeholder="sk-..."
+                      autoComplete="off"
+                      disabled={isLoading}
                     />
-                    <div className="settings-chat-probe__composer-foot">
-                      <span className="settings-chat-probe__hint">Ctrl+Enter 发送</span>
-                      <div className="settings-chat-probe__actions">
-                        <ToolbarButton type="button" onClick={clearProbeConversation} disabled={probeSending}>
-                          清空对话
-                        </ToolbarButton>
+                    <button
+                      type="button"
+                      className="settings-field-with-clear__btn"
+                      onClick={() => void clearSaved()}
+                      disabled={!canClearSaved || clearing}
+                      aria-label="清除保存"
+                      title="清除保存"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="settings-chat-probe" aria-label="对话验证">
+                <div className="settings-chat-probe__panel">
+                  <div ref={probeListRef} className="settings-chat-probe__thread">
+                    {probeMessages.map((message) => (
+                      <article key={message.id} className={`ai-message ai-message--${message.role}`}>
+                        {message.role === 'assistant' && <span>AI</span>}
+                        <p>{message.content}</p>
+                      </article>
+                    ))}
+                    {probeSending && (
+                      <article className="ai-message ai-message--assistant settings-chat-probe__typing">
+                        <span>AI</span>
+                        <p>正在调用 Agent...</p>
+                      </article>
+                    )}
+                  </div>
+
+                  <div className="settings-chat-probe__composer">
+                    <div className="settings-chat-probe__composer-shell">
+                      <input
+                        type="text"
+                        className="settings-chat-probe__input"
+                        value={probeDraft}
+                        onChange={(event) => setProbeDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter') return
+                          event.preventDefault()
+                          void sendProbeMessage()
+                        }}
+                        placeholder="试一句…"
+                        title="Enter 发送"
+                        disabled={isLoading || probeSending}
+                      />
+                      <div className="settings-chat-probe__composer-side">
                         <PrimaryButton
                           type="button"
+                          className="settings-chat-probe__send"
                           onClick={() => void sendProbeMessage()}
                           disabled={!probeDraft.trim() || probeSending || isLoading}
                         >
-                          {probeSending ? '发送中...' : '发送'}
+                          {probeSending ? '发送中' : '发送'}
                         </PrimaryButton>
                       </div>
                     </div>
