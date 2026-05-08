@@ -120,9 +120,21 @@ export function DownloaderApp() {
     if (!selectedTask) return null
     const url = getTaskSourceUrl(selectedTask)
     const title = getTaskDisplayTitle(selectedTask)
-    const bits = [`当前任务：${title}`, `状态：${selectedTask.status}`]
-    if (url) bits.push(`链接：${url}`)
-    return bits.join(' · ')
+    const videoPath = getTaskVideoFilePath(selectedTask)
+    const subtitlePath = getTaskSubtitleFilePath(selectedTask)
+    const params = selectedTask.params ?? {}
+    const outputDir = typeof params.output_dir === 'string' ? params.output_dir.trim() : ''
+
+    const lines = [
+      `任务ID：${selectedTask.id}`,
+      `标题：${title}`,
+      `状态：${selectedTask.status}`,
+    ]
+    if (url) lines.push(`来源链接：${url}`)
+    lines.push(outputDir ? `提交时输出目录：${outputDir}` : '提交时输出目录：未指定（服务端使用工作区默认下载目录）')
+    lines.push(videoPath ? `本地视频路径（落盘）：${videoPath}` : '本地视频路径：（任务 result 中暂无，可能仍在下载、历史未含结果字段，或需刷新列表）')
+    lines.push(subtitlePath ? `本地字幕路径（落盘）：${subtitlePath}` : '本地字幕路径：（任务 result 中暂无；未勾选字幕或未生成文件时为空）')
+    return lines.join('\n')
   }, [selectedTask])
 
   const hasBulkSelection = selectedIds.size > 0
