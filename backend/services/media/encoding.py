@@ -3,13 +3,13 @@
 import re
 from pathlib import Path
 
-from modules.encoder.transcoder import Transcoder
 from backend.services.media.helpers import (
     _default_slice_output_path,
     _default_transcode_output_path,
     _ensure_explicit_output_path,
 )
 from backend.services.workspace import get_current_workspace, get_workspace_dir
+from modules.encoder.transcoder import Transcoder
 
 
 def _normalize_codec(codec: str) -> str:
@@ -120,7 +120,7 @@ def _seconds_to_timestamp(seconds: float) -> str:
     millis = total_ms % 1000
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
 
-def run_slice_job(input_path: str, start_time: str, end_time: str, output_path: str | None = None, accurate: bool = True, subtitle_path: str | None = None, burn_subtitles: bool = False, *, transcoder_cls=None, get_current_workspace_fn=None) -> dict:
+def run_slice_job(input_path: str, start_time: str, end_time: str, output_path: str | None = None, subtitle_path: str | None = None, burn_subtitles: bool = False, *, transcoder_cls=None, get_current_workspace_fn=None) -> dict:
     transcoder_cls = transcoder_cls or Transcoder
     get_current_workspace_fn = get_current_workspace_fn or get_current_workspace
     transcoder = transcoder_cls()
@@ -161,19 +161,17 @@ def run_slice_job(input_path: str, start_time: str, end_time: str, output_path: 
 
     output_path = output_path.strip() if output_path and output_path.strip() else None
     output_path = _ensure_explicit_output_path(output_path) or _default_slice_output_path(input_path, start_time, end_time, workspace)
-    mode_text = "精确切片" if accurate else "快速切片"
     subtitle_text = "带原字幕" if burn_subtitles and subtitle_path else "不带字幕"
-    progress_msg = f"正在切片: {Path(input_path).name}\n模式: {mode_text}\n字幕: {subtitle_text}\n开始: {start_time}\n结束: {end_time}"
+    progress_msg = f"正在切片: {Path(input_path).name}\n字幕: {subtitle_text}\n开始: {start_time}\n结束: {end_time}"
 
     try:
-        result = transcoder.slice_video(input_path.strip(), start_time.strip(), end_time.strip(), output_path, accurate=accurate, subtitle_path=subtitle_path, burn_subtitles=burn_subtitles)
+        result = transcoder.slice_video(input_path.strip(), start_time.strip(), end_time.strip(), output_path, subtitle_path=subtitle_path, burn_subtitles=burn_subtitles)
         if result["success"]:
             out_path = result["output_path"]
             out_file = Path(out_path)
             duration = end_seconds - start_seconds
             summary_rows = [
                 ["状态", "成功"],
-                ["模式", mode_text],
                 ["字幕", subtitle_text],
                 ["输入文件", Path(input_path).name],
                 ["输出文件", out_file.name],
@@ -202,7 +200,7 @@ def run_slice_job(input_path: str, start_time: str, end_time: str, output_path: 
             "download_value": None,
         }
 
-def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | None = None, accurate: bool = True, start_padding: float = 0.8, end_padding: float = 1.0, subtitle_path: str | None = None, burn_subtitles: bool = False, *, get_current_workspace_fn=None, get_workspace_dir_fn=None, run_slice_job_fn=None) -> dict:
+def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | None = None, start_padding: float = 0.8, end_padding: float = 1.0, subtitle_path: str | None = None, burn_subtitles: bool = False, *, get_current_workspace_fn=None, get_workspace_dir_fn=None, run_slice_job_fn=None) -> dict:
     if not input_path.strip():
         return {
             "log": "请输入视频文件路径",
@@ -242,7 +240,7 @@ def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | No
         clip_title = clip.get("title") or clip.get("category") or f"clip_{idx:02d}"
         safe_title = re.sub(r"[^\w\-\u4e00-\u9fff]+", "_", clip_title).strip("_") or f"clip_{idx:02d}"
         output_path = str(target_dir / f"{idx:02d}_{safe_title}.mp4")
-        result = run_slice_job_fn(input_path, padded_start, padded_end, output_path=output_path, accurate=accurate, subtitle_path=subtitle_path, burn_subtitles=burn_subtitles)
+        result = run_slice_job_fn(input_path, padded_start, padded_end, output_path=output_path, subtitle_path=subtitle_path, burn_subtitles=burn_subtitles)
         logs.append(result["log"])
         if result.get("output_path"):
             outputs.append(result["output_path"])
@@ -260,7 +258,6 @@ def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | No
             ["状态", "成功" if outputs else "失败"],
             ["切片数量", str(len(outputs))],
             ["输出目录", str(target_dir)],
-            ["切片模式", "精确切片" if accurate else "快速切片"],
             ["字幕烧录", "是" if burn_subtitles and subtitle_path else "否"],
         ],
         "output_paths": outputs,

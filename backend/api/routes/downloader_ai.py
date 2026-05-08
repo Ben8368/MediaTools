@@ -115,7 +115,6 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                 "video_path": video_path,
                 "subtitle_path": subtitle_path,
                 "burn_subtitles": body.burn_subtitles,
-                "accurate": body.accurate,
                 "padding": body.padding,
                 "target_duration": body.target_duration,
                 "extra_context": body.extra_context,
@@ -144,7 +143,6 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                     subtitle_path or "",
                     clips_json,
                     burn_subtitles=body.burn_subtitles,
-                    accurate=body.accurate,
                     start_padding=body.padding,
                     end_padding=body.padding,
                 )

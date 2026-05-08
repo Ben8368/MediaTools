@@ -77,7 +77,6 @@ class DownloaderAiAnalyzeBody(BaseModel):
 class DownloaderAiSliceBody(BaseModel):
     task_id: str
     burn_subtitles: bool = True
-    accurate: bool = True
     padding: float = 0.8
     target_duration: float = 0.0
     extra_context: str = ""

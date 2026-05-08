@@ -41,7 +41,6 @@ type AiAnalyzeMode = 'analyze' | 'export'
 type AiAnalyzeDraft = {
   mode: AiAnalyzeMode
   burnSubtitles: boolean
-  accurate: boolean
   padding: number
   targetDuration: number
   extraContext: string
@@ -105,28 +104,8 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }
             </select>
           </label>
 
-          <label>
-            补充需求（可选）
-            <textarea
-              value={draft.extraContext}
-              placeholder="例如：产品名称/定位/目标人群/口播风格/需要强调的卖点/禁用词..."
-              onChange={(event) => onDraftChange({ ...draft, extraContext: event.target.value })}
-            />
-          </label>
-
           {draft.mode === 'export' && (
             <>
-              <label>
-                切片精度
-                <select
-                  value={draft.accurate ? 'accurate' : 'fast'}
-                  onChange={(event) => onDraftChange({ ...draft, accurate: event.target.value === 'accurate' })}
-                >
-                  <option value="accurate">精确切片（较慢）</option>
-                  <option value="fast">快速切片（较快）</option>
-                </select>
-              </label>
-
               <label>
                 留白时长（秒）
                 <input
@@ -173,6 +152,15 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }
               </label>
             </>
           )}
+
+          <label style={{ gridColumn: '1 / -1' }}>
+            补充需求（可选）
+            <textarea
+              value={draft.extraContext}
+              placeholder="例如：产品名称/定位/目标人群/口播风格/需要强调的卖点/禁用词..."
+              onChange={(event) => onDraftChange({ ...draft, extraContext: event.target.value })}
+            />
+          </label>
         </div>
 
         <footer className="automation-dialog-actions">
@@ -212,7 +200,6 @@ export function DownloaderApp() {
   const [aiDraft, setAiDraft] = useState<AiAnalyzeDraft>({
     mode: 'analyze',
     burnSubtitles: true,
-    accurate: true,
     padding: 0.8,
     targetDuration: 0.0,
     extraContext: '',
@@ -615,7 +602,6 @@ export function DownloaderApp() {
                   await sliceDownloaderAi({
                     task_id: aiDialogTask.id,
                     burn_subtitles: aiDraft.burnSubtitles,
-                    accurate: aiDraft.accurate,
                     padding: aiDraft.padding,
                     target_duration: aiDraft.targetDuration,
                     extra_context: aiDraft.extraContext,

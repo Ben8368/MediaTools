@@ -107,7 +107,6 @@ def export_clips_from_workbench(
     subtitle_path: str,
     clips_json: str,
     burn_subtitles: bool = True,
-    accurate: bool = True,
     start_padding: float = 0.8,
     end_padding: float = 1.0,
 ) -> dict:
@@ -127,7 +126,6 @@ def export_clips_from_workbench(
         video_path,
         clips,
         output_dir=str(export_dir),
-        accurate=accurate,
         start_padding=start_padding,
         end_padding=end_padding,
         subtitle_path=subtitle_path or None,

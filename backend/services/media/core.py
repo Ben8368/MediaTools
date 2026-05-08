@@ -4,8 +4,6 @@ The implementation lives in focused modules so the service surface stays small
 while existing imports from services.media continue to work.
 """
 
-from modules.encoder.transcoder import Transcoder
-from modules.fetcher.downloader import VideoDownloader
 from backend.services.media.decrypt import (
     build_umcli,
     get_ffmpeg_status_text,
@@ -18,6 +16,8 @@ from backend.services.media.fetch import (
     run_fetch_batch_stream,
 )
 from backend.services.workspace import get_current_workspace, get_workspace_dir
+from modules.encoder.transcoder import Transcoder
+from modules.fetcher.downloader import VideoDownloader
 
 from . import encoding as _media_encoding
 from . import fetch as _media_fetch
@@ -80,7 +80,6 @@ def run_batch_slice_job(
     input_path: str,
     clips: list[dict],
     output_dir: str | None = None,
-    accurate: bool = True,
     start_padding: float = 0.8,
     end_padding: float = 1.0,
     subtitle_path: str | None = None,
@@ -90,7 +89,6 @@ def run_batch_slice_job(
         input_path,
         clips,
         output_dir=output_dir,
-        accurate=accurate,
         start_padding=start_padding,
         end_padding=end_padding,
         subtitle_path=subtitle_path,

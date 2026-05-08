@@ -112,8 +112,8 @@ class Transcoder:
         subtitle_file = subtitle_file.replace(":", r"\:").replace("'", r"\'")
         return f"subtitles='{subtitle_file}'"
 
-    def slice_video(self, input_path: str, start_time: str, end_time: str, output_path: str = None, accurate: bool = True, subtitle_path: str = None, burn_subtitles: bool = False) -> dict:
-        """按时间区间切片，默认使用精确切片（重编码）。"""
+    def slice_video(self, input_path: str, start_time: str, end_time: str, output_path: str = None, subtitle_path: str = None, burn_subtitles: bool = False) -> dict:
+        """按时间区间切片，使用 H.264 编码。"""
         if not self.ffmpeg.is_available():
             return {
                 "success": False,
@@ -134,38 +134,19 @@ class Transcoder:
                 return {"success": False, "output_path": "", "error": f"字幕文件不存在: {subtitle_path}"}
 
         try:
-            if accurate:
-                args = [
-                    "-y",
-                    "-i", input_path,
-                    "-ss", start_time,
-                    "-to", end_time,
-                    "-c:v", "libx264",
-                    "-c:a", "aac",
-                    "-preset", "medium",
-                    "-crf", "23",
-                ]
-                if burn_subtitles and subtitle_path:
-                    args += ["-vf", self._build_subtitle_filter(subtitle_path)]
-                args.append(output_path)
-            else:
-                args = [
-                    "-y",
-                    "-ss", start_time,
-                    "-to", end_time,
-                    "-i", input_path,
-                ]
-                if burn_subtitles and subtitle_path:
-                    args += [
-                        "-vf", self._build_subtitle_filter(subtitle_path),
-                        "-c:v", "libx264",
-                        "-c:a", "aac",
-                        "-preset", "medium",
-                        "-crf", "23",
-                    ]
-                else:
-                    args += ["-c", "copy"]
-                args.append(output_path)
+            args = [
+                "-y",
+                "-i", input_path,
+                "-ss", start_time,
+                "-to", end_time,
+                "-c:v", "libx264",
+                "-c:a", "aac",
+                "-preset", "medium",
+                "-crf", "23",
+            ]
+            if burn_subtitles and subtitle_path:
+                args += ["-vf", self._build_subtitle_filter(subtitle_path)]
+            args.append(output_path)
 
             result = self.ffmpeg.run(
                 args,
@@ -175,7 +156,6 @@ class Transcoder:
                     "operation": "slice",
                     "input_path": input_path,
                     "output_path": output_path,
-                    "accurate": accurate,
                     "burn_subtitles": burn_subtitles,
                 },
             )
