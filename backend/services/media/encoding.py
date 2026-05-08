@@ -200,7 +200,7 @@ def run_slice_job(input_path: str, start_time: str, end_time: str, output_path: 
             "download_value": None,
         }
 
-def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | None = None, start_padding: float = 0.8, end_padding: float = 1.0, subtitle_path: str | None = None, burn_subtitles: bool = False, *, get_current_workspace_fn=None, get_workspace_dir_fn=None, run_slice_job_fn=None) -> dict:
+def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | None = None, start_padding: float = 0.8, end_padding: float = 1.0, subtitle_path: str | None = None, burn_subtitles: bool = False, task_name: str = "", *, get_current_workspace_fn=None, get_workspace_dir_fn=None, run_slice_job_fn=None) -> dict:
     if not input_path.strip():
         return {
             "log": "请输入视频文件路径",
@@ -238,8 +238,12 @@ def run_batch_slice_job(input_path: str, clips: list[dict], output_dir: str | No
         padded_start = _seconds_to_timestamp(max(start_seconds - start_padding, 0))
         padded_end = _seconds_to_timestamp(max(end_seconds + end_padding, 0))
         clip_title = clip.get("title") or clip.get("category") or f"clip_{idx:02d}"
-        safe_title = re.sub(r"[^\w\-\u4e00-\u9fff]+", "_", clip_title).strip("_") or f"clip_{idx:02d}"
-        output_path = str(target_dir / f"{idx:02d}_{safe_title}.mp4")
+        safe_title = re.sub(r"[^\w\-\u4e00-\u9fff]+", ".", clip_title).strip(".") or f"clip_{idx:02d}"
+        if task_name:
+            safe_task_name = re.sub(r"[^\w\-\u4e00-\u9fff]+", ".", task_name).strip(".")
+            output_path = str(target_dir / f"{safe_task_name}_{idx:02d}_{safe_title}.mp4")
+        else:
+            output_path = str(target_dir / f"{idx:02d}_{safe_title}.mp4")
         result = run_slice_job_fn(input_path, padded_start, padded_end, output_path=output_path, subtitle_path=subtitle_path, burn_subtitles=burn_subtitles)
         logs.append(result["log"])
         if result.get("output_path"):

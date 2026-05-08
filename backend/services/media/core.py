@@ -84,6 +84,7 @@ def run_batch_slice_job(
     end_padding: float = 1.0,
     subtitle_path: str | None = None,
     burn_subtitles: bool = False,
+    task_name: str = "",
 ) -> dict:
     return _media_encoding.run_batch_slice_job(
         input_path,
@@ -93,6 +94,7 @@ def run_batch_slice_job(
         end_padding=end_padding,
         subtitle_path=subtitle_path,
         burn_subtitles=burn_subtitles,
+        task_name=task_name,
         get_current_workspace_fn=get_current_workspace,
         get_workspace_dir_fn=get_workspace_dir,
         run_slice_job_fn=run_slice_job,

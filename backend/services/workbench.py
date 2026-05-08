@@ -7,7 +7,7 @@ from pathlib import Path
 
 from backend.config import get_api_config
 from backend.services.media.core import run_batch_slice_job
-from backend.services.workspace import get_current_workspace, get_workspace_dir, workspace_path
+from backend.services.workspace import get_current_workspace, workspace_path
 from modules.fetcher.analyzer import SubtitleAnalyzer
 from modules.fetcher.subtitle import SubtitleProcessor
 
@@ -109,6 +109,7 @@ def export_clips_from_workbench(
     burn_subtitles: bool = True,
     start_padding: float = 0.8,
     end_padding: float = 1.0,
+    task_name: str = "",
 ) -> dict:
     if not video_path.strip():
         return {"ok": False, "message": "请输入视频路径"}
@@ -120,16 +121,18 @@ def export_clips_from_workbench(
     except json.JSONDecodeError as exc:
         return {"ok": False, "message": f"片段 JSON 无效: {exc}"}
 
-    workspace = get_current_workspace()
-    export_dir = get_workspace_dir("clips", workspace) / f"{Path(video_path).stem}_workbench_clips"
+    video_file = Path(video_path)
+    output_dir = video_file.parent / video_file.stem
+    output_dir.mkdir(parents=True, exist_ok=True)
     result = run_batch_slice_job(
         video_path,
         clips,
-        output_dir=str(export_dir),
+        output_dir=str(output_dir),
         start_padding=start_padding,
         end_padding=end_padding,
         subtitle_path=subtitle_path or None,
         burn_subtitles=burn_subtitles and bool(subtitle_path.strip()),
+        task_name=task_name,
     )
     return {
         "ok": bool(result.get("output_paths")),

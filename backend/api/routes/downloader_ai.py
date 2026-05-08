@@ -139,6 +139,7 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                 task_center.update_task(ai_task_id, progress=55.0, stage="调用 FFmpeg 切片")
                 job_registry.update(job_id, "slicing", 55.0)
                 burn_subtitles = body.subtitle_mode == "hard"
+                task_name = source.get("name", "").strip() or Path(video_path).stem
                 export_result = export_clips_from_workbench(
                     video_path,
                     subtitle_path or "",
@@ -146,6 +147,7 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                     burn_subtitles=burn_subtitles,
                     start_padding=body.padding,
                     end_padding=body.padding,
+                    task_name=task_name,
                 )
             except Exception as exc:
                 job_registry.finish(job_id, success=False)
