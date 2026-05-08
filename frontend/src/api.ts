@@ -118,6 +118,9 @@ export const fetchSystemFonts = (params: Record<string, unknown> = {}) => get('/
 export const fetchWorkbenchMedia = () => get('/api/workbench/media')
 export const analyzeWorkbenchSubtitle = (payload: Record<string, unknown>) => post('/api/workbench/analyze', payload)
 export const exportWorkbenchClips = (payload: Record<string, unknown>) => post('/api/workbench/export', payload)
+
+export const analyzeDownloaderAi = (payload: Record<string, unknown>) => post('/api/downloader/ai/analyze', payload)
+export const sliceDownloaderAi = (payload: Record<string, unknown>) => post('/api/downloader/ai/slice', payload)
 export const fetchAuditorStatus = () => get('/api/auditor/status')
 export const fetchAuditorConfig = () => get('/api/auditor/config')
 export const updateAuditorConfig = (config: Record<string, unknown>) => put('/api/auditor/config', { config })

@@ -38,7 +38,7 @@ export type PlatformOption = {
 export type CategoryKey = 'all' | 'downloading' | 'completed' | 'paused' | 'error'
 
 /** 下载列表行「更多」菜单动作 */
-export type DownloaderRowMenuAction = 'ai_analyze' | 'ai_slice' | 'copy_url' | 'retry'
+export type DownloaderRowMenuAction = 'ai_analyze' | 'copy_url' | 'retry'
 
 export type CategoryMeta = {
   label: string

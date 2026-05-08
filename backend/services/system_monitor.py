@@ -153,6 +153,8 @@ def _external_network_totals() -> tuple[int, int, list[str]]:
 TASK_TYPE_LABELS = {
     "fetch": "媒体下载",
     "download": "媒体下载",
+    "ai_analyze": "AI 分析字幕",
+    "ai_slice": "AI 切片导出",
     "transcode": "编码转码",
     "slice": "视频切片",
     "decrypt": "音乐解密",

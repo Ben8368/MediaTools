@@ -30,6 +30,8 @@ class TaskType(Enum):
     """任务类型"""
     TRANSCODE = "transcode"   # 转码
     DOWNLOAD = "download"     # 下载
+    AI_ANALYZE = "ai_analyze"  # AI 字幕分析
+    AI_SLICE = "ai_slice"      # AI 切片导出
     DECRYPT = "decrypt"       # 解密
     PS_BATCH = "ps_batch"     # PS批量处理
     CUSTOM = "custom"         # 自定义任务

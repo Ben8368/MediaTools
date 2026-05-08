@@ -43,6 +43,9 @@ def create_router(
                 body.subtitle_path,
                 body.clips_json,
                 burn_subtitles=body.burn_subtitles,
+                accurate=getattr(body, "accurate", True),
+                start_padding=getattr(body, "start_padding", 0.8),
+                end_padding=getattr(body, "end_padding", 1.0),
             )
 
         result = await run_simple_job("workbench", Path(body.video_path).name or "批量导出", _run)

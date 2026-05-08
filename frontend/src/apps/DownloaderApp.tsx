@@ -4,9 +4,10 @@ import {
   cancelTask,
   clearTaskRecords,
   runFetcherDownload,
+  analyzeDownloaderAi,
+  sliceDownloaderAi,
 } from '@/api'
 import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
-import { WORKBENCH_PREFILL_STORAGE_KEY, type WorkbenchPrefillPayload } from '@/apps/workbench/prefill'
 import { DownloaderAddForm } from '@/apps/downloader/DownloaderAddForm'
 import { DownloaderDetailDrawer } from '@/apps/downloader/DownloaderDetailDrawer'
 import {
@@ -34,7 +35,158 @@ import { DownloaderTaskTable } from '@/apps/downloader/DownloaderTaskTable'
 import { DownloaderToolbar } from '@/apps/downloader/DownloaderToolbar'
 import type { CategoryKey, DownloadPlatform, DownloadTask, DownloaderRowMenuAction } from '@/apps/downloader/types'
 import { useDownloaderTaskData } from '@/apps/downloader/useDownloaderTaskData'
-import { useWindowStore } from '@/windowStore'
+
+type AiAnalyzeMode = 'analyze' | 'export'
+
+type AiAnalyzeDraft = {
+  mode: AiAnalyzeMode
+  burnSubtitles: boolean
+  accurate: boolean
+  padding: number
+  targetDuration: number
+  extraContext: string
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (Number.isNaN(value)) return min
+  return Math.min(max, Math.max(min, value))
+}
+
+type AiAnalyzeDialogProps = {
+  open: boolean
+  task: DownloadTask | null
+  draft: AiAnalyzeDraft
+  onDraftChange: (draft: AiAnalyzeDraft) => void
+  onClose: () => void
+  onSubmit: () => void
+}
+
+function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }: AiAnalyzeDialogProps) {
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
+
+  if (!open || !task) return null
+
+  return (
+    <div className="automation-dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="automation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI分析"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="automation-dialog-head">
+          <div>
+            <span>AI分析</span>
+            <h3>{getTaskDisplayTitle(task)}</h3>
+            <p>先分析字幕生成片段建议；也可以在分析后直接导出切片。</p>
+          </div>
+          <button className="automation-dialog-close" type="button" onClick={onClose} aria-label="关闭">
+            ×
+          </button>
+        </header>
+
+        <div className="automation-dialog-grid">
+          <label>
+            模式
+            <select
+              value={draft.mode}
+              onChange={(event) => onDraftChange({ ...draft, mode: event.target.value as AiAnalyzeMode })}
+            >
+              <option value="analyze">只分析（生成片段建议）</option>
+              <option value="export">分析并导出切片</option>
+            </select>
+          </label>
+
+          <label>
+            补充需求（可选）
+            <textarea
+              value={draft.extraContext}
+              placeholder="例如：产品名称/定位/目标人群/口播风格/需要强调的卖点/禁用词..."
+              onChange={(event) => onDraftChange({ ...draft, extraContext: event.target.value })}
+            />
+          </label>
+
+          {draft.mode === 'export' && (
+            <>
+              <label>
+                切片精度
+                <select
+                  value={draft.accurate ? 'accurate' : 'fast'}
+                  onChange={(event) => onDraftChange({ ...draft, accurate: event.target.value === 'accurate' })}
+                >
+                  <option value="accurate">精确切片（较慢）</option>
+                  <option value="fast">快速切片（较快）</option>
+                </select>
+              </label>
+
+              <label>
+                留白时长（秒）
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  max={10}
+                  value={draft.padding}
+                  onChange={(event) =>
+                    onDraftChange({
+                      ...draft,
+                      padding: clampNumber(Number(event.target.value || 0), 0, 10),
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                目标切片时长（秒）
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  max={600}
+                  value={draft.targetDuration}
+                  onChange={(event) =>
+                    onDraftChange({
+                      ...draft,
+                      targetDuration: clampNumber(Number(event.target.value || 0), 0, 600),
+                    })
+                  }
+                />
+              </label>
+
+              <label>
+                字幕烧录
+                <select
+                  value={draft.burnSubtitles ? 'yes' : 'no'}
+                  onChange={(event) => onDraftChange({ ...draft, burnSubtitles: event.target.value === 'yes' })}
+                >
+                  <option value="yes">是（需要字幕文件）</option>
+                  <option value="no">否</option>
+                </select>
+              </label>
+            </>
+          )}
+        </div>
+
+        <footer className="automation-dialog-actions">
+          <button type="button" className="dl-btn" onClick={onClose}>
+            取消
+          </button>
+          <button type="button" className="dl-btn dl-btn--primary" onClick={onSubmit}>
+            {draft.mode === 'export' ? '分析并导出' : '开始分析'}
+          </button>
+        </footer>
+      </section>
+    </div>
+  )
+}
 
 export { computeStats, isTaskCancellable } from '@/apps/downloader/helpers'
 
@@ -55,9 +207,18 @@ export function DownloaderApp() {
   const [actionError, setActionError] = useState('')
   const [detailOpen, setDetailOpen] = useState(false)
   const [miniAiOpen, setMiniAiOpen] = useState(false)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiDialogTask, setAiDialogTask] = useState<DownloadTask | null>(null)
+  const [aiDraft, setAiDraft] = useState<AiAnalyzeDraft>({
+    mode: 'analyze',
+    burnSubtitles: true,
+    accurate: true,
+    padding: 0.8,
+    targetDuration: 0.0,
+    extraContext: '',
+  })
   const selectionAnchorIdRef = useRef<string | null>(null)
   const { historyTasks, queueTasks, mergedTasks, fetchHistoryTasks, refreshLists, setOptimisticTasks } = useDownloaderTaskData()
-  const openWindow = useWindowStore((state) => state.openWindow)
 
   useEffect(() => {
     if (['completed', 'paused', 'error'].includes(selectedCategory)) {
@@ -277,34 +438,8 @@ export function DownloaderApp() {
           setActionError('未找到字幕文件路径，请确认下载任务包含字幕。')
           return
         }
-        const vid = getTaskVideoFilePath(task)
-        const payload: WorkbenchPrefillPayload = {
-          subtitlePath: sub,
-          highlight: 'analyze',
-          ...(vid ? { videoPath: vid } : {}),
-        }
-        sessionStorage.setItem(WORKBENCH_PREFILL_STORAGE_KEY, JSON.stringify(payload))
-        openWindow('workbench')
-        return
-      }
-      if (action === 'ai_slice') {
-        if (task.status !== 'completed') {
-          setActionError('请先等待任务下载完成后再进行切片。')
-          return
-        }
-        const vid = getTaskVideoFilePath(task)
-        if (!vid) {
-          setActionError('未找到本地视频文件路径。')
-          return
-        }
-        const sub = getTaskSubtitleFilePath(task)
-        const payload: WorkbenchPrefillPayload = {
-          videoPath: vid,
-          highlight: 'export',
-          ...(sub ? { subtitlePath: sub } : {}),
-        }
-        sessionStorage.setItem(WORKBENCH_PREFILL_STORAGE_KEY, JSON.stringify(payload))
-        openWindow('workbench')
+        setAiDialogTask(task)
+        setAiDialogOpen(true)
         return
       }
       if (action === 'copy_url') {
@@ -330,7 +465,7 @@ export function DownloaderApp() {
         }
       }
     },
-    [openWindow, refreshLists, submitTaskPayloads],
+    [refreshLists, submitTaskPayloads],
   )
 
   const handleRowClick = useCallback(
@@ -452,6 +587,53 @@ export function DownloaderApp() {
             detailResult={detailResult}
             actionError={actionError}
             onClose={() => setDetailOpen(false)}
+          />
+
+          <AiAnalyzeDialog
+            open={aiDialogOpen}
+            task={aiDialogTask}
+            draft={aiDraft}
+            onDraftChange={setAiDraft}
+            onClose={() => {
+              setAiDialogOpen(false)
+              setAiDialogTask(null)
+            }}
+            onSubmit={async () => {
+              if (!aiDialogTask) return
+              setActionError('')
+
+              if (aiDraft.mode === 'export') {
+                const vid = getTaskVideoFilePath(aiDialogTask)
+                if (!vid) {
+                  setActionError('未找到本地视频文件路径。')
+                  return
+                }
+              }
+
+              try {
+                if (aiDraft.mode === 'export') {
+                  await sliceDownloaderAi({
+                    task_id: aiDialogTask.id,
+                    burn_subtitles: aiDraft.burnSubtitles,
+                    accurate: aiDraft.accurate,
+                    padding: aiDraft.padding,
+                    target_duration: aiDraft.targetDuration,
+                    extra_context: aiDraft.extraContext,
+                  })
+                } else {
+                  await analyzeDownloaderAi({
+                    task_id: aiDialogTask.id,
+                    target_duration: aiDraft.targetDuration,
+                    extra_context: aiDraft.extraContext,
+                  })
+                }
+                setAiDialogOpen(false)
+                setAiDialogTask(null)
+                await refreshLists()
+              } catch (err: any) {
+                setActionError(err?.message || 'AI分析提交失败')
+              }
+            }}
           />
         </div>
 

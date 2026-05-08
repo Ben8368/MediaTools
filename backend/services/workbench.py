@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 from backend.config import get_api_config
-from modules.fetcher.analyzer import SubtitleAnalyzer
-from modules.fetcher.subtitle import SubtitleProcessor
 from backend.services.media.core import run_batch_slice_job
 from backend.services.workspace import get_current_workspace, get_workspace_dir, workspace_path
+from modules.fetcher.analyzer import SubtitleAnalyzer
+from modules.fetcher.subtitle import SubtitleProcessor
 
 
 def list_workspace_media() -> dict:
@@ -47,7 +47,7 @@ def list_workspace_media() -> dict:
     }
 
 
-def analyze_subtitle_for_workbench(subtitle_path: str, clip_count: int = 5) -> dict:
+def analyze_subtitle_for_workbench(subtitle_path: str, extra_context: str = "", target_duration: float = 0.0) -> dict:
     subtitle_file = Path(subtitle_path)
     if not subtitle_file.exists():
         return {"ok": False, "message": f"字幕文件不存在: {subtitle_path}"}
@@ -63,9 +63,15 @@ def analyze_subtitle_for_workbench(subtitle_path: str, clip_count: int = 5) -> d
         base_url=config["api_base_url"],
         model=config["analysis_model"],
     )
-    highlights, _ = analyzer.analyze_from_srt(working_path, processor, model=config["analysis_model"])
+    highlights, _ = analyzer.analyze_from_srt(
+        working_path,
+        processor,
+        model=config["analysis_model"],
+        extra_context=extra_context,
+        target_duration=target_duration,
+    )
     selected = []
-    for idx, item in enumerate(highlights[:clip_count], 1):
+    for idx, item in enumerate(highlights, 1):
         if not item.get("start_time") or not item.get("end_time"):
             continue
         selected.append({
@@ -96,7 +102,15 @@ def analyze_subtitle_for_workbench(subtitle_path: str, clip_count: int = 5) -> d
     }
 
 
-def export_clips_from_workbench(video_path: str, subtitle_path: str, clips_json: str, burn_subtitles: bool = True) -> dict:
+def export_clips_from_workbench(
+    video_path: str,
+    subtitle_path: str,
+    clips_json: str,
+    burn_subtitles: bool = True,
+    accurate: bool = True,
+    start_padding: float = 0.8,
+    end_padding: float = 1.0,
+) -> dict:
     if not video_path.strip():
         return {"ok": False, "message": "请输入视频路径"}
     if not clips_json.strip():
@@ -113,7 +127,9 @@ def export_clips_from_workbench(video_path: str, subtitle_path: str, clips_json:
         video_path,
         clips,
         output_dir=str(export_dir),
-        accurate=True,
+        accurate=accurate,
+        start_padding=start_padding,
+        end_padding=end_padding,
         subtitle_path=subtitle_path or None,
         burn_subtitles=burn_subtitles and bool(subtitle_path.strip()),
     )

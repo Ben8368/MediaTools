@@ -2,7 +2,7 @@ import { type MouseEvent, useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { StatusIcon } from '@/apps/downloader/icons'
-import { formatRelativeTime, getTaskDisplayTitle, getTaskSourceUrl, canWorkbenchAiAnalyze, canWorkbenchAiSlice, isTaskRetryable } from '@/apps/downloader/helpers'
+import { formatRelativeTime, getTaskDisplayTitle, getTaskSourceUrl, canWorkbenchAiAnalyze, isTaskRetryable } from '@/apps/downloader/helpers'
 import type { DownloadTask, DownloaderRowMenuAction } from '@/apps/downloader/types'
 
 const MENU_W = 180
@@ -85,20 +85,10 @@ export function DownloaderTaskTable({
               role="menuitem"
               className="dl-row-menu-item"
               disabled={!canWorkbenchAiAnalyze(menu.task)}
-              title={canWorkbenchAiAnalyze(menu.task) ? '打开高光工作台并分析字幕' : '需要任务已完成且存在字幕文件路径'}
+              title={canWorkbenchAiAnalyze(menu.task) ? '分析字幕并可选导出片段' : '需要任务已完成且存在字幕文件路径'}
               onClick={() => runAction('ai_analyze', menu.task)}
             >
               AI分析
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="dl-row-menu-item"
-              disabled={!canWorkbenchAiSlice(menu.task)}
-              title={canWorkbenchAiSlice(menu.task) ? '打开高光工作台并导出视频片段' : '需要任务已完成且存在本地视频路径'}
-              onClick={() => runAction('ai_slice', menu.task)}
-            >
-              AI切片
             </button>
             <button
               type="button"

@@ -59,6 +59,7 @@ def configure_application_routes(
     from backend.api.routes.task_center import router as task_center_router
     from backend.api.routes.wechat import create_router as create_wechat_router
     from backend.api.routes.workbench import create_router as create_workbench_router
+    from backend.api.routes.downloader_ai import create_router as create_downloader_ai_router
     from backend.api.routes.workspace import create_router as create_workspace_router
     from backend.services.log_buffer import install_log_buffer
 
@@ -128,6 +129,7 @@ def configure_application_routes(
     app.include_router(create_workspace_router(get_current_workspace, set_current_workspace))
     app.include_router(path_picker_router)
     app.include_router(create_workbench_router(run_simple_job, list_workspace_media, analyze_subtitle_for_workbench, export_clips_from_workbench))
+    app.include_router(create_downloader_ai_router(job_registry, analyze_subtitle_for_workbench, export_clips_from_workbench))
     app.include_router(filebrowser_router)
     app.include_router(task_center_router)
     app.include_router(model_config_router)
