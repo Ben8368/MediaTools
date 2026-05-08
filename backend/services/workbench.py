@@ -47,7 +47,7 @@ def list_workspace_media() -> dict:
     }
 
 
-def analyze_subtitle_for_workbench(subtitle_path: str, extra_context: str = "", target_duration: float = 0.0) -> dict:
+def analyze_subtitle_for_workbench(subtitle_path: str, extra_context: str = "", expected_duration: float = 0.0) -> dict:
     subtitle_file = Path(subtitle_path)
     if not subtitle_file.exists():
         return {"ok": False, "message": f"字幕文件不存在: {subtitle_path}"}
@@ -68,7 +68,7 @@ def analyze_subtitle_for_workbench(subtitle_path: str, extra_context: str = "", 
         processor,
         model=config["analysis_model"],
         extra_context=extra_context,
-        target_duration=target_duration,
+        expected_duration=expected_duration,
     )
     selected = []
     for idx, item in enumerate(highlights, 1):

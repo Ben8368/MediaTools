@@ -58,7 +58,7 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
             params={
                 "source_task_id": body.task_id,
                 "subtitle_path": subtitle_path,
-                "target_duration": body.target_duration,
+                "expected_duration": body.expected_duration,
                 "extra_context": body.extra_context,
             }
         )
@@ -70,7 +70,7 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
             try:
                 task_center.update_task(ai_task_id, progress=15.0, stage="分析字幕")
                 job_registry.update(job_id, "analyzing", 15.0)
-                result = analyze_subtitle_for_workbench(subtitle_path, extra_context=body.extra_context, target_duration=body.target_duration)
+                result = analyze_subtitle_for_workbench(subtitle_path, extra_context=body.extra_context, expected_duration=body.expected_duration)
             except Exception as exc:
                 job_registry.finish(job_id, success=False)
                 task_center.update_task(ai_task_id, status=TaskStatus.FAILED, error=str(exc), stage="分析失败")
@@ -114,9 +114,9 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                 "source_task_id": body.task_id,
                 "video_path": video_path,
                 "subtitle_path": subtitle_path,
-                "burn_subtitles": body.burn_subtitles,
+                "subtitle_mode": body.subtitle_mode,
                 "padding": body.padding,
-                "target_duration": body.target_duration,
+                "expected_duration": body.expected_duration,
                 "extra_context": body.extra_context,
             },
         )
@@ -132,17 +132,18 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                 if subtitle_path:
                     task_center.update_task(ai_task_id, progress=20.0, stage="分析字幕")
                     job_registry.update(job_id, "analyzing", 20.0)
-                    analysis_result = analyze_subtitle_for_workbench(subtitle_path, extra_context=body.extra_context, target_duration=body.target_duration)
+                    analysis_result = analyze_subtitle_for_workbench(subtitle_path, extra_context=body.extra_context, expected_duration=body.expected_duration)
                     if analysis_result.get("ok"):
                         clips_json = str(analysis_result.get("clips_json") or "[]")
 
                 task_center.update_task(ai_task_id, progress=55.0, stage="调用 FFmpeg 切片")
                 job_registry.update(job_id, "slicing", 55.0)
+                burn_subtitles = body.subtitle_mode == "hard"
                 export_result = export_clips_from_workbench(
                     video_path,
                     subtitle_path or "",
                     clips_json,
-                    burn_subtitles=body.burn_subtitles,
+                    burn_subtitles=burn_subtitles,
                     start_padding=body.padding,
                     end_padding=body.padding,
                 )
@@ -157,6 +158,7 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
                 "export": export_result,
                 "video_path": video_path,
                 "subtitle_path": subtitle_path,
+                "subtitle_mode": body.subtitle_mode,
             }
             job_registry.finish(job_id, success=ok)
             task_center.update_task(

@@ -70,15 +70,15 @@ class WorkbenchExportBody(BaseModel):
 
 class DownloaderAiAnalyzeBody(BaseModel):
     task_id: str
-    target_duration: float = 0.0
+    expected_duration: float = 0.0
     extra_context: str = ""
 
 
 class DownloaderAiSliceBody(BaseModel):
     task_id: str
-    burn_subtitles: bool = True
+    subtitle_mode: str = "none"
     padding: float = 0.8
-    target_duration: float = 0.0
+    expected_duration: float = 0.0
     extra_context: str = ""
 
 class PhotoshopScanBody(BaseModel):

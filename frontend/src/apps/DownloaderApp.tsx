@@ -38,11 +38,13 @@ import { useDownloaderTaskData } from '@/apps/downloader/useDownloaderTaskData'
 
 type AiAnalyzeMode = 'analyze' | 'export'
 
+type SubtitleMode = 'none' | 'hard' | 'soft'
+
 type AiAnalyzeDraft = {
   mode: AiAnalyzeMode
-  burnSubtitles: boolean
+  subtitleMode: SubtitleMode
   padding: number
-  targetDuration: number
+  expectedDuration: number
   extraContext: string
 }
 
@@ -104,6 +106,23 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }
             </select>
           </label>
 
+          <label>
+            期望切片时长（秒，0 为自由分析）
+            <input
+              type="number"
+              step={0.1}
+              min={0}
+              max={600}
+              value={draft.expectedDuration}
+              onChange={(event) =>
+                onDraftChange({
+                  ...draft,
+                  expectedDuration: clampNumber(Number(event.target.value || 0), 0, 600),
+                })
+              }
+            />
+          </label>
+
           {draft.mode === 'export' && (
             <>
               <label>
@@ -124,30 +143,14 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }
               </label>
 
               <label>
-                目标切片时长（秒）
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0}
-                  max={600}
-                  value={draft.targetDuration}
-                  onChange={(event) =>
-                    onDraftChange({
-                      ...draft,
-                      targetDuration: clampNumber(Number(event.target.value || 0), 0, 600),
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                字幕烧录
+                字幕处理
                 <select
-                  value={draft.burnSubtitles ? 'yes' : 'no'}
-                  onChange={(event) => onDraftChange({ ...draft, burnSubtitles: event.target.value === 'yes' })}
+                  value={draft.subtitleMode}
+                  onChange={(event) => onDraftChange({ ...draft, subtitleMode: event.target.value as SubtitleMode })}
                 >
-                  <option value="yes">是（需要字幕文件）</option>
-                  <option value="no">否</option>
+                  <option value="none">否</option>
+                  <option value="hard">硬字幕（烧录到视频）</option>
+                  <option value="soft">软字幕（单独字幕文件）</option>
                 </select>
               </label>
             </>
@@ -199,9 +202,9 @@ export function DownloaderApp() {
   const [aiDialogTask, setAiDialogTask] = useState<DownloadTask | null>(null)
   const [aiDraft, setAiDraft] = useState<AiAnalyzeDraft>({
     mode: 'analyze',
-    burnSubtitles: true,
+    subtitleMode: 'none',
     padding: 0.8,
-    targetDuration: 0.0,
+    expectedDuration: 0.0,
     extraContext: '',
   })
   const selectionAnchorIdRef = useRef<string | null>(null)
@@ -601,15 +604,15 @@ export function DownloaderApp() {
                 if (aiDraft.mode === 'export') {
                   await sliceDownloaderAi({
                     task_id: aiDialogTask.id,
-                    burn_subtitles: aiDraft.burnSubtitles,
+                    subtitle_mode: aiDraft.subtitleMode,
                     padding: aiDraft.padding,
-                    target_duration: aiDraft.targetDuration,
+                    expected_duration: aiDraft.expectedDuration,
                     extra_context: aiDraft.extraContext,
                   })
                 } else {
                   await analyzeDownloaderAi({
                     task_id: aiDialogTask.id,
-                    target_duration: aiDraft.targetDuration,
+                    expected_duration: aiDraft.expectedDuration,
                     extra_context: aiDraft.extraContext,
                   })
                 }

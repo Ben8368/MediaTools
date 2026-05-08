@@ -59,14 +59,14 @@ class SubtitleAnalyzer:
         self.model = model or cfg["analysis_model"] or ANALYSIS_MODEL
         self.client = client or OpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    def analyze(self, subtitle_text: str, model: str | None = None, extra_context: str = "", target_duration: float = 0.0) -> list[dict[str, Any]]:
+    def analyze(self, subtitle_text: str, model: str | None = None, extra_context: str = "", expected_duration: float = 0.0) -> list[dict[str, Any]]:
         prompt_text = _truncate_subtitle_text(subtitle_text or "")
         ctx = (extra_context or "").strip()
         if ctx:
             prompt_text = f"[额外需求]\n{ctx}\n\n[字幕内容]\n{prompt_text}"
 
-        if target_duration > 0:
-            prompt_text = f"[目标片段时长]\n约 {target_duration:.1f} 秒\n\n{prompt_text}"
+        if expected_duration > 0:
+            prompt_text = f"[期望片段时长]\n约 {expected_duration:.1f} 秒\n\n{prompt_text}"
 
         try:
             response = self.client.chat.completions.create(
@@ -92,9 +92,9 @@ class SubtitleAnalyzer:
         subtitle_processor,
         model: str | None = None,
         extra_context: str = "",
-        target_duration: float = 0.0,
+        expected_duration: float = 0.0,
     ) -> tuple:
         segments = subtitle_processor.parse_srt(srt_path)
         text = subtitle_processor.format_for_llm(segments)
-        highlights = self.analyze(text, model, extra_context=extra_context, target_duration=target_duration)
+        highlights = self.analyze(text, model, extra_context=extra_context, expected_duration=expected_duration)
         return highlights, text
