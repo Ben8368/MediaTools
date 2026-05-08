@@ -1,7 +1,7 @@
 # 项目经验与避坑指南 (Lessons Learned)
 
 > **核心作用：** 这是项目的“法律”和“历史”。Cursor 在写代码前**必须**阅读此文档。
-> **当前结论：** 截至 2026-05-07，本文件未发现既有用户报错记录；本次初始化只登记从当前代码和文档审查中归纳出的工程风险。
+> **当前结论：** 截至 2026-05-08，本文件未发现既有用户报错记录；初始化阶段登记为从代码与文档审查中归纳的工程风险。（治理文档复审已把 `MODULE_DEPENDENCIES` 引用对齐为 `docs/DEPENDENCIES*.md`。）
 
 ## 1. 项目铁律 (Project Laws)
 > **说明：** 由报错、审查或架构边界转化而来的永久性规范。一旦写入，等同于 Rule 文档。
@@ -12,7 +12,7 @@
 - **预防方式：** 修改媒体流程时，优先覆盖下载、字幕、分析、切片、工作台和素材查看的回归验证。
 
 ### Law-002：路由层必须保持轻量
-- **来源：** `ARCHITECTURE.zh.md`、`docs/MODULE_DEPENDENCIES.zh.md`
+- **来源：** `ARCHITECTURE.zh.md`、`docs/DEPENDENCIES.zh.md`
 - **规则：** `backend/api/routes/` 只处理请求解析、校验和响应组织；复杂业务必须下沉到 `backend/services/`。
 - **预防方式：** 新增 API 时先设计 service 函数，再让 Web、CLI、Agent 复用。
 
@@ -22,7 +22,7 @@
 - **预防方式：** 工具发现、版本检查、启动/停止、命令执行放入 adapter、runtime service 或 module wrapper。
 
 ### Law-004：工作区路径安全优先
-- **来源：** `WORKFLOW.zh.md`、`docs/MODULE_DEPENDENCIES.zh.md`
+- **来源：** `WORKFLOW.zh.md`、`docs/DEPENDENCIES.zh.md`
 - **规则：** 文件浏览、预览、导出、删除、扫描、外部命令输入输出必须经过工作区和允许根目录校验。
 - **预防方式：** 修改路径相关逻辑时必须覆盖允许路径、禁止路径、相对路径、Windows 盘符和大小限制。
 
@@ -106,7 +106,7 @@
 - **报错信息：** 收集阶段 16 个导入错误，测试仍引用 `backend.services.api_*`、`backend.services.media_*`、`services.*` 等旧路径。
 - **根因：** 后端已迁移到 `backend/api/routes/`、`backend/services/media/`、`backend/services/runtime/` 等新结构，但部分测试和兼容层没有同步。
 - **修复方案：** 将测试 patch/import 目标改到真实模块路径，或补齐明确需要保留的兼容 re-export。
-- **未来预防：** 模块迁移必须同步运行测试收集，并在 `docs/MODULE_DEPENDENCIES.md` 和测试 helper 中维护唯一事实来源。
+- **未来预防：** 模块迁移必须同步运行测试收集，并在 `docs/DEPENDENCIES.md` 和测试 helper 中维护唯一事实来源。
 - **关联文件/测试：** `tests/test_api_*`、`tests/test_media_*`、`tests/test_filebrowser_runtime.py`、`tests/test_photoshop_state.py`
 
 ### Lesson-003：前端测试期望与当前 UI 行为不一致

@@ -16,7 +16,7 @@ export const PLATFORM_OPTIONS: PlatformOption[] = [
   {
     value: 'bilibili',
     label: 'Bilibili',
-    hint: '保留常规视频下载与字幕策略。',
+    hint: '保留常规视频下载与字幕。',
     supportsSubtitles: true,
   },
   {
@@ -31,9 +31,6 @@ export const CATEGORY_MAP: Record<CategoryKey, CategoryMeta> = {
   all: { label: '全部', icon: 'grid', key: 'all' },
   downloading: { label: '下载中', icon: 'download', key: 'downloading' },
   completed: { label: '已完成', icon: 'check', key: 'completed' },
-  seeding: { label: '做种', icon: 'seed', key: 'seeding' },
-  active: { label: '活动', icon: 'active', key: 'active' },
-  idle: { label: '空闲', icon: 'idle', key: 'idle' },
   paused: { label: '已停止', icon: 'pause', key: 'paused' },
   error: { label: '错误', icon: 'error', key: 'error' },
 }

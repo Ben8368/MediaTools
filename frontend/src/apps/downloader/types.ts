@@ -22,9 +22,6 @@ export interface TaskStats {
   all: number
   downloading: number
   completed: number
-  seeding: number
-  active: number
-  idle: number
   paused: number
   error: number
 }
@@ -38,7 +35,7 @@ export type PlatformOption = {
   supportsSubtitles: boolean
 }
 
-export type CategoryKey = 'all' | 'downloading' | 'completed' | 'seeding' | 'active' | 'idle' | 'paused' | 'error'
+export type CategoryKey = 'all' | 'downloading' | 'completed' | 'paused' | 'error'
 
 export type CategoryMeta = {
   label: string

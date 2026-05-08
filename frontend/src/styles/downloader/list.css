@@ -1,8 +1,63 @@
 .dl-table {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+.dl-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 18px;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+.dl-table-scroll::-webkit-scrollbar { width: 4px; }
+.dl-table-scroll::-webkit-scrollbar-track { background: transparent; }
+.dl-table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+/* 下载队列：无勾选框，状态图标贴近标题 */
+.dl-table--queue .dl-head,
+.dl-table--queue .dl-row {
+  grid-template-columns: 22px minmax(220px, 1fr) minmax(170px, .42fr) 126px;
+  column-gap: 8px;
+}
+
+.dl-table--queue .dl-col-status {
+  justify-content: flex-end;
+}
+
+.dl-table--queue .dl-col-name:not(:has(small)) {
+  justify-content: center;
+}
+
+.dl-head,
+.dl-row {
+  display: grid;
+  /* 状态图标列；解密器等场景仍可能含勾选框 */
+  grid-template-columns: 32px minmax(220px, 1fr) minmax(170px, .42fr) 126px;
+  align-items: center;
+  column-gap: 14px;
+}
+
+.dl-head {
+  min-height: 40px;
+  padding-right: calc(18px + 10px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.42);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 下载器：表头与数据共用滚动容器，只需与 .dl-row 一致的右侧内边距 */
+.dl-table-scroll > .dl-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-right: 10px;
+  background: rgba(16, 17, 21, 0.96);
 }
 
 .dl-body {
@@ -24,24 +79,8 @@
   overflow: hidden;
 }
 
-.dl-head,
-.dl-row {
-  display: grid;
-  grid-template-columns: 34px minmax(220px, 1fr) minmax(170px, .42fr) 126px;
-  align-items: center;
-  column-gap: 14px;
-  padding-right: 10px;
-}
-
-.dl-head {
-  min-height: 40px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  color: rgba(255,255,255,.42);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .dl-list {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-right: 18px;
@@ -55,6 +94,7 @@
 
 .dl-row {
   min-height: 46px;
+  padding-right: 10px;
   border-bottom: 1px solid rgba(255,255,255,.05);
   cursor: default;
   font-size: 13px;
@@ -154,11 +194,13 @@
 
 .dl-col-time {
   font-size: 11px;
+  font-weight: 400;
   color: rgba(255,255,255,.45);
-  text-align: right;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
   min-width: 0;
   overflow: hidden;
-  padding-right: 2px;
+  padding-inline-end: 3px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

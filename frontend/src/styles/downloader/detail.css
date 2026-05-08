@@ -16,8 +16,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 42px;
-  padding: 10px 4px 12px;
+  height: var(--dl-footer-h, 48px);
+  box-sizing: border-box;
+  padding: 0 4px;
   border-top: 1px solid rgba(255,255,255,.07);
   background: linear-gradient(180deg, rgba(16,17,21,0), rgba(16,17,21,.88) 20%, rgba(16,17,21,.98) 100%);
   color: rgba(255,255,255,.65);
@@ -263,6 +264,12 @@
   .dl-head,
   .dl-row {
     grid-template-columns: 32px minmax(140px, 1fr) minmax(100px, .5fr) 72px;
+  }
+
+  .dl-table--queue .dl-head,
+  .dl-table--queue .dl-row {
+    grid-template-columns: 22px minmax(140px, 1fr) minmax(100px, .5fr) 72px;
+    column-gap: 8px;
   }
 
   .dl-detail-drawer {

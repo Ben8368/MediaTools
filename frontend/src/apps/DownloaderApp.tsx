@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 
 import {
   cancelTask,
@@ -16,6 +16,7 @@ import {
   extractTaskRequestSnapshot,
   getCategoryForTask,
   getPlatformOption,
+  getTaskSearchHaystack,
   isTaskCancellable,
   isTaskClearable,
   isTaskRetryable,
@@ -46,7 +47,8 @@ export function DownloaderApp() {
   const [submitError, setSubmitError] = useState('')
   const [actionError, setActionError] = useState('')
   const [detailOpen, setDetailOpen] = useState(false)
-  const { tasks, historyTasks, queueTasks, mergedTasks, fetchHistoryTasks, refreshLists, setOptimisticTasks } = useDownloaderTaskData()
+  const selectionAnchorIdRef = useRef<string | null>(null)
+  const { historyTasks, queueTasks, mergedTasks, fetchHistoryTasks, refreshLists, setOptimisticTasks } = useDownloaderTaskData()
 
   useEffect(() => {
     if (['completed', 'paused', 'error'].includes(selectedCategory)) {
@@ -63,20 +65,12 @@ export function DownloaderApp() {
   }, [selectedPlatform.supportsSubtitles, taskSubtitles])
 
   const sourceTasks = useMemo(() => {
-    if (selectedCategory === 'all') return queueTasks
+    if (selectedCategory === 'all') return mergedTasks
     if (['completed', 'paused', 'error'].includes(selectedCategory)) return historyTasks
-    return tasks
-  }, [historyTasks, queueTasks, selectedCategory, tasks])
+    return queueTasks
+  }, [historyTasks, mergedTasks, queueTasks, selectedCategory])
 
-  const stats = useMemo(() => {
-    const queueStats = computeStats(queueTasks)
-    return {
-      ...queueStats,
-      completed: historyTasks.filter((task) => getCategoryForTask(task) === 'completed').length,
-      paused: historyTasks.filter((task) => getCategoryForTask(task) === 'paused').length,
-      error: historyTasks.filter((task) => getCategoryForTask(task) === 'error').length,
-    }
-  }, [historyTasks, queueTasks])
+  const stats = useMemo(() => computeStats(mergedTasks), [mergedTasks])
 
   const filteredTasks = useMemo(() => {
     let filtered = sourceTasks
@@ -85,10 +79,18 @@ export function DownloaderApp() {
     }
     if (searchText.trim()) {
       const keyword = searchText.trim().toLowerCase()
-      filtered = filtered.filter((task) => task.name.toLowerCase().includes(keyword))
+      filtered = filtered.filter((task) => getTaskSearchHaystack(task).includes(keyword))
     }
     return filtered
   }, [searchText, selectedCategory, sourceTasks])
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev
+      const next = new Set([...prev].filter((id) => filteredTasks.some((t) => t.id === id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [filteredTasks])
 
   useEffect(() => {
     if (filteredTasks.length === 0) {
@@ -137,7 +139,8 @@ export function DownloaderApp() {
       if (createdTasks.length > 0) {
         setOptimisticTasks((prev) => mergeTasks(createdTasks, prev))
         setSelectedTaskId(createdTasks[0].id)
-        setDetailOpen(true)
+        setSelectedIds(new Set())
+        selectionAnchorIdRef.current = createdTasks[0].id
       }
       setSelectedCategory('all')
       await refreshLists()
@@ -231,32 +234,40 @@ export function DownloaderApp() {
     }
   }, [canRetrySelected, selectedTasks, submitTaskPayloads])
 
-  const focusTask = useCallback((id: string) => {
-    setSelectedTaskId(id)
-    setDetailOpen(true)
-  }, [])
-
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
+  const handleRowClick = useCallback(
+    (taskId: string, index: number, event: MouseEvent<HTMLDivElement>) => {
+      if (event.shiftKey && selectionAnchorIdRef.current) {
+        const anchorIdx = filteredTasks.findIndex((t) => t.id === selectionAnchorIdRef.current)
+        if (anchorIdx >= 0) {
+          const lo = Math.min(anchorIdx, index)
+          const hi = Math.max(anchorIdx, index)
+          const range = filteredTasks.slice(lo, hi + 1).map((t) => t.id)
+          setSelectedIds(new Set(range))
+          setSelectedTaskId(taskId)
+          return
+        }
+      }
+      selectionAnchorIdRef.current = taskId
+      setSelectedTaskId(taskId)
+      setSelectedIds(new Set())
+    },
+    [filteredTasks],
+  )
 
   const toggleSelectAllVisible = useCallback(() => {
     if (!filteredTasks.length) return
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      const shouldClear = filteredTasks.every((task) => next.has(task.id))
-      filteredTasks.forEach((task) => {
-        if (shouldClear) next.delete(task.id)
-        else next.add(task.id)
-      })
-      return next
-    })
-  }, [filteredTasks])
+    const allSelected = filteredTasks.every((task) => selectedIds.has(task.id))
+    if (allSelected) {
+      setSelectedIds(new Set())
+      selectionAnchorIdRef.current = filteredTasks[0].id
+      setSelectedTaskId(filteredTasks[0].id)
+    } else {
+      const ids = filteredTasks.map((t) => t.id)
+      setSelectedIds(new Set(ids))
+      selectionAnchorIdRef.current = filteredTasks[0].id
+      setSelectedTaskId(filteredTasks[0].id)
+    }
+  }, [filteredTasks, selectedIds])
 
   const detailRows = selectedTask ? extractTaskDetailRows(selectedTask) : []
   const detailRequest = selectedTask ? JSON.stringify(extractTaskRequestSnapshot(selectedTask), null, 2) : ''
@@ -271,6 +282,7 @@ export function DownloaderApp() {
         onSelectCategory={(category) => {
           setSelectedCategory(category)
           setSelectedIds(new Set())
+          selectionAnchorIdRef.current = null
         }}
       />
 
@@ -322,8 +334,7 @@ export function DownloaderApp() {
                 filteredTasks={filteredTasks}
                 selectedIds={selectedIds}
                 selectedTaskId={selectedTaskId}
-                onFocusTask={focusTask}
-                onToggleSelect={toggleSelect}
+                onRowClick={handleRowClick}
               />
             </section>
           </div>

@@ -17,12 +17,6 @@ export function CategoryIcon({ name }: { name: string }) {
         </>
       )}
       {name === 'check' && <path d="M20 6L9 17l-5-5" />}
-      {name === 'seed' && (
-        <>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-        </>
-      )}
       {name === 'active' && (
         <>
           <path d="M22 12h-4" />
@@ -121,18 +115,11 @@ export const SearchIcon = () => (
   </svg>
 )
 
-export const AdminIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-    <circle cx="12" cy="7" r="4" />
-    <path d="M5.5 21a6.5 6.5 0 0113 0" />
-    <circle cx="19.5" cy="7" r="2" />
-    <path d="M21 17a3 3 0 00-3-3h-.5" />
-  </svg>
-)
-
-export const SettingsIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+/** 星芒群，与侧栏其它描线图标一致，表示 AI */
+export const AiIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2.5l1.2 4.1L17.3 8l-4.1 1.4L12 13.5l-1.2-4.1L6.7 8l4.1-1.4L12 2.5z" />
+    <path d="M18.5 15l.6 1.9 1.9.6-1.9.6L18.5 20l-.6-1.9-1.9-.6 1.9-.6L18.5 15z" />
+    <path d="M5 13.5l.5 1.6L7 15.5l-1.5.4L5 17.5l-.5-1.6-1.5-.4L4.5 15l1.5-.4L5 13.5z" />
   </svg>
 )

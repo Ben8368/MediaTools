@@ -85,6 +85,7 @@ desktop.ini
 
 # ===== IDE =====
 .claude/
+.opencode/
 .vscode/
 .idea/
 *.swp

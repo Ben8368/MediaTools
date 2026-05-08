@@ -1,10 +1,9 @@
-import { CATEGORY_MAP, PLATFORM_OPTIONS } from '@/apps/downloader/constants'
-import type { DetailRow, DownloadPlatform, DownloadTask, PlatformOption, TaskStats } from '@/apps/downloader/types'
+import { PLATFORM_OPTIONS } from '@/apps/downloader/constants'
+import type { CategoryKey, DetailRow, DownloadPlatform, DownloadTask, PlatformOption, TaskStats } from '@/apps/downloader/types'
 
-export function getCategoryForTask(task: DownloadTask): keyof typeof CATEGORY_MAP {
+export function getCategoryForTask(task: DownloadTask): CategoryKey {
   switch (task.status) {
     case 'pending':
-      return task.progress > 0 ? 'active' : 'idle'
     case 'running':
       return 'downloading'
     case 'completed':
@@ -15,7 +14,7 @@ export function getCategoryForTask(task: DownloadTask): keyof typeof CATEGORY_MA
     case 'paused':
       return 'paused'
     default:
-      return 'idle'
+      return 'downloading'
   }
 }
 
@@ -36,9 +35,6 @@ export function computeStats(tasks: DownloadTask[]): TaskStats {
     all: tasks.length,
     downloading: 0,
     completed: 0,
-    seeding: 0,
-    active: 0,
-    idle: 0,
     paused: 0,
     error: 0,
   }
@@ -47,8 +43,6 @@ export function computeStats(tasks: DownloadTask[]): TaskStats {
     const category = getCategoryForTask(task)
     if (category === 'downloading') stats.downloading += 1
     else if (category === 'completed') stats.completed += 1
-    else if (category === 'active') stats.active += 1
-    else if (category === 'idle') stats.idle += 1
     else if (category === 'paused') stats.paused += 1
     else if (category === 'error') stats.error += 1
   })
@@ -84,6 +78,22 @@ export function extractTaskInfo(task: DownloadTask): Record<string, unknown> {
     return ((firstItem as Record<string, unknown>).info as Record<string, unknown>) ?? {}
   }
   return {}
+}
+
+/** 列表主行展示用：优先 yt-dlp 解析出的标题，未就绪时退回任务名（多为链接）。 */
+export function getTaskDisplayTitle(task: DownloadTask): string {
+  const info = extractTaskInfo(task)
+  const title = typeof info.title === 'string' ? info.title.trim() : ''
+  if (title) return title
+  return task.name || '-'
+}
+
+/** 供搜索框匹配标题与原始链接等。 */
+export function getTaskSearchHaystack(task: DownloadTask): string {
+  const info = extractTaskInfo(task)
+  const title = typeof info.title === 'string' ? info.title.trim() : ''
+  const parts = [task.name, title].filter((p) => p.length > 0)
+  return parts.join('\n').toLowerCase()
 }
 
 export function resolveTaskPlatform(task: DownloadTask): PlatformOption {
@@ -184,7 +194,6 @@ export function extractTaskDetailRows(task: DownloadTask): DetailRow[] {
     { label: '输出目录', value: (params.output_dir as string) || '默认下载目录' },
     { label: '下载文件', value: (info.local_path as string) || '-' },
     { label: '字幕文件', value: (info.subtitle_path as string) || '-' },
-    { label: '字幕策略', value: params.subtitles === false ? '仅视频' : '下载字幕（优先 SRT）' },
     { label: '质量策略', value: (params.quality as string) || 'best' },
     { label: '提交接口', value: 'POST /api/fetcher/download' },
     { label: '创建时间', value: formatAbsoluteTime(task.created_at) },

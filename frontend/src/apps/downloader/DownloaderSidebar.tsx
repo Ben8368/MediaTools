@@ -1,5 +1,5 @@
 import { CATEGORY_MAP } from '@/apps/downloader/constants'
-import { AdminIcon, CategoryIcon, SettingsIcon } from '@/apps/downloader/icons'
+import { AiIcon, CategoryIcon } from '@/apps/downloader/icons'
 import type { CategoryKey, TaskStats } from '@/apps/downloader/types'
 
 type DownloaderSidebarProps = {
@@ -25,13 +25,9 @@ export function DownloaderSidebar({ selectedCategory, stats, onSelectCategory }:
         ))}
       </nav>
       <div className="dl-sidebar-bottom">
-        <button className="dl-nav-item">
-          <AdminIcon />
-          <span>管理员视角</span>
-        </button>
-        <button className="dl-nav-item">
-          <SettingsIcon />
-          <span>设置</span>
+        <button type="button" className="dl-nav-item">
+          <AiIcon />
+          <span>AI</span>
         </button>
       </div>
     </aside>

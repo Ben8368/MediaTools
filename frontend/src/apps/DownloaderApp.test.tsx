@@ -38,10 +38,8 @@ describe('DownloaderApp helpers', () => {
 
     expect(stats).toMatchObject({
       all: 5,
-      downloading: 1,
+      downloading: 2,
       completed: 1,
-      active: 0,
-      idle: 1,
       paused: 1,
       error: 1,
     })
@@ -93,7 +91,7 @@ describe('DownloaderApp interactions', () => {
     })
   })
 
-  it('keeps row focus separate from checkbox multi-select', async () => {
+  it('shift-click extends selection across visible rows', async () => {
     apiMocks.getActiveTasks.mockResolvedValue({
       tasks: [
         {
@@ -119,13 +117,13 @@ describe('DownloaderApp interactions', () => {
 
     render(<DownloaderApp />)
 
-    fireEvent.click((await screen.findAllByText('Focused task'))[0])
+    const rowA = (await screen.findAllByText('Focused task'))[0].closest('div.dl-row') as HTMLElement
+    const rowB = (await screen.findAllByText('Second task'))[0].closest('div.dl-row') as HTMLElement
+    fireEvent.click(rowA)
     expect(screen.getByLabelText('stop-selected-downloads')).toBeEnabled()
-    expect(screen.getByLabelText('select-download-task-task-a')).not.toBeChecked()
 
-    fireEvent.click(screen.getByLabelText('select-download-task-task-b'))
-    expect(screen.getByLabelText('select-download-task-task-b')).toBeChecked()
-    expect(screen.getByLabelText('select-download-task-task-a')).not.toBeChecked()
+    fireEvent.click(rowB, { shiftKey: true })
+    expect(screen.getByText('取消全选')).toBeInTheDocument()
   })
 
   it('keeps stop disabled for completed history tasks', async () => {
@@ -153,7 +151,7 @@ describe('DownloaderApp interactions', () => {
     expect(screen.getByLabelText('stop-selected-downloads')).toBeDisabled()
   })
 
-  it('does not show completed history on the default all queue', async () => {
+  it('shows queue and weekly history together on the default all view', async () => {
     apiMocks.getActiveTasks.mockResolvedValue({ tasks: [] })
     apiMocks.getWeeklyHistory.mockResolvedValue({
       tasks: [
@@ -174,7 +172,7 @@ describe('DownloaderApp interactions', () => {
     await waitFor(() => {
       expect(apiMocks.getWeeklyHistory).toHaveBeenCalled()
     })
-    expect(screen.queryByText('Old completed download')).not.toBeInTheDocument()
+    expect(await screen.findByText('Old completed download')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /已完成/ }))
     expect(await screen.findByText('Old completed download')).toBeInTheDocument()
@@ -186,7 +184,7 @@ describe('DownloaderApp interactions', () => {
     render(<DownloaderApp />)
 
     expect(await screen.findByText('暂无任务')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('搜索任务名称')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索标题或链接')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '添加任务' })).toBeInTheDocument()
     expect(screen.getByText('停止')).toBeInTheDocument()
     expect(screen.getByText('重试')).toBeInTheDocument()
@@ -291,9 +289,9 @@ describe('DownloaderApp interactions', () => {
     render(<DownloaderApp />)
 
     fireEvent.click(await screen.findByRole('button', { name: /错误/ }))
-    await screen.findByLabelText('select-download-task-task-3')
+    await screen.findByText('Broken download')
     fireEvent.click(screen.getByLabelText('select-all-downloads'))
-    expect(screen.getByLabelText('select-download-task-task-3')).toBeChecked()
+    expect(screen.getByText('取消全选')).toBeInTheDocument()
   })
 
   it('supports clearing all terminal download records', async () => {
@@ -349,7 +347,7 @@ describe('DownloaderApp interactions', () => {
     render(<DownloaderApp />)
 
     fireEvent.click(await screen.findByRole('button', { name: /已完成/ }))
-    await screen.findByLabelText('select-download-task-task-7')
+    await screen.findByText('Done selected')
     fireEvent.click(screen.getByLabelText('select-all-downloads'))
     fireEvent.click(screen.getByLabelText('clear-all-download-records'))
 
@@ -393,9 +391,13 @@ describe('DownloaderApp interactions', () => {
 
     render(<DownloaderApp />)
 
-    fireEvent.click((await screen.findAllByText('https://www.youtube.com/watch?v=test'))[0])
+    fireEvent.click((await screen.findAllByText('Test Clip'))[0])
 
-    expect(screen.getByText('Test Clip')).toBeInTheDocument()
+    expect(screen.queryByText('下载请求快照')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '任务详情' }))
+
+    expect(screen.getAllByText('Test Clip').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('POST /api/fetcher/download')).toBeInTheDocument()
   })
 
@@ -420,7 +422,9 @@ describe('DownloaderApp interactions', () => {
     render(<DownloaderApp />)
 
     fireEvent.click(await screen.findByRole('button', { name: '添加任务' }))
-    fireEvent.click((await screen.findAllByText('Overlay task'))[0])
+    fireEvent.click((await screen.findAllByText('Overlay task'))[0].closest('div.dl-row') as HTMLElement)
+
+    fireEvent.click(screen.getByRole('button', { name: '任务详情' }))
 
     expect(screen.getByText('下载请求快照')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '确认添加' })).toBeInTheDocument()

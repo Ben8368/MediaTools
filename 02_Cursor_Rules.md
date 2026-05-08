@@ -118,7 +118,7 @@ Adobe、CapCut、auditor、filebrowser、浏览器控制属于环境相关扩展
 - **命名**：严格遵循语言社区标准。
 - **敏感数据**：强制 .env。
 - **注释语言**：业务注释中文优先，解释“为什么”；不要为显而易见的赋值写注释。
-- **文档边界**：根 README、`WORKFLOW.md`、`ARCHITECTURE.md`、`docs/README.md` 和 01-05 治理文档优先于早期历史材料。
+- **文档边界**：根 README、`WORKFLOW.md` / `WORKFLOW.zh.md`、`ARCHITECTURE.md` / `ARCHITECTURE.zh.md`、`docs/DEPENDENCIES.md` / `docs/DEPENDENCIES.zh.md`、`docs/TOOLS.md` / `docs/TOOLS.zh.md` 和 01-05 治理文档优先于早期历史材料（勿引用仓库中不存在的路径名）。
 - **第三方文档**：`vendor/` 内 README/CHANGELOG 多为上游项目文档，不作为 MediaTools 自身事实来源。
 
 ## 5. 模块化与耦合控制

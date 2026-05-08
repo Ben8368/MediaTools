@@ -1,33 +1,35 @@
+import { type MouseEvent } from 'react'
+
 import { StatusIcon } from '@/apps/downloader/icons'
-import { formatRelativeTime } from '@/apps/downloader/helpers'
+import { formatRelativeTime, getTaskDisplayTitle } from '@/apps/downloader/helpers'
 import type { DownloadTask } from '@/apps/downloader/types'
 
 type DownloaderTaskTableProps = {
   filteredTasks: DownloadTask[]
   selectedIds: Set<string>
   selectedTaskId: string | null
-  onFocusTask: (id: string) => void
-  onToggleSelect: (id: string) => void
+  onRowClick: (taskId: string, index: number, event: MouseEvent<HTMLDivElement>) => void
 }
 
 export function DownloaderTaskTable({
   filteredTasks,
   selectedIds,
   selectedTaskId,
-  onFocusTask,
-  onToggleSelect,
+  onRowClick,
 }: DownloaderTaskTableProps) {
-  return (
-    <section className="dl-table">
-      <div className="dl-head">
-        <span className="dl-col-status" />
-        <span className="dl-col-name">任务名称</span>
-        <span className="dl-col-progress">进度</span>
-        <span className="dl-col-time">时间</span>
-      </div>
+  const multi = selectedIds.size > 0
 
-      <div className="dl-list">
-        {filteredTasks.length === 0 && (
+  return (
+    <section className="dl-table dl-table--queue">
+      <div className="dl-table-scroll">
+        <div className="dl-head">
+          <span className="dl-col-status" aria-hidden="true" />
+          <span className="dl-col-name">视频标题</span>
+          <span className="dl-col-progress">进度</span>
+          <span className="dl-col-time">时间</span>
+        </div>
+
+        {filteredTasks.length === 0 ? (
           <div className="dl-empty">
             <div className="dl-empty-icon">
               <svg viewBox="0 0 80 72" fill="none">
@@ -43,37 +45,34 @@ export function DownloaderTaskTable({
             </div>
             <p>暂无任务</p>
           </div>
-        )}
-
-        {filteredTasks.map((task) => (
-          <div
-            key={task.id}
-            className={`dl-row ${selectedIds.has(task.id) ? 'dl-row--selected' : ''} ${selectedTaskId === task.id ? 'dl-row--focused' : ''}`}
-            onClick={() => onFocusTask(task.id)}
-          >
-            <span className="dl-col-status">
-              <input
-                type="checkbox"
-                aria-label={`select-download-task-${task.id}`}
-                checked={selectedIds.has(task.id)}
-                onChange={() => onToggleSelect(task.id)}
-                onClick={(event) => event.stopPropagation()}
-              />
-              <StatusIcon status={task.status} />
-            </span>
-            <span className="dl-col-name">
-              <strong>{task.name}</strong>
-              <small>{task.stage || '-'}</small>
-            </span>
-            <span className="dl-col-progress">
-              <div className="dl-progress-bar">
-                <div className="dl-progress-fill" style={{ width: `${Math.min(100, Math.max(0, task.progress || 0))}%` }} />
+        ) : (
+          filteredTasks.map((task, index) => {
+            const isSelected = multi ? selectedIds.has(task.id) : selectedTaskId === task.id
+            const isPrimary = selectedTaskId === task.id
+            return (
+              <div
+                key={task.id}
+                className={`dl-row ${isSelected ? 'dl-row--selected' : ''} ${isPrimary ? 'dl-row--focused' : ''}`}
+                onClick={(event) => onRowClick(task.id, index, event)}
+              >
+                <span className="dl-col-status" aria-hidden="true">
+                  <StatusIcon status={task.status} />
+                </span>
+                <span className="dl-col-name">
+                  <strong>{getTaskDisplayTitle(task)}</strong>
+                  {task.status !== 'completed' && <small>{task.stage?.trim() || '-'}</small>}
+                </span>
+                <span className="dl-col-progress">
+                  <div className="dl-progress-bar">
+                    <div className="dl-progress-fill" style={{ width: `${Math.min(100, Math.max(0, task.progress || 0))}%` }} />
+                  </div>
+                  <span className="dl-progress-text">{(task.progress || 0).toFixed(1)}%</span>
+                </span>
+                <span className="dl-col-time">{formatRelativeTime(task.created_at)}</span>
               </div>
-              <span className="dl-progress-text">{(task.progress || 0).toFixed(1)}%</span>
-            </span>
-            <span className="dl-col-time">{formatRelativeTime(task.created_at)}</span>
-          </div>
-        ))}
+            )
+          })
+        )}
       </div>
     </section>
   )

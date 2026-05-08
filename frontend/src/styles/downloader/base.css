@@ -7,6 +7,8 @@
   overflow: hidden;
   background: rgba(10,12,18,.65);
   color: rgba(255,255,255,.88);
+  /* 侧栏底栏与主区状态栏同高，保证顶部分隔线齐平 */
+  --dl-footer-h: 48px;
 }
 
 .dl-sidebar {
@@ -15,7 +17,7 @@
   min-width: 0;
   border-right: 1px solid rgba(255,255,255,.07);
   background: rgba(5,6,8,.96);
-  padding: 8px 0;
+  padding: 8px 0 0;
 }
 
 .dl-nav {
@@ -34,8 +36,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
+  flex-shrink: 0;
+  height: var(--dl-footer-h);
+  box-sizing: border-box;
+  padding: 0 10px;
   border-top: 1px solid rgba(255,255,255,.07);
+  justify-content: center;
 }
 
 .dl-nav-item {
@@ -94,7 +100,7 @@
   min-height: 0;
   overflow: hidden;
   position: relative;
-  padding: 14px 16px 54px;
+  padding: 14px 16px calc(var(--dl-footer-h) + 6px);
   background: rgba(16,17,21,.92);
 }
 

@@ -114,7 +114,7 @@ python -m cli.main fetcher ytdlp status
 ```
 
 ### 完成定义
-- 修改范围符合 `docs/MODULE_DEPENDENCIES.zh.md` 的依赖方向。
+- 修改范围符合 `docs/DEPENDENCIES.zh.md` 的依赖方向。
 - 不新增硬编码密钥，敏感配置必须进入 `.env` 或环境变量。
 - 新增 API 有必要的请求校验、错误处理和测试。
 - 长任务接入任务中心或提供可观察日志。

@@ -6,7 +6,7 @@
 > 3. 未获得用户验证前，严禁把验证状态写成“通过”
 
 **当前状态：** [验证失败 / 待修复]
-**最后更新：** 2026-05-07 18:15
+**最后更新：** 2026-05-08（治理文档复审：刷新下方验证摘要以匹配当前检出）
 
 ## 1. 实时目录结构
 ```text
@@ -40,18 +40,18 @@ MediaTools/
 ## 2. 验证状态 (Verification Status)
 > **当前模块：** 项目治理文档初始化（01-05）
 > **状态流转：** [未开始] -> [开发中] -> [待验证] -> [失败]
-> **最近一次验证时间：** 2026-05-07 18:15
+> **最近一次验证时间：** 2026-05-08（本机：`Python 3.14.2` / 项目约定仍为 3.11+）
 > **验证结果：** 失败，需修复后重新验证
 
 ### 已执行验证结果
-- `python -m pytest`：失败，收集阶段 16 个导入错误，主要是测试仍引用已迁移或不存在的 `backend.services.*` / `services.*` 旧路径。
-- `python -m ruff check .`：失败，共 79 个 lint 问题，其中 44 个可用 `--fix` 自动修复；主要包括导入排序、空白行、未使用导入、未定义变量和裸 `except`。
-- `python -m black --check .`：失败，100 个 Python 文件需要格式化。
-- `python -m mypy backend --ignore-missing-imports`：失败，94 个类型错误，主要集中在 Optional 标注、subprocess 参数类型、返回 Any、缺少 `types-requests` 等。
-- `npm install`：通过，安装 161 个前端包；`npm audit` 报 5 个中等漏洞，未执行可能破坏依赖树的 `npm audit fix --force`。
-- `npm run typecheck`：通过。
-- `npm run build`：通过。
-- `npm test`：失败，49 个前端测试中 48 个通过，`src/LeftNavbar.test.tsx` 有 1 个失败用例；测试期待 `restart-backend`，当前 UI 只渲染 `shutdown-backend`。
+- `python -m pytest`：失败，收集阶段 **12** 个错误（本会话：`509` 条用例意图收集但被阻断）；示例：`tests/test_agent_service.py` 仍 `import backend.services.agent`，当前实现位于 `backend/agent/`。
+- `python -m ruff check .`：失败，共 **80** 个 lint 问题，其中 **45** 个可用 `--fix` 自动修复（另含可被 unsafe fix 隐藏的项）；主要包括导入排序、空白行、未使用导入、未定义变量和裸 `except`。
+- `python -m black --check .`：失败，**98** 个 Python 文件需要格式化。
+- `python -m mypy backend --ignore-missing-imports`：失败，**95** 个类型错误（**25** 个文件），类型集中在 Optional、`subprocess`、`no-any-return`、OpenAI SDK 重载匹配等。
+- `npm install`：未在本次复审重复执行（历史记录：曾通过并完成安装）；若以干净环境为准请重跑。
+- `npm run typecheck`：未在本次复审重跑（历史记录：通过）。
+- `npm run build`：未在本次复审重跑（历史记录：通过）。
+- `npm test`：失败，共 **53** 个测试中 **50** 个通过：**3** 个失败分布在 `src/LeftNavbar.test.tsx`（后端重启成功后确认态，`Lesson-003`）与 **`src/LogViewer.test.tsx`（级别筛选项文案/行为，如下拉中 `Debug` 选项未匹配）**。
 - `python app.py --help`：通过，Web 入口可解析参数。
 - `python main.py --help`：失败，根目录不存在 `main.py`。
 - `python -m cli.main --help`：通过，CLI 实际入口可用。
@@ -81,7 +81,7 @@ python -m cli.main fetcher ytdlp status
 > **相关历史风险：** `Risk-001` 至 `Risk-008`
 
 ## 4. 当前任务焦点
-- **正在进行：** 验证项目治理文档和基础命令，已发现 CLI 文档入口、后端测试导入、格式化、类型检查和前端依赖问题。
+- **正在进行：** 基础验证仍为红灯：pytest 收集失败、前端 3 个用例失败、ruff/black/mypy 未绿；需在修复后整套重跑并把本快照数字再次对齐。
 - **下一步：** 先修复基础验证红灯项；通过验证后，用户确认【验证通过】时再把本次初始化标记为已完成。
 
 ## 5. 当前稳定主线

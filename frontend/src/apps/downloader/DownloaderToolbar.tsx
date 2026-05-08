@@ -100,7 +100,7 @@ export function DownloaderToolbar({
       <div className="dl-toolbar-spacer" />
       <div className="dl-search">
         <SearchIcon />
-        <input value={searchText} onChange={(event) => onSearchTextChange(event.target.value)} placeholder="搜索任务名称" />
+        <input value={searchText} onChange={(event) => onSearchTextChange(event.target.value)} placeholder="搜索标题或链接" />
       </div>
     </div>
   )
