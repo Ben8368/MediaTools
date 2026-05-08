@@ -135,3 +135,8 @@ export const getUnreadNotificationCount = () => get('/api/notifications/unread-c
 export const markNotificationAsRead = (notificationId: string) => post(`/api/notifications/mark-as-read/${notificationId}`)
 export const markAllNotificationsAsRead = () => post('/api/notifications/mark-all-as-read')
 export const clearNotifications = () => post('/api/notifications/clear')
+
+/** Persisted LLM overrides (settings UI); uses shared API headers (e.g. X-API-Key). */
+export const fetchPersistedModelConfig = () => get('/api/model-config')
+export const savePersistedModelConfig = (payload: Record<string, unknown>) => put('/api/model-config', payload)
+export const clearPersistedModelConfig = () => del('/api/model-config', {})

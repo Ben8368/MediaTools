@@ -51,6 +51,7 @@ def configure_application_routes(
     from backend.api.routes.files import create_router as create_files_router
     from backend.api.routes.log import router as log_router
     from backend.api.routes.media import create_router as create_media_router
+    from backend.api.routes.model_config import router as model_config_router
     from backend.api.routes.notification import router as notification_router
     from backend.api.routes.path_picker import router as path_picker_router
     from backend.api.routes.photoshop import create_router as create_photoshop_router
@@ -129,6 +130,7 @@ def configure_application_routes(
     app.include_router(create_workbench_router(run_simple_job, list_workspace_media, analyze_subtitle_for_workbench, export_clips_from_workbench))
     app.include_router(filebrowser_router)
     app.include_router(task_center_router)
+    app.include_router(model_config_router)
 
     app.include_router(browser_router)
 

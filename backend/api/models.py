@@ -137,3 +137,8 @@ class FilesExtractIconBody(BaseModel):
 class FilebrowserTrashBody(BaseModel):
     id: str
     restore_path: str | None = None
+
+class ModelConfigBody(BaseModel):
+    baseUrl: str = ""
+    model: str = ""
+    apiKey: str = ""

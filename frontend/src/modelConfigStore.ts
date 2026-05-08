@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 
-const MODEL_CONFIG_STORAGE_KEY = 'mediatools.modelConfig'
-const MODEL_API_KEY_SESSION_STORAGE_KEY = 'mediatools.modelConfig.apiKey'
+import { clearPersistedModelConfig, fetchPersistedModelConfig, savePersistedModelConfig } from '@/api'
 
 export interface ModelConfig {
   baseUrl: string
@@ -12,8 +11,10 @@ export interface ModelConfig {
 interface ModelConfigStore {
   config: ModelConfig
   hasSavedConfig: boolean
-  saveConfig: (next: ModelConfig) => void
-  clearSavedConfig: () => void
+  isLoading: boolean
+  saveConfig: (next: ModelConfig) => Promise<void>
+  clearSavedConfig: () => Promise<void>
+  loadConfig: () => Promise<void>
 }
 
 const emptyConfig: ModelConfig = { baseUrl: '', model: '', apiKey: '' }
@@ -30,88 +31,58 @@ function hasConfigValue(config: ModelConfig) {
   return Boolean(config.baseUrl || config.model || config.apiKey)
 }
 
-function readSessionApiKey() {
+async function fetchModelConfig(): Promise<ModelConfig> {
   try {
-    return window.sessionStorage.getItem(MODEL_API_KEY_SESSION_STORAGE_KEY) || ''
-  } catch {
-    return ''
+    const data = await fetchPersistedModelConfig()
+    return normalizeConfig({
+      baseUrl: String(data.baseUrl || ''),
+      model: String(data.model || ''),
+      apiKey: String(data.apiKey || ''),
+    })
+  } catch (err) {
+    console.warn('Failed to load model config from server:', err)
+    return emptyConfig
   }
 }
 
-function writeSessionApiKey(apiKey: string) {
-  try {
-    if (apiKey) {
-      window.sessionStorage.setItem(MODEL_API_KEY_SESSION_STORAGE_KEY, apiKey)
-    } else {
-      window.sessionStorage.removeItem(MODEL_API_KEY_SESSION_STORAGE_KEY)
-    }
-  } catch {
-    // Ignore storage failures; the in-memory config remains usable.
-  }
-}
-
-function persistNonSecretConfig(config: ModelConfig) {
-  const nonSecretConfig = {
+async function persistModelConfig(config: ModelConfig): Promise<ModelConfig> {
+  const data = await savePersistedModelConfig({
     baseUrl: config.baseUrl,
     model: config.model,
-  }
-  if (!nonSecretConfig.baseUrl && !nonSecretConfig.model) {
-    window.localStorage.removeItem(MODEL_CONFIG_STORAGE_KEY)
-    return
-  }
-  window.localStorage.setItem(MODEL_CONFIG_STORAGE_KEY, JSON.stringify(nonSecretConfig))
+    apiKey: config.apiKey,
+  })
+  return normalizeConfig({
+    baseUrl: String(data.baseUrl || ''),
+    model: String(data.model || ''),
+    apiKey: String(data.apiKey || ''),
+  })
 }
 
-function loadSavedConfig(): { config: ModelConfig; hasSavedConfig: boolean } {
-  try {
-    const raw = window.localStorage.getItem(MODEL_CONFIG_STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) as Partial<ModelConfig> : {}
-    const legacyApiKey = String(parsed.apiKey || '')
-    const sessionApiKey = readSessionApiKey() || legacyApiKey
-    const config = normalizeConfig({
-      baseUrl: String(parsed.baseUrl || ''),
-      model: String(parsed.model || ''),
-      apiKey: sessionApiKey,
-    })
-    if (legacyApiKey) writeSessionApiKey(config.apiKey)
-    persistNonSecretConfig(config)
-    return { config, hasSavedConfig: hasConfigValue(config) }
-  } catch {
-    const config = normalizeConfig({ ...emptyConfig, apiKey: readSessionApiKey() })
-    return { config, hasSavedConfig: hasConfigValue(config) }
-  }
+async function deleteModelConfigRemote(): Promise<void> {
+  await clearPersistedModelConfig()
 }
-
-function persistConfig(config: ModelConfig) {
-  try {
-    persistNonSecretConfig(config)
-    writeSessionApiKey(config.apiKey)
-  } catch {
-    writeSessionApiKey(config.apiKey)
-  }
-  return hasConfigValue(config)
-}
-
-function removePersistedConfig() {
-  try {
-    window.localStorage.removeItem(MODEL_CONFIG_STORAGE_KEY)
-  } catch {
-    // Ignore storage failures; the in-memory config is still cleared.
-  }
-  writeSessionApiKey('')
-}
-
-const saved = loadSavedConfig()
 
 export const useModelConfig = create<ModelConfigStore>()((set) => ({
-  config: saved.config,
-  hasSavedConfig: saved.hasSavedConfig,
-  saveConfig: (next) => {
-    const config = normalizeConfig(next)
-    set({ config, hasSavedConfig: persistConfig(config) })
+  config: emptyConfig,
+  hasSavedConfig: false,
+  isLoading: true,
+  loadConfig: async () => {
+    set({ isLoading: true })
+    try {
+      const config = await fetchModelConfig()
+      set({ config, hasSavedConfig: hasConfigValue(config), isLoading: false })
+    } catch (err) {
+      console.error('Failed to load config:', err)
+      set({ isLoading: false })
+    }
   },
-  clearSavedConfig: () => {
-    removePersistedConfig()
+  saveConfig: async (next) => {
+    const config = normalizeConfig(next)
+    const saved = await persistModelConfig(config)
+    set({ config: saved, hasSavedConfig: hasConfigValue(saved) })
+  },
+  clearSavedConfig: async () => {
+    await deleteModelConfigRemote()
     set({ config: emptyConfig, hasSavedConfig: false })
   },
 }))
