@@ -60,9 +60,10 @@ type AiAnalyzeDialogProps = {
   onDraftChange: (draft: AiAnalyzeDraft) => void
   onClose: () => void
   onSubmit: () => void
+  isSubmitting?: boolean
 }
 
-function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }: AiAnalyzeDialogProps) {
+function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit, isSubmitting }: AiAnalyzeDialogProps) {
   useEffect(() => {
     if (!open) return
     function onKeyDown(event: KeyboardEvent) {
@@ -167,11 +168,11 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit }
         </div>
 
         <footer className="automation-dialog-actions">
-          <button type="button" className="dl-btn" onClick={onClose}>
+          <button type="button" className="dl-btn" onClick={onClose} disabled={isSubmitting}>
             取消
           </button>
-          <button type="button" className="dl-btn dl-btn--primary" onClick={onSubmit}>
-            {draft.mode === 'export' ? '分析并导出' : '开始分析'}
+          <button type="button" className="dl-btn dl-btn--primary" onClick={onSubmit} disabled={isSubmitting}>
+            {isSubmitting ? '处理中...' : draft.mode === 'export' ? '分析并导出' : '开始分析'}
           </button>
         </footer>
       </section>
@@ -200,6 +201,7 @@ export function DownloaderApp() {
   const [miniAiOpen, setMiniAiOpen] = useState(false)
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [aiDialogTask, setAiDialogTask] = useState<DownloadTask | null>(null)
+  const [aiSubmitting, setAiSubmitting] = useState(false)
   const [aiDraft, setAiDraft] = useState<AiAnalyzeDraft>({
     mode: 'analyze',
     subtitleMode: 'none',
@@ -588,14 +590,17 @@ export function DownloaderApp() {
               setAiDialogOpen(false)
               setAiDialogTask(null)
             }}
+            isSubmitting={aiSubmitting}
             onSubmit={async () => {
-              if (!aiDialogTask) return
+              if (!aiDialogTask || aiSubmitting) return
               setActionError('')
+              setAiSubmitting(true)
 
               if (aiDraft.mode === 'export') {
                 const vid = getTaskVideoFilePath(aiDialogTask)
                 if (!vid) {
                   setActionError('未找到本地视频文件路径。')
+                  setAiSubmitting(false)
                   return
                 }
               }
@@ -621,6 +626,8 @@ export function DownloaderApp() {
                 await refreshLists()
               } catch (err: any) {
                 setActionError(err?.message || 'AI分析提交失败')
+              } finally {
+                setAiSubmitting(false)
               }
             }}
           />
