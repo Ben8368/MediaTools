@@ -153,8 +153,10 @@ hello world from youtube
         srt_path = Path(self.temp_dir) / "clip.en.srt"
         self.assertTrue(srt_path.exists())
         srt_text = srt_path.read_text(encoding="utf-8")
-        self.assertIn("hello world from youtube", srt_text)
-        self.assertNotIn("hello world from\n\n2", srt_text)
+        # Rolling-window cues are now split: prefix kept in seg 1, new tail in seg 2.
+        self.assertIn("hello world from", srt_text)
+        self.assertIn("youtube", srt_text)
+        self.assertEqual(len([b for b in srt_text.strip().split("\n\n") if b.strip()]), 2)
         self.assertEqual(errors, [])
 
     @patch("modules.fetcher.downloader.YtdlpAdapter")

@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import subprocess
+import urllib.request
 from pathlib import Path
 
 from adapters import FFmpegAdapter, YtdlpAdapter
@@ -112,6 +113,7 @@ class VideoDownloader:
     ) -> dict:
         """
         仅下载字幕（跳过视频）。
+        优先级: 直链（dump-json URL）→ yt-dlp web → yt-dlp android_vr
         """
         if info is None:
             info = self.get_video_info(url)
@@ -120,34 +122,40 @@ class VideoDownloader:
             return {"original": {}, "zh": {}, "errors": []}
 
         filename = self._apply_naming_template(info, index)
-        output_tmpl = str(self.output_dir / f"{filename}.%(ext)s")
         lang = (info.get("language") or "en").split("-")[0]
         formats = [fmt.lower() for fmt in (subtitle_formats or ["srt", "vtt"]) if fmt]
         normalized_formats = [fmt for fmt in formats if fmt in {"srt", "vtt", "ass", "ssa"}] or ["srt", "vtt"]
         errors: list[str] = []
+        subtitle_urls = info.get("subtitle_urls") or {}
 
-        self._download_subtitle_family(
-            url,
-            output_tmpl,
-            lang,
-            normalized_formats,
-            errors,
-            include_manual=True,
-            include_auto=True,
-        )
-
-        self._download_subtitle_family(
-            url,
-            output_tmpl,
-            "zh-Hans",
-            normalized_formats,
-            errors,
-            include_manual=False,
-            include_auto=True,
-        )
+        # Step 1: try direct URL download (zero extra requests, uses URLs from get_video_info)
+        for sub_lang in (lang, "zh-Hans"):
+            self._direct_url_subtitle_fallback(subtitle_urls, sub_lang, filename, normalized_formats, errors)
 
         self._ensure_srt_subtitle_outputs(filename, normalized_formats, errors)
         outputs = self._collect_subtitle_outputs(filename)
+
+        # Step 2: yt-dlp for any language that direct download didn't produce
+        missing_original = not outputs.get("original")
+        missing_zh = not outputs.get("zh")
+
+        if missing_original:
+            output_tmpl = str(self.output_dir / f"{filename}.%(ext)s")
+            self._download_subtitle_family(
+                url, output_tmpl, lang, normalized_formats, errors,
+                include_manual=True, include_auto=True,
+            )
+        if missing_zh:
+            output_tmpl = str(self.output_dir / f"{filename}.%(ext)s")
+            self._download_subtitle_family(
+                url, output_tmpl, "zh-Hans", normalized_formats, errors,
+                include_manual=False, include_auto=True,
+            )
+
+        if missing_original or missing_zh:
+            self._ensure_srt_subtitle_outputs(filename, normalized_formats, errors)
+            outputs = self._collect_subtitle_outputs(filename)
+
         outputs = self._prune_duplicate_subtitle_outputs(outputs)
         outputs["errors"] = errors
         return outputs
@@ -213,9 +221,20 @@ class VideoDownloader:
                     creationflags=_SUBPROCESS_FLAGS,
                 )
                 if result.returncode != 0:
-                    detail = self._extract_error_detail(result.stderr)
-                    if detail:
-                        errors.append(f"{language}/{requested_fmt}: {detail}")
+                    # Retry with android_vr client on 429 (different rate-limit pool from web)
+                    if "429" in result.stderr:
+                        fallback_cmd = cmd[:-1] + ["--extractor-args", "youtube:player_client=android_vr", cmd[-1]]
+                        result = subprocess.run(
+                            self._ytdlp.build_command(fallback_cmd, {"operation": "subtitle_android_vr", "url": url, "language": language, "format": fmt}),
+                            capture_output=True,
+                            text=True,
+                            timeout=120,
+                            creationflags=_SUBPROCESS_FLAGS,
+                        )
+                    if result.returncode != 0:
+                        detail = self._extract_error_detail(result.stderr)
+                        if detail:
+                            errors.append(f"{language}/{requested_fmt}: {detail}")
             except Exception as exc:
                 errors.append(f"{language}/{requested_fmt}: {exc}")
 
@@ -302,6 +321,7 @@ class VideoDownloader:
             "tags": "; ".join(info.get("tags") or []),
             "has_manual_subs": bool(info.get("subtitles")),
             "has_auto_subs": bool(info.get("automatic_captions")),
+            "subtitle_urls": self._extract_subtitle_urls(info),
             "local_path": "",
             "subtitle_path": "",
             "highlights_count": 0,
@@ -326,6 +346,70 @@ class VideoDownloader:
         for ch in r'<>:"/\|?*':
             name = name.replace(ch, "_")
         return name[:80].strip()
+
+    def _extract_subtitle_urls(self, raw_info: dict) -> dict:
+        """从 --dump-json 原始数据中提取字幕直链，格式: {lang: {ext: url}}"""
+        result: dict[str, dict[str, str]] = {}
+        for source_key in ("automatic_captions", "subtitles"):
+            for lang, entries in (raw_info.get(source_key) or {}).items():
+                for entry in entries or []:
+                    ext = entry.get("ext")
+                    url = entry.get("url")
+                    if ext and url:
+                        result.setdefault(lang, {}).setdefault(ext, url)
+        return result
+
+    def _download_vtt_direct(self, url: str, dest_path: Path) -> bool:
+        """直接通过 HTTP 下载 VTT 字幕文件（429 fallback 用）。"""
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/124.0.0.0 Safari/537.36"
+                    ),
+                    "Referer": "https://www.youtube.com/",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                dest_path.write_bytes(resp.read())
+            return True
+        except Exception:
+            return False
+
+    def _direct_url_subtitle_fallback(
+        self,
+        subtitle_urls: dict,
+        lang: str,
+        base_name: str,
+        formats: list[str],
+        errors: list[str],
+    ) -> None:
+        """用 dump-json 里的直链下载 VTT，是请求链路最短的首选方式。"""
+        # Match lang against available keys: exact, prefix (zh matches zh-Hans), or base (zh-Hans → zh)
+        lang_lower = lang.lower()
+        lang_base = lang_lower.split("-")[0]
+        matched_key = None
+        for key in subtitle_urls:
+            k = key.lower()
+            if k == lang_lower or k.startswith(lang_lower + "-") or k == lang_base:
+                matched_key = key
+                break
+
+        if not matched_key:
+            return
+
+        lang_urls = subtitle_urls[matched_key]
+        vtt_url = lang_urls.get("vtt")
+        if not vtt_url:
+            return
+
+        # Use the actual matched lang code for the output filename
+        vtt_path = self.output_dir / f"{base_name}.{matched_key}.vtt"
+        if not self._download_vtt_direct(vtt_url, vtt_path):
+            errors.append(f"{lang}/vtt(direct): direct URL download failed")
 
     def _find_downloaded_file(self, directory: Path, base_name: str, extensions: list) -> Path | None:
         for ext in extensions:

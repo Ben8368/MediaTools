@@ -180,15 +180,26 @@ def _deduplicate_vtt_segments(segments: list, threshold: float = 0.85) -> list:
                 continue
 
             if prev_text in curr_text:
-                prev["text"] = curr_text
-                prev["end"] = seg["end"]
+                # Rolling window (YouTube auto-captions): strip the shared prefix,
+                # keep prev as-is and add only the new tail as a separate segment.
+                new_text = curr_text[len(prev_text):].strip()
+                if new_text:
+                    cleaned.append({"start": seg["start"], "end": seg["end"], "text": new_text})
+                elif curr_end > prev_end:
+                    prev["end"] = seg["end"]
                 continue
 
             overlap = _word_overlap_size(prev_text, curr_text)
             if overlap >= 3:
-                prev["text"] = _join_text_with_overlap(prev_text, curr_text)
-                prev["end"] = seg["end"]
-                continue
+                prev_words = len(prev_text.split())
+                curr_words = len(curr_text.split())
+                min_words = min(prev_words, curr_words)
+                overlap_ratio = overlap / min_words if min_words > 0 else 0
+                # Skip merge when overlap dominates the shorter segment (rolling window).
+                if overlap_ratio < 0.5:
+                    prev["text"] = _join_text_with_overlap(prev_text, curr_text)
+                    prev["end"] = seg["end"]
+                    continue
 
         cleaned.append(seg.copy())
 
