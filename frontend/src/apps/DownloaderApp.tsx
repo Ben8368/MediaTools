@@ -641,35 +641,42 @@ export function DownloaderApp() {
                   setAiTaskId(response.task_id)
                   setAiSubmitProgress('已提交，等待处理...')
 
-                  const pollTask = setInterval(async () => {
-                    try {
-                      const tasks = await Promise.all([
-                        fetch('/api/tasks').then(r => r.json()),
-                      ])
-                      const allTasks = tasks[0]?.tasks || []
-                      const aiTask = allTasks.find((t: any) => t.id === response.task_id)
+                  const eventSource = new EventSource(`/api/downloader/ai/task/${response.task_id}/stream`)
 
-                      if (aiTask) {
-                        if (aiTask.stage) {
-                          setAiSubmitProgress(`${aiTask.stage}...`)
-                        }
-                        if (aiTask.status === 'completed' || aiTask.status === 'failed') {
-                          clearInterval(pollTask)
+                  eventSource.onmessage = (event) => {
+                    try {
+                      const data = JSON.parse(event.data)
+                      if (data.error) {
+                        setActionError(data.error)
+                        eventSource.close()
+                        setAiSubmitting(false)
+                        setAiSubmitProgress('')
+                      } else if (data.done) {
+                        eventSource.close()
+                        setAiSubmitting(false)
+                        setAiSubmitProgress('')
+                        setAiTaskId(null)
+                        setAiDialogOpen(false)
+                        setAiDialogTask(null)
+                        if (aiPollInterval) {
+                          clearInterval(aiPollInterval)
                           setAiPollInterval(null)
-                          setAiSubmitting(false)
-                          setAiSubmitProgress('')
-                          setAiTaskId(null)
-                          setAiDialogOpen(false)
-                          setAiDialogTask(null)
-                          await refreshLists()
                         }
+                        refreshLists()
+                      } else if (data.stage) {
+                        setAiSubmitProgress(`${data.stage}...`)
                       }
                     } catch (err) {
-                      console.error('轮询任务状态失败:', err)
+                      console.error('解析流数据失败:', err)
                     }
-                  }, 1000)
+                  }
 
-                  setAiPollInterval(pollTask)
+                  eventSource.onerror = () => {
+                    eventSource.close()
+                    setActionError('连接中断')
+                    setAiSubmitting(false)
+                    setAiSubmitProgress('')
+                  }
                 } else {
                   setAiSubmitting(false)
                   setAiSubmitProgress('')

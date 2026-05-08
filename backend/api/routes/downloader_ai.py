@@ -6,13 +6,15 @@ AI analyze/slice as first-class operations.
 
 from __future__ import annotations
 
+import asyncio
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.api.models import DownloaderAiAnalyzeBody, DownloaderAiSliceBody
 
@@ -174,5 +176,40 @@ def create_router(job_registry, analyze_subtitle_for_workbench, export_clips_fro
 
         _start_background(_run)
         return JSONResponse({"ok": True, "task_id": ai_task_id, "status": TaskStatus.PENDING.value})
+
+    @router.get("/api/downloader/ai/task/{task_id}/stream")
+    async def downloader_ai_task_stream(task_id: str):
+        import json
+        from backend.services.task_center import TaskStatus, get_task_center
+
+        task_center = get_task_center()
+
+        async def event_generator():
+            last_progress = -1
+            last_stage = ""
+            while True:
+                task = task_center.get_task(task_id)
+                if not task:
+                    yield f"data: {json.dumps({'error': '任务不存在'})}\n\n"
+                    break
+
+                progress = task.get("progress", 0)
+                stage = task.get("stage", "")
+                status = task.get("status", "")
+
+                if progress != last_progress or stage != last_stage:
+                    yield f"data: {json.dumps({'progress': progress, 'stage': stage, 'status': status})}\n\n"
+                    last_progress = progress
+                    last_stage = stage
+
+                if status in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value]:
+                    result = task.get("result", {})
+                    error = task.get("error", "")
+                    yield f"data: {json.dumps({'done': True, 'status': status, 'result': result, 'error': error})}\n\n"
+                    break
+
+                await asyncio.sleep(0.5)
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
 
     return router
