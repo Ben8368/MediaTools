@@ -61,9 +61,10 @@ type AiAnalyzeDialogProps = {
   onClose: () => void
   onSubmit: () => void
   isSubmitting?: boolean
+  submitProgress?: string
 }
 
-function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit, isSubmitting }: AiAnalyzeDialogProps) {
+function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit, isSubmitting, submitProgress }: AiAnalyzeDialogProps) {
   useEffect(() => {
     if (!open) return
     function onKeyDown(event: KeyboardEvent) {
@@ -172,7 +173,7 @@ function AiAnalyzeDialog({ open, task, draft, onDraftChange, onClose, onSubmit, 
             取消
           </button>
           <button type="button" className="dl-btn dl-btn--primary" onClick={onSubmit} disabled={isSubmitting}>
-            {isSubmitting ? '处理中...' : draft.mode === 'export' ? '分析并导出' : '开始分析'}
+            {isSubmitting ? (submitProgress || '处理中...') : draft.mode === 'export' ? '分析并导出' : '开始分析'}
           </button>
         </footer>
       </section>
@@ -202,6 +203,9 @@ export function DownloaderApp() {
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [aiDialogTask, setAiDialogTask] = useState<DownloadTask | null>(null)
   const [aiSubmitting, setAiSubmitting] = useState(false)
+  const [aiSubmitProgress, setAiSubmitProgress] = useState('')
+  const [aiTaskId, setAiTaskId] = useState<string | null>(null)
+  const [aiPollInterval, setAiPollInterval] = useState<ReturnType<typeof setInterval> | null>(null)
   const [aiDraft, setAiDraft] = useState<AiAnalyzeDraft>({
     mode: 'analyze',
     subtitleMode: 'none',
@@ -587,27 +591,38 @@ export function DownloaderApp() {
             draft={aiDraft}
             onDraftChange={setAiDraft}
             onClose={() => {
+              if (aiPollInterval) {
+                clearInterval(aiPollInterval)
+                setAiPollInterval(null)
+              }
               setAiDialogOpen(false)
               setAiDialogTask(null)
+              setAiSubmitting(false)
+              setAiSubmitProgress('')
+              setAiTaskId(null)
             }}
             isSubmitting={aiSubmitting}
+            submitProgress={aiSubmitProgress}
             onSubmit={async () => {
               if (!aiDialogTask || aiSubmitting) return
               setActionError('')
               setAiSubmitting(true)
+              setAiSubmitProgress('准备中...')
 
               if (aiDraft.mode === 'export') {
                 const vid = getTaskVideoFilePath(aiDialogTask)
                 if (!vid) {
                   setActionError('未找到本地视频文件路径。')
                   setAiSubmitting(false)
+                  setAiSubmitProgress('')
                   return
                 }
               }
 
               try {
+                let response
                 if (aiDraft.mode === 'export') {
-                  await sliceDownloaderAi({
+                  response = await sliceDownloaderAi({
                     task_id: aiDialogTask.id,
                     subtitle_mode: aiDraft.subtitleMode,
                     padding: aiDraft.padding,
@@ -615,19 +630,54 @@ export function DownloaderApp() {
                     extra_context: aiDraft.extraContext,
                   })
                 } else {
-                  await analyzeDownloaderAi({
+                  response = await analyzeDownloaderAi({
                     task_id: aiDialogTask.id,
                     expected_duration: aiDraft.expectedDuration,
                     extra_context: aiDraft.extraContext,
                   })
                 }
-                setAiDialogOpen(false)
-                setAiDialogTask(null)
-                await refreshLists()
+
+                if (response?.task_id) {
+                  setAiTaskId(response.task_id)
+                  setAiSubmitProgress('已提交，等待处理...')
+
+                  const pollTask = setInterval(async () => {
+                    try {
+                      const tasks = await Promise.all([
+                        fetch('/api/tasks').then(r => r.json()),
+                      ])
+                      const allTasks = tasks[0]?.tasks || []
+                      const aiTask = allTasks.find((t: any) => t.id === response.task_id)
+
+                      if (aiTask) {
+                        if (aiTask.stage) {
+                          setAiSubmitProgress(`${aiTask.stage}...`)
+                        }
+                        if (aiTask.status === 'completed' || aiTask.status === 'failed') {
+                          clearInterval(pollTask)
+                          setAiPollInterval(null)
+                          setAiSubmitting(false)
+                          setAiSubmitProgress('')
+                          setAiTaskId(null)
+                          setAiDialogOpen(false)
+                          setAiDialogTask(null)
+                          await refreshLists()
+                        }
+                      }
+                    } catch (err) {
+                      console.error('轮询任务状态失败:', err)
+                    }
+                  }, 1000)
+
+                  setAiPollInterval(pollTask)
+                } else {
+                  setAiSubmitting(false)
+                  setAiSubmitProgress('')
+                }
               } catch (err: any) {
                 setActionError(err?.message || 'AI分析提交失败')
-              } finally {
                 setAiSubmitting(false)
+                setAiSubmitProgress('')
               }
             }}
           />
