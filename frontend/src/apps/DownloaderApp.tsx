@@ -305,9 +305,19 @@ export function DownloaderApp() {
   const canStopSelected = selectedTasks.length > 0 && selectedTasks.every((task) => isTaskCancellable(task))
   const canRetrySelected = selectedTasks.length > 0 && selectedTasks.every((task) => isTaskRetryable(task))
   const selectedClearableTasks = useMemo(() => selectedTasks.filter((task) => isTaskClearable(task)), [selectedTasks])
-  const canClearAllTerminal = historyTasks.some((task) => isTaskClearable(task))
-  const canClearSelected = hasBulkSelection && selectedClearableTasks.length > 0
-  const canClearRecords = hasBulkSelection ? canClearSelected : canClearAllTerminal
+  const canClearRecords = selectedClearableTasks.length > 0
+  const clearRecordsTitle = useMemo(() => {
+    if (selectedClearableTasks.length > 0) {
+      const n = selectedClearableTasks.length
+      const m = selectedTasks.length
+      if (m === n) {
+        return n === 1 ? '删除当前所选记录的下载历史' : `删除所选 ${n} 条记录的下载历史`
+      }
+      return `删除其中可清除的 ${n} 条记录（${m - n} 条仍在进行中，将保留）`
+    }
+    if (!filteredTasks.length) return '暂无可显示的下载任务'
+    return '没有可删除的记录：仅已完成、已停止或失败的任务可从列表移除。请先选中任务或使用全选。'
+  }, [filteredTasks.length, selectedClearableTasks, selectedTasks])
   const canSelectAllVisible = filteredTasks.length > 0
   const allVisibleSelected = filteredTasks.length > 0 && filteredTasks.every((task) => selectedIds.has(task.id))
 
@@ -368,29 +378,21 @@ export function DownloaderApp() {
     if (!canClearRecords) return
     setActionError('')
     try {
-      if (hasBulkSelection) {
-        const ids = selectedClearableTasks.map((task) => task.id)
-        await clearTaskRecords({ ids, terminal_only: false })
-        setSelectedIds((prev) => {
-          const next = new Set(prev)
-          ids.forEach((id) => next.delete(id))
-          return next
-        })
-        if (selectedTask && ids.includes(selectedTask.id)) {
-          setSelectedTaskId(null)
-        }
-      } else {
-        await clearTaskRecords({ terminal_only: true })
-        setSelectedIds(new Set())
-        if (selectedTask && isTaskClearable(selectedTask)) {
-          setSelectedTaskId(null)
-        }
+      const ids = selectedClearableTasks.map((task) => task.id)
+      await clearTaskRecords({ ids, terminal_only: false })
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.delete(id))
+        return next
+      })
+      if (selectedTask && ids.includes(selectedTask.id)) {
+        setSelectedTaskId(null)
       }
       await refreshLists()
     } catch (err: any) {
-      setActionError(err?.message || '清理记录失败')
+      setActionError(err?.message || '删除记录失败')
     }
-  }, [canClearRecords, hasBulkSelection, refreshLists, selectedClearableTasks, selectedTask])
+  }, [canClearRecords, refreshLists, selectedClearableTasks, selectedTask])
 
   const stopSelected = useCallback(async () => {
     if (!canStopSelected) return
@@ -531,10 +533,8 @@ export function DownloaderApp() {
           canSelectAllVisible={canSelectAllVisible}
           allVisibleSelected={allVisibleSelected}
           onToggleSelectAll={toggleSelectAllVisible}
-          hasBulkSelection={hasBulkSelection}
-          canClearSelected={canClearSelected}
-          canClearAllTerminal={canClearAllTerminal}
           canClearRecords={canClearRecords}
+          clearRecordsTitle={clearRecordsTitle}
           onClearRecords={clearRecords}
           searchText={searchText}
           onSearchTextChange={setSearchText}

@@ -130,7 +130,7 @@ describe('DownloaderApp interactions', () => {
     expect(screen.getByLabelText('stop-selected-downloads')).toBeEnabled()
 
     fireEvent.click(rowB, { shiftKey: true })
-    expect(screen.getByText('取消全选')).toBeInTheDocument()
+    expect(screen.getByLabelText('select-all-downloads')).toHaveTextContent('取消')
   })
 
   it('keeps stop disabled for completed history tasks', async () => {
@@ -195,7 +195,7 @@ describe('DownloaderApp interactions', () => {
     expect(screen.getByRole('button', { name: '添加任务' })).toBeInTheDocument()
     expect(screen.getByText('停止')).toBeInTheDocument()
     expect(screen.getByText('重试')).toBeInTheDocument()
-    expect(screen.getByText('全部清理')).toBeInTheDocument()
+    expect(screen.getByText('删除')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '添加任务' }))
 
@@ -298,10 +298,10 @@ describe('DownloaderApp interactions', () => {
     fireEvent.click(await screen.findByRole('button', { name: /错误/ }))
     await screen.findByText('Broken download')
     fireEvent.click(screen.getByLabelText('select-all-downloads'))
-    expect(screen.getByText('取消全选')).toBeInTheDocument()
+    expect(screen.getByLabelText('select-all-downloads')).toHaveTextContent('取消')
   })
 
-  it('supports clearing all terminal download records', async () => {
+  it('clears all visible terminal records when every visible row is selected', async () => {
     apiMocks.getActiveTasks.mockResolvedValue({ tasks: [] })
     apiMocks.getWeeklyHistory.mockResolvedValue({
       tasks: [
@@ -328,11 +328,18 @@ describe('DownloaderApp interactions', () => {
 
     render(<DownloaderApp />)
 
-    fireEvent.click(await screen.findByLabelText('clear-all-download-records'))
+    await screen.findByText('Done B')
+    await screen.findByText('Done A')
+    fireEvent.click(screen.getByLabelText('select-all-downloads'))
+    fireEvent.click(screen.getByLabelText('delete-download-records'))
 
     await waitFor(() => {
-      expect(apiMocks.clearTaskRecords).toHaveBeenCalledWith({ terminal_only: true })
+      expect(apiMocks.clearTaskRecords).toHaveBeenCalledWith({
+        ids: expect.arrayContaining(['task-5', 'task-6']),
+        terminal_only: false,
+      })
     })
+    expect(apiMocks.clearTaskRecords.mock.calls[0]?.[0]?.ids).toHaveLength(2)
   })
 
   it('clears only the selected clearable records when a filtered list is selected', async () => {
@@ -356,7 +363,7 @@ describe('DownloaderApp interactions', () => {
     fireEvent.click(await screen.findByRole('button', { name: /已完成/ }))
     await screen.findByText('Done selected')
     fireEvent.click(screen.getByLabelText('select-all-downloads'))
-    fireEvent.click(screen.getByLabelText('clear-all-download-records'))
+    fireEvent.click(screen.getByLabelText('delete-download-records'))
 
     await waitFor(() => {
       expect(apiMocks.clearTaskRecords).toHaveBeenCalledWith({ ids: ['task-7'], terminal_only: false })

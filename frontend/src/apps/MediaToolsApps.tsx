@@ -335,7 +335,7 @@ export function DecryptorApp() {
               </button>
               <button className="dl-btn" type="button" disabled={filteredTasks.length === 0} onClick={toggleSelectAllVisible}>
                 <SelectAllIcon />
-                {allVisibleSelected ? '取消全选' : '全选'}
+                {allVisibleSelected ? '取消' : '全选'}
               </button>
               <button className="dl-btn" type="button" disabled={clearableSelected.length === 0 && clearableTasks.length === 0} onClick={clearRecords}>
                 <DeleteIcon />

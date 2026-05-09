@@ -109,7 +109,7 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 6px;
+  gap: 4px;
   box-sizing: border-box;
   min-height: 30px;
   height: 30px;
@@ -125,28 +125,57 @@
   box-shadow: 0 0 0 2px rgba(77, 171, 255, 0.16);
 }
 
+.dl-mini-ai__input-wrap {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
 .dl-mini-ai__input {
   flex: 1;
   min-width: 0;
-  align-self: center;
+  width: 100%;
   resize: none;
-  /* 单行高度与发送按钮对齐（24px 内容区 + 容器 30px） */
+  margin: 0;
+  /* 与 30px 外框垂直居中（约 ±4px 留白），单行内中英文视觉更居中 */
   box-sizing: border-box;
-  height: 24px;
-  min-height: 24px;
-  max-height: 24px;
-  line-height: 24px;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  line-height: 20px;
+  padding: 1px 2px 1px 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: #f7f8fb;
-  padding: 0 4px 0 0;
   font-size: 12px;
   font-family: inherit;
   outline: 0;
   color-scheme: dark;
+  white-space: pre-wrap;
+  word-break: break-word;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+.dl-mini-ai__draft-stats {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  max-width: 76px;
+  font-size: 10px;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dl-mini-ai__draft-stats-hint {
+  text-decoration: none;
+  cursor: default;
 }
 
 .dl-mini-ai__input:disabled {

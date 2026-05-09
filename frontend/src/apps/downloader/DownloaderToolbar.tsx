@@ -10,10 +10,8 @@ type DownloaderToolbarProps = {
   canSelectAllVisible: boolean
   allVisibleSelected: boolean
   onToggleSelectAll: () => void
-  hasBulkSelection: boolean
-  canClearSelected: boolean
-  canClearAllTerminal: boolean
   canClearRecords: boolean
+  clearRecordsTitle: string
   onClearRecords: () => void
   searchText: string
   onSearchTextChange: (value: string) => void
@@ -29,22 +27,12 @@ export function DownloaderToolbar({
   canSelectAllVisible,
   allVisibleSelected,
   onToggleSelectAll,
-  hasBulkSelection,
-  canClearSelected,
-  canClearAllTerminal,
   canClearRecords,
+  clearRecordsTitle,
   onClearRecords,
   searchText,
   onSearchTextChange,
 }: DownloaderToolbarProps) {
-  const clearTitle = hasBulkSelection
-    ? canClearSelected
-      ? '清理当前选中的已完成、已停止和错误记录'
-      : '当前选中的任务里没有可清理的记录'
-    : canClearAllTerminal
-      ? '清空全部已完成、已停止和错误记录'
-      : '当前没有可清理的历史记录'
-
   const selectTitle = canSelectAllVisible
     ? allVisibleSelected
       ? '取消全选当前列表'
@@ -85,17 +73,17 @@ export function DownloaderToolbar({
         title={selectTitle}
       >
         <SelectAllIcon />
-        {allVisibleSelected ? '取消全选' : '全选'}
+        {allVisibleSelected ? '取消' : '全选'}
       </button>
       <button
         className="dl-btn"
-        aria-label="clear-all-download-records"
+        aria-label="delete-download-records"
         disabled={!canClearRecords}
         onClick={onClearRecords}
-        title={clearTitle}
+        title={clearRecordsTitle}
       >
         <DeleteIcon />
-        {hasBulkSelection ? '清理所选' : '全部清理'}
+        删除
       </button>
       <div className="dl-toolbar-spacer" />
       <div className="dl-search">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { runAgent } from '@/api'
 import { useModelConfig } from '@/modelConfigStore'
@@ -25,6 +25,37 @@ export function DownloaderMiniAiChat({ open, onClose, taskContextLine }: Downloa
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const threadRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [draftLinesLayout, setDraftLinesLayout] = useState(1)
+  const [horizOverflow, setHorizOverflow] = useState(false)
+
+  const logicalLineCount = draft.length === 0 ? 0 : draft.split(/\r\n|\r|\n/).length
+
+  const measureDraft = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    setHorizOverflow(el.scrollWidth > el.clientWidth + 2)
+    const linePx =
+      Number.parseFloat(getComputedStyle(el).lineHeight) || Number.parseFloat(String(getComputedStyle(el).fontSize)) * 1.35 || 17
+    const wrappedLines = Math.max(1, Math.round(el.scrollHeight / Math.max(linePx, 12)))
+    setDraftLinesLayout(wrappedLines)
+  }, [])
+
+  const displayLineCount = draft.length === 0 ? 0 : Math.max(logicalLineCount, draftLinesLayout)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    measureDraft()
+  }, [draft, open, measureDraft])
+
+  useEffect(() => {
+    if (!open) return
+    const wrapEl = textareaRef.current?.closest('.dl-mini-ai__input-wrap')
+    if (!wrapEl || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => measureDraft())
+    ro.observe(wrapEl)
+    return () => ro.disconnect()
+  }, [open, measureDraft])
 
   useEffect(() => {
     if (!open) return
@@ -106,20 +137,51 @@ export function DownloaderMiniAiChat({ open, onClose, taskContextLine }: Downloa
       </div>
       <div className="dl-mini-ai__composer">
         <div className="dl-mini-ai__composer-inner">
-          <textarea
-            className="dl-mini-ai__input"
-            rows={1}
-            placeholder="描述问题或粘贴链接…"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                void send()
+          <div className="dl-mini-ai__input-wrap">
+            <textarea
+              ref={textareaRef}
+              className="dl-mini-ai__input"
+              rows={1}
+              placeholder="描述问题或粘贴链接…"
+              value={draft}
+              aria-describedby={draft.length > 0 ? 'dl-mini-ai-draft-stats' : undefined}
+              title={
+                draft
+                  ? `约 ${displayLineCount} 行（含自动换行）·${draft.length} 字`
+                  : 'Enter 发送，Shift+Enter 换行；宽条内仅单行展示，可看右侧行数摘要'
               }
-            }}
-            disabled={sending}
-          />
+              spellCheck={false}
+              onChange={(event) => setDraft(event.target.value)}
+              onInput={measureDraft}
+              onScroll={measureDraft}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void send()
+                }
+              }}
+              disabled={sending}
+            />
+          </div>
+          {draft.length > 0 && (
+            <div id="dl-mini-ai-draft-stats" className="dl-mini-ai__draft-stats" aria-live="polite">
+              {displayLineCount > 1 || logicalLineCount > 1 ? (
+                <>
+                  <span>{Math.max(displayLineCount, logicalLineCount)}行</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              ) : null}
+              <span>{draft.length}字</span>
+              {horizOverflow ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <abbr className="dl-mini-ai__draft-stats-hint" title="可向左右拖拽查看首尾">
+                    ↔
+                  </abbr>
+                </>
+              ) : null}
+            </div>
+          )}
           <button
             type="button"
             className="dl-btn dl-btn--primary dl-mini-ai__send"
