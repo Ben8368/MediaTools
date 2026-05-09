@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -136,7 +137,21 @@ SUMMARY_FIELDNAMES = [
 ]
 
 
-def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -> list[TicketScanRow]:
+def _is_scan_cancelled(exc: BaseException) -> bool:
+    return (
+        isinstance(exc, RuntimeError)
+        and bool(getattr(exc, "args", None))
+        and str(exc.args[0]) == "MEDIATOOLS_SCAN_CANCELLED"
+    )
+
+
+def scan_document_for_ticket(
+    ps,
+    doc,
+    source_psd: str,
+    progress_callback=None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> list[TicketScanRow]:
     rows: list[TicketScanRow] = []
     layer_id = 1
     normal_text_layer_count = 0
@@ -145,6 +160,8 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
     skipped_smart_object_count = 0
 
     def emit_progress(stage: str, smart_object_name: str = ""):
+        if cancel_check and cancel_check():
+            raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
         if progress_callback is None:
             return
         try:
@@ -159,11 +176,15 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
                     "smart_object_name": smart_object_name,
                 }
             )
-        except Exception:
+        except Exception as exc:
+            if _is_scan_cancelled(exc):
+                raise
             pass
 
     def append_row(layer, artboard_name: str, smart_layer=None, inner_layer_name: str = ""):
         nonlocal layer_id, normal_text_layer_count, smart_text_layer_count
+        if cancel_check and cancel_check():
+            raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
         try:
             ti = layer.TextItem
             raw_text = ti.Contents
@@ -210,6 +231,8 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
     def append_smart_object_rows(container, artboard_name: str):
         nonlocal smart_object_count, skipped_smart_object_count
         for smart_layer in ps.collect_smart_object_layers(container):
+            if cancel_check and cancel_check():
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
             smart_doc = None
             try:
                 smart_object_count += 1
@@ -217,7 +240,9 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
                 smart_doc = ps.open_smart_object_contents(smart_layer)
                 for inner_layer in ps.collect_text_layers(smart_doc):
                     append_row(inner_layer, artboard_name, smart_layer=smart_layer, inner_layer_name=inner_layer.Name)
-            except Exception:
+            except Exception as exc:
+                if _is_scan_cancelled(exc):
+                    raise
                 skipped_smart_object_count += 1
                 emit_progress(f"智能对象无法扫描，已跳过：{smart_layer.Name}", smart_layer.Name)
                 continue
@@ -236,6 +261,8 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
     if artboards:
         artboard_ids = set()
         for ab in artboards:
+            if cancel_check and cancel_check():
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
             try:
                 artboard_ids.add(ab.id)
             except Exception:
@@ -247,6 +274,8 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
         for layer in ps.collect_text_layers_outside_artboards(doc, artboard_ids):
             append_row(layer, "(画板外)")
         for smart_layer in ps.collect_smart_object_layers_outside_artboards(doc, artboard_ids):
+            if cancel_check and cancel_check():
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
             smart_doc = None
             try:
                 smart_object_count += 1
@@ -254,7 +283,9 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
                 smart_doc = ps.open_smart_object_contents(smart_layer)
                 for inner_layer in ps.collect_text_layers(smart_doc):
                     append_row(inner_layer, "(画板外)", smart_layer=smart_layer, inner_layer_name=inner_layer.Name)
-            except Exception:
+            except Exception as exc:
+                if _is_scan_cancelled(exc):
+                    raise
                 skipped_smart_object_count += 1
                 emit_progress(f"智能对象无法扫描，已跳过：{smart_layer.Name}", smart_layer.Name)
                 continue
@@ -270,6 +301,8 @@ def scan_document_for_ticket(ps, doc, source_psd: str, progress_callback=None) -
                         pass
     else:
         for layer in ps.collect_text_layers(doc):
+            if cancel_check and cancel_check():
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
             append_row(layer, "(无画板)")
         append_smart_object_rows(doc, "(无画板)")
 

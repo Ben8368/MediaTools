@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppLayout } from '@/AppLayout'
 import {
   cancelPhotoshopExecution,
+  cancelPhotoshopScan,
   deletePhotoshopTicket,
   executePhotoshopTicket,
   fetchPhotoshopExecution,
@@ -16,23 +17,33 @@ import {
   updatePhotoshopTicket,
   wsUrl,
 } from '@/api'
-import {
-  Field,
-  PathInput,
-  PrimaryButton,
-  ResultBox,
-  ToolbarButton,
-} from '@/apps/mediatools/primitives'
+import { AiIcon } from '@/apps/downloader/icons'
+import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
 import { AutomationTaskDialog } from '@/apps/mediatools/AutomationTaskDialog'
 import { FontPicker } from '@/apps/mediatools/FontPicker'
+import { PhotoshopLocaleRequestDialog, type PhotoshopLocaleRequestResult } from '@/apps/mediatools/PhotoshopLocaleRequestDialog'
+import { PhotoshopMiniAiChat } from '@/apps/mediatools/PhotoshopMiniAiChat'
 import {
   automationTaskIndexes,
   isAutomationTaskExecutable,
   patchAutomationTask,
 } from '@/apps/mediatools/automation'
+import {
+  Field,
+  PrimaryButton,
+  ResultBox,
+  ToolbarButton,
+} from '@/apps/mediatools/primitives'
 
 type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
+
+/** 填入 Photoshop 助手输入框的快捷指令（发送前可改） */
+const PS_AI_PROMPTS = {
+  translate: '请根据当前工单上下文，为各图层任务生成合适的 target_text 翻译建议（说明假设的目标语种）；如需按图层区分请逐条说明。',
+  copycheck: '请检查当前工单中各任务的 target_text 相对 original_text：是否存在错别字、语病、术语不一致或与使用场景不符；按任务顺序给出问题与修改建议。',
+  locales: '请结合当前任务与已有语言字段，梳理多语言 / 输出方案（含 output_name 命名）；若信息不足请列出需要我补充的要点。',
+} as const
 
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
   if (!result && !execution) return <div className="ps-empty">暂无执行记录。</div>
@@ -67,11 +78,10 @@ export function PhotoshopApp() {
   const [ticketId, setTicketId] = useState('')
   const [ticketText, setTicketText] = useState('')
   const [ticketImportPath, setTicketImportPath] = useState('')
-  const [sourceMode, setSourceMode] = useState<'active' | 'file' | 'folder'>('active')
+  const [sourceMode, setSourceMode] = useState<'file' | 'folder' | null>(null)
   const [psdPath, setPsdPath] = useState('')
   const [psdFolder, setPsdFolder] = useState('')
   const [targetLanguages, setTargetLanguages] = useState<string[]>([])
-  const [languageDraft, setLanguageDraft] = useState('')
   const [selected, setSelected] = useState<number[]>([])
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
@@ -84,6 +94,22 @@ export function PhotoshopApp() {
   const [scanStartedAt, setScanStartedAt] = useState<number | null>(null)
   const [scanElapsedSec, setScanElapsedSec] = useState(0)
   const [scanJob, setScanJob] = useState<AnyRecord | null>(null)
+  const [miniAiOpen, setMiniAiOpen] = useState(false)
+  const psAppRootRef = useRef<HTMLDivElement>(null)
+  const [localeRequestOpen, setLocaleRequestOpen] = useState(false)
+  const [saveOutputDir, setSaveOutputDir] = useState('')
+  const [savePathPickerOpen, setSavePathPickerOpen] = useState(false)
+  /** 扫描来源：选择 PSD 文件 / 文件夹 时打开的目录或文件选择器 */
+  const [scanSourcePicker, setScanSourcePicker] = useState<null | 'file' | 'directory'>(null)
+  const [ticketImportPickerOpen, setTicketImportPickerOpen] = useState(false)
+  const aiComposerNonceRef = useRef(0)
+  const [aiComposerSeed, setAiComposerSeed] = useState<{ key: number; text: string } | null>(null)
+  const clearAiComposerSeed = useCallback(() => setAiComposerSeed(null), [])
+  const pushAiComposerText = useCallback((text: string) => {
+    aiComposerNonceRef.current += 1
+    setMiniAiOpen(true)
+    setAiComposerSeed({ key: aiComposerNonceRef.current, text })
+  }, [])
 
   const parsedTicket = useMemo(() => {
     try {
@@ -95,15 +121,45 @@ export function PhotoshopApp() {
 
   const tasks: AnyRecord[] = Array.isArray(parsedTicket?.tasks) ? parsedTicket.tasks : []
   const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
-  const ticketLanguages = uniqueStrings(tasks.map((task) => task.language).filter(Boolean))
-  const outputNames = uniqueStrings(tasks.map((task) => task.output_name).filter(Boolean))
   const sourcePsd = activeTicket?.source_psd || parsedTicket?.meta?.source_psd || ''
-  const sourceLayerCount = uniqueStrings(tasks.map(taskIdentityKey)).length
   const executableIndexes = automationTaskIndexes(tasks)
   const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
   const smartTaskCount = tasks.filter(isSmartObjectTask).length
   const normalTaskCount = tasks.length - smartTaskCount
+  /** 与扫描面板「已发现文字层」一致：普通文字层 + 智能对象内文字层（与下方两项同源，二者之和） */
+  const scanTextLayerTotal = normalTaskCount + smartTaskCount
   const warningTaskCount = tasks.filter(hasTaskWarning).length
+
+  /** 实际扫描来源：有路径用路径；单文件/文件夹下路径留空则与「当前文档」相同 */
+  const effectiveScanSource = useMemo((): 'active' | 'file' | 'folder' => {
+    if (psdFolder.trim()) return 'folder'
+    if (psdPath.trim()) return 'file'
+    return 'active'
+  }, [psdPath, psdFolder])
+
+  const psAiContextLine = useMemo(() => {
+    const lines: string[] = []
+    if (status && typeof status === 'object') {
+      const available = (status as AnyRecord).available === true
+      lines.push(`桥接状态：${available ? '可用' : '不可用或未知'}`)
+      const running = (status as AnyRecord).running_executions
+      if (typeof running === 'number') lines.push(`进行中执行：${running}`)
+    }
+    lines.push(`当前工单：${ticketId || '（未选择）'}`)
+    lines.push(`任务总数：${tasks.length}；已勾选：${selected.length}`)
+    if (sourcePsd) lines.push(`源 PSD：${sourcePsd}`)
+    const panelLabel = activePanel === 'scan' ? '扫描' : activePanel === 'import' ? '导入/编辑工单' : '执行结果'
+    lines.push(`当前步骤：${panelLabel}`)
+    if (targetLanguages.length) lines.push(`目标语言：${targetLanguages.join('、')}`)
+    const saveDir = saveOutputDir.trim()
+    if (saveDir) {
+      lines.push(`计划输出目录（修改后 PSD）：${saveDir}`)
+    } else {
+      lines.push('输出目录：未指定，修改后的 PSD 默认保存在母版 PSD 同目录')
+    }
+    return lines.join('\n')
+  }, [status, ticketId, tasks.length, selected.length, sourcePsd, activePanel, targetLanguages, saveOutputDir])
+
   const filteredTaskEntries = useMemo(() => (
     tasks
       .map((task, index) => ({ task, index }))
@@ -159,26 +215,35 @@ export function PhotoshopApp() {
     updateTasks(visibleIndexes, { target_font: font })
   }
 
-  function addTargetLanguages(raw: string) {
-    const nextLanguages = raw
+  function handleLocaleRequestConfirm(result: PhotoshopLocaleRequestResult) {
+    const lines: string[] = []
+    if (result.presets.length) {
+      lines.push(`已选预设语种：${result.presets.map((p) => `${p.label}（${p.code}）`).join('、')}`)
+    }
+    if (result.customRaw.trim()) {
+      lines.push(`预设外 / 补充：${result.customRaw.trim()}`)
+    }
+    const prefix = lines.length ? `${lines.join('\n')}\n\n` : ''
+    pushAiComposerText(prefix + PS_AI_PROMPTS.locales)
+
+    const fromCustom = result.customRaw
       .split(/[,\n，\s]+/)
       .map((item) => item.trim())
       .filter(Boolean)
-    if (!nextLanguages.length) return
-    setTargetLanguages((items) => uniqueStrings([...items, ...nextLanguages]))
-    setLanguageDraft('')
-  }
-
-  function removeTargetLanguage(language: string) {
-    setTargetLanguages((items) => items.filter((item) => item !== language))
-  }
-
-  function applyLanguageCartToTicket() {
-    const nextTicket = rebuildTicketForLanguages(parsedTicket, targetLanguages)
-    if (!nextTicket) return
-    const nextTasks = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
-    setTicketText(JSON.stringify(nextTicket, null, 2))
-    setSelected(automationTaskIndexes(nextTasks))
+    const additions = uniqueStrings([...result.presets.map((p) => p.bcp47), ...fromCustom])
+    if (additions.length) {
+      const nextTargets = uniqueStrings([...targetLanguages, ...additions])
+      setTargetLanguages(nextTargets)
+      if (ticketId && tasks.length && parsedTicket) {
+        const nextTicket = rebuildTicketForLanguages(parsedTicket, nextTargets)
+        if (nextTicket) {
+          const nextTasks = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
+          setTicketText(JSON.stringify(nextTicket, null, 2))
+          setSelected(automationTaskIndexes(nextTasks))
+        }
+      }
+    }
+    setLocaleRequestOpen(false)
   }
 
   async function refresh() {
@@ -220,10 +285,10 @@ export function PhotoshopApp() {
       ok: null,
       status: 'scanning',
       message: 'Photoshop 正在扫描文本图层，请保持 Photoshop 打开；智能对象较多时会逐个打开和关闭。',
-      source_mode: sourceMode,
+      source_mode: effectiveScanSource,
     })
     try {
-      const data = sourceMode === 'folder'
+      const data = effectiveScanSource === 'folder'
         ? await scanPhotoshopFolder({
             directory: psdFolder,
             languages: targetLanguages,
@@ -231,10 +296,14 @@ export function PhotoshopApp() {
             max_files: 30,
           })
         : await scanPhotoshopTicket({
-            psd_path: sourceMode === 'file' ? psdPath : '',
+            psd_path: effectiveScanSource === 'file' ? psdPath : '',
             languages: targetLanguages,
           })
       setResult(data)
+      if (data?.cancelled) {
+        await refresh()
+        return
+      }
       if (data.ok) {
         const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
         const returnedLanguages = uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean))
@@ -250,6 +319,14 @@ export function PhotoshopApp() {
     } finally {
       setIsScanning(false)
       setScanStartedAt(null)
+    }
+  }
+
+  async function cancelScan() {
+    try {
+      await cancelPhotoshopScan()
+    } catch (err: any) {
+      setResult({ ok: false, status: 'error', error: err?.message || '取消扫描失败' })
     }
   }
 
@@ -284,6 +361,48 @@ export function PhotoshopApp() {
     } catch (err: any) {
       setResult({ ok: false, error: err?.message || '保存失败，请检查工单 JSON 格式' })
     }
+  }
+
+  function activateOutputPathRow() {
+    if (saveOutputDir.trim()) {
+      if (!ticketId) {
+        setResult({ ok: false, error: '请先选择当前工单后再保存' })
+        return
+      }
+      void save()
+      return
+    }
+    setSavePathPickerOpen(true)
+  }
+
+  function handleSaveOutputDirPicked(path: string) {
+    setSaveOutputDir(path)
+    if (ticketId) void save()
+  }
+
+  function exportTicketToFile() {
+    const raw = ticketText.trim()
+    if (!raw) {
+      setResult({ ok: false, error: '当前没有可导出的工单内容' })
+      return
+    }
+    let body = raw
+    try {
+      body = `${JSON.stringify(JSON.parse(raw), null, 2)}\n`
+    } catch {
+      body = `${raw}\n`
+    }
+    const blob = new Blob([body], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const safe = String(ticketId || 'photoshop-ticket').replace(/[^\w.-]+/g, '_').slice(0, 80) || 'photoshop-ticket'
+    a.download = `${safe}.json`
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
 
   async function execute(dryRun: boolean) {
@@ -337,7 +456,9 @@ export function PhotoshopApp() {
             && ['pending', 'running'].includes(job.status)
           ))
           .at(-1)
-        if (runningScan) setScanJob(runningScan)
+        if (runningScan) {
+          setScanJob(runningScan)
+        }
       } catch {
         // Ignore malformed websocket frames; the local scan state still keeps the UI responsive.
       }
@@ -354,67 +475,257 @@ export function PhotoshopApp() {
 
   return (
     <AppLayout>
-      <div className="ps-app">
+      <div ref={psAppRootRef} className="ps-app">
         <aside className="ps-flow-sidebar" aria-label="Photoshop 工单流程">
-          <button type="button" className={`ps-flow-step ${activePanel === 'scan' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('scan')}>
-            <span>01</span>
-            <div>
-              <strong>扫描工单</strong>
-              <small>{sourceMode === 'active' ? '当前文档' : sourceMode === 'file' ? '单文件扫描' : '文件夹批量扫描'}</small>
-            </div>
-          </button>
-          <button type="button" className={`ps-flow-step ${activePanel === 'import' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('import')}>
-            <span>02</span>
-            <div>
-              <strong>导入工单</strong>
-              <small>{ticketId ? `${ticketId.slice(0, 8)} · ${tasks.length} 个任务` : '扫描后自动导入当前工单'}</small>
-              {sourcePsd ? <em>{sourcePsd}</em> : null}
-            </div>
-          </button>
-          <button type="button" className={`ps-flow-step ${activePanel === 'result' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('result')}>
-            <span>03</span>
-            <div>
-              <strong>执行结果</strong>
-              <small>{ticketId ? `${selectedExecutableCount} 个已选择` : '等待当前工单'}</small>
-            </div>
-          </button>
+          <div className="ps-flow-sidebar-steps">
+            <button type="button" className={`ps-flow-step ${activePanel === 'scan' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('scan')}>
+              <span>01</span>
+              <div>
+                <strong>扫描工单</strong>
+                <small>
+                  {effectiveScanSource === 'active' ? '当前文档' : effectiveScanSource === 'file' ? '单文件扫描' : '文件夹批量扫描'}
+                </small>
+              </div>
+            </button>
+            <button type="button" className={`ps-flow-step ${activePanel === 'import' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('import')}>
+              <span>02</span>
+              <div>
+                <strong>导入工单</strong>
+                <small>{ticketId ? `${ticketId.slice(0, 8)} · ${tasks.length} 个任务` : '扫描后自动导入当前工单'}</small>
+                {sourcePsd ? <em>{sourcePsd}</em> : null}
+              </div>
+            </button>
+            <button type="button" className={`ps-flow-step ${activePanel === 'result' ? 'ps-flow-step--active' : ''}`} onClick={() => setActivePanel('result')}>
+              <span>03</span>
+              <div>
+                <strong>执行结果</strong>
+                <small>{ticketId ? `${selectedExecutableCount} 个已选择` : '等待当前工单'}</small>
+              </div>
+            </button>
+          </div>
+          <div className="ps-flow-sidebar-bottom">
+            <button
+              type="button"
+              className={`dl-nav-item ${miniAiOpen ? 'dl-nav-item--active' : ''}`}
+              aria-pressed={miniAiOpen}
+              onClick={() => setMiniAiOpen((open) => !open)}
+            >
+              <AiIcon />
+              <span>AI 助手</span>
+            </button>
+          </div>
         </aside>
 
-        <main className="ps-operation">
-        <div className={`ps-metrics ${activePanel === 'import' ? '' : 'ps-panel--hidden'}`}>
-          <div className="ps-metric"><span>工单数量</span><strong>{tickets.length}</strong></div>
-          <div className="ps-metric"><span>普通文字</span><strong>{normalTaskCount}</strong></div>
-          <div className="ps-metric"><span>智能对象文字</span><strong>{smartTaskCount}</strong></div>
-          <div className="ps-metric"><span>可执行</span><strong>{executableIndexes.length}</strong></div>
-        </div>
+        <PhotoshopMiniAiChat
+          open={miniAiOpen}
+          onClose={() => setMiniAiOpen(false)}
+          taskContextLine={psAiContextLine}
+          composerSeed={aiComposerSeed}
+          onComposerSeedConsumed={clearAiComposerSeed}
+        />
 
+        <PhotoshopLocaleRequestDialog
+          open={localeRequestOpen}
+          portalContainer={psAppRootRef.current}
+          onClose={() => setLocaleRequestOpen(false)}
+          onConfirm={handleLocaleRequestConfirm}
+        />
+
+        <DirectoryPickerDialog
+          open={savePathPickerOpen}
+          value={saveOutputDir}
+          mode="directory"
+          title="选择修改后 PSD 的保存目录"
+          confirmLabel="确认"
+          portalContainer={psAppRootRef.current}
+          onClose={() => setSavePathPickerOpen(false)}
+          onPick={handleSaveOutputDirPicked}
+        />
+
+        <DirectoryPickerDialog
+          open={scanSourcePicker !== null}
+          value={scanSourcePicker === 'directory' ? psdFolder : psdPath}
+          mode={scanSourcePicker === 'directory' ? 'directory' : 'file'}
+          title={scanSourcePicker === 'directory' ? '选择包含 PSD/PSB 的文件夹' : '选择 PSD 或 PSB 文件'}
+          confirmLabel="确认"
+          portalContainer={psAppRootRef.current}
+          onClose={() => setScanSourcePicker(null)}
+          onPick={(path) => {
+            setScanSourcePicker((current) => {
+              if (current === 'directory') setPsdFolder(path)
+              else if (current === 'file') setPsdPath(path)
+              return null
+            })
+          }}
+        />
+
+        <DirectoryPickerDialog
+          open={ticketImportPickerOpen}
+          value={ticketImportPath}
+          mode="file"
+          title="选择 Photoshop 工单 JSON 文件"
+          confirmLabel="确认"
+          portalContainer={psAppRootRef.current}
+          onClose={() => setTicketImportPickerOpen(false)}
+          onPick={(path) => {
+            setTicketImportPath(path)
+            setTicketImportPickerOpen(false)
+          }}
+        />
+
+        <main className="ps-operation">
         <section className={`ps-panel ps-scan-panel ${activePanel === 'scan' ? '' : 'ps-panel--hidden'}`}>
           <div className="ps-section-head">
-            <div>
-              <h3>扫描工单</h3>
-              <p>选择 PSD 来源并扫描文本图层，扫描成功后会自动导入为当前工单。</p>
-            </div>
-            <ToolbarButton onClick={() => void refresh()} disabled={isScanning}>刷新状态</ToolbarButton>
-          </div>
-          <div className="ps-source-tabs" role="tablist" aria-label="Photoshop source mode">
-            <button className={`ps-source-tab ${sourceMode === 'active' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('active')} disabled={isScanning}>当前文档</button>
-            <button className={`ps-source-tab ${sourceMode === 'file' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('file')} disabled={isScanning}>单文件</button>
-            <button className={`ps-source-tab ${sourceMode === 'folder' ? 'ps-source-tab--active' : ''}`} type="button" onClick={() => setSourceMode('folder')} disabled={isScanning}>文件夹批量</button>
+            <h3>PSD来源</h3>
           </div>
           <div className="ps-form-grid">
-            {sourceMode === 'file' ? (
-              <Field label="PSD 文件">
-                <PathInput value={psdPath} onChange={setPsdPath} mode="file" placeholder="选择一个 PSD 或 PSB 文件" />
+            <div className="ps-form-grid-span">
+              <Field>
+                <div className="ps-language-compact ps-save-path-compact ps-save-path-compact--scan-source">
+                  <div className="ps-scan-source-unified">
+                    <div
+                      className={`ps-scan-mode-switch${isScanning ? ' ps-scan-mode-switch--disabled' : ''}`}
+                      role="group"
+                      aria-label="选择 PSD 扫描方式"
+                    >
+                      <button
+                        type="button"
+                        className="ps-scan-mode-switch__btn"
+                        aria-pressed={sourceMode === 'file'}
+                        disabled={isScanning}
+                        onClick={() => {
+                          setSourceMode('file')
+                          setPsdFolder('')
+                        }}
+                      >
+                        单文件
+                      </button>
+                      <button
+                        type="button"
+                        className="ps-scan-mode-switch__btn"
+                        aria-pressed={sourceMode === 'folder'}
+                        disabled={isScanning}
+                        onClick={() => {
+                          setSourceMode('folder')
+                          setPsdPath('')
+                        }}
+                      >
+                        文件夹批量
+                      </button>
+                    </div>
+                    {sourceMode === null ? (
+                      <div className="ps-scan-source-pane ps-scan-source-pane--readonly">
+                        <span className="ps-save-path-summary__value ps-save-path-summary__value--empty">
+                          未选择下方具体路径时，将扫描 Photoshop 当前打开的 PSD/PSB 文档
+                        </span>
+                      </div>
+                    ) : sourceMode === 'file' ? (
+                      <div
+                        className={`ps-scan-source-pane ps-save-path-summary${isScanning ? ' ps-save-path-summary--disabled' : ''}`}
+                        role="button"
+                        tabIndex={isScanning ? -1 : 0}
+                        aria-disabled={isScanning}
+                        aria-label={
+                          psdPath.trim()
+                            ? `已选 PSD：${psdPath.trim()}，点此重新选择`
+                            : '点此选择 PSD 或 PSB；未选路径则扫描 Photoshop 当前打开的文档'
+                        }
+                        onClick={(event) => {
+                          if (isScanning) return
+                          if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                          setScanSourcePicker('file')
+                        }}
+                        onKeyDown={(event) => {
+                          if (isScanning) return
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                          event.preventDefault()
+                          setScanSourcePicker('file')
+                        }}
+                      >
+                        <span
+                          className={`ps-save-path-summary__value${psdPath.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                          title={psdPath.trim() || undefined}
+                        >
+                          {psdPath.trim() || '点此选择 PSD/PSB；未选路径则扫描当前打开的文档'}
+                        </span>
+                        {psdPath.trim() ? (
+                          <button
+                            type="button"
+                            className="ps-save-path-summary__clear"
+                            aria-label="清除已选 PSD 路径"
+                            disabled={isScanning}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              setPsdPath('')
+                              setSourceMode((m) => (!psdFolder.trim() ? null : m))
+                            }}
+                          >
+                            清除
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div
+                        className={`ps-scan-source-pane ps-save-path-summary${isScanning ? ' ps-save-path-summary--disabled' : ''}`}
+                        role="button"
+                        tabIndex={isScanning ? -1 : 0}
+                        aria-disabled={isScanning}
+                        aria-label={
+                          psdFolder.trim()
+                            ? `已选文件夹：${psdFolder.trim()}，点此重新选择`
+                            : '点此选择文件夹；未选路径则扫描 Photoshop 当前打开的文档'
+                        }
+                        onClick={(event) => {
+                          if (isScanning) return
+                          if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                          setScanSourcePicker('directory')
+                        }}
+                        onKeyDown={(event) => {
+                          if (isScanning) return
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                          event.preventDefault()
+                          setScanSourcePicker('directory')
+                        }}
+                      >
+                        <span
+                          className={`ps-save-path-summary__value${psdFolder.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                          title={psdFolder.trim() || undefined}
+                        >
+                          {psdFolder.trim() || '点此选择包含 PSD/PSB 的文件夹；未选路径则扫描当前打开的文档'}
+                        </span>
+                        {psdFolder.trim() ? (
+                          <button
+                            type="button"
+                            className="ps-save-path-summary__clear"
+                            aria-label="清除已选文件夹路径"
+                            disabled={isScanning}
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              setPsdFolder('')
+                              setSourceMode((m) => (!psdPath.trim() ? null : m))
+                            }}
+                          >
+                            清除
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                    <PrimaryButton
+                      type="button"
+                      className={`ps-scan-source-run${isScanning ? ' ps-scan-source-run--cancel' : ''}`}
+                      aria-label={isScanning ? '取消扫描' : '点击扫描'}
+                      onClick={() => void (isScanning ? cancelScan() : scan())}
+                    >
+                      {isScanning ? '取消扫描' : '点击扫描'}
+                    </PrimaryButton>
+                  </div>
+                </div>
               </Field>
-            ) : sourceMode === 'folder' ? (
-              <Field label="PSD 文件夹">
-                <PathInput value={psdFolder} onChange={setPsdFolder} mode="directory" placeholder="选择包含 PSD/PSB 的文件夹" />
-              </Field>
-            ) : (
-              <Field label="Photoshop 活动文档">
-                <input value="留空时读取当前 Photoshop 活动文档" readOnly />
-              </Field>
-            )}
+            </div>
           </div>
           {isScanning ? (
             <div className="ps-scan-progress" role="status" aria-live="polite">
@@ -429,33 +740,97 @@ export function PhotoshopApp() {
                 <span><b>{Number(scanJob?.scan_smart_text_layer_count || 0)}</b> 智能对象文字</span>
                 <span><b>{Number(scanJob?.scan_smart_object_count || 0)}</b> 已检查智能对象</span>
               </div>
-              <p>{scanJob?.stage || scanProgressMessage(scanElapsedSec, sourceMode)}</p>
+              <p>{scanJob?.stage || scanProgressMessage(scanElapsedSec, effectiveScanSource)}</p>
               {scanJob?.scan_current_file ? (
                 <small>当前文件：{scanJob.scan_current_file}（{scanJob.scan_file_index || 1}/{scanJob.scan_file_total || 1}）</small>
               ) : null}
               <small>看到 Photoshop 打开/关闭智能对象属于正常扫描过程，请不要手动切换或关闭文档。</small>
             </div>
           ) : null}
-          <PrimaryButton onClick={() => void scan()} disabled={isScanning}>
-            {isScanning ? '扫描中，请稍候...' : '扫描并生成工单'}
-          </PrimaryButton>
         </section>
 
         <div className={`ps-workspace ${activePanel === 'import' ? '' : 'ps-workspace--hidden'}`}>
           <section className="ps-panel ps-ticket-panel">
             <div className="ps-ticket-head">
               <div>
-                <h3>导入工单</h3>
-                <p>{ticketId ? `当前工单：${ticketId}` : '扫描成功后会自动导入当前工单，也可以从历史工单中手动导入。'}</p>
+                <h3>{ticketId ? `当前工单：${ticketId}` : '导入工单'}</h3>
               </div>
-              <span>{tickets.length} 个工单</span>
             </div>
 
-            <div className="ps-import-file">
-              <Field label="导入工单文件">
-                <PathInput value={ticketImportPath} onChange={setTicketImportPath} mode="file" placeholder="选择 Photoshop 工单 JSON 文件" />
+            <div className="ps-import-ticket-row">
+              <Field>
+                <div className="ps-language-compact ps-save-path-compact ps-save-path-compact--import-ticket">
+                  <div className="ps-scan-source-unified">
+                    <div className="ps-import-ticket-count-wrap">
+                      <span className="ps-ticket-count-badge" aria-label={`${tickets.length} 个工单`}>
+                        {tickets.length} 个工单
+                      </span>
+                    </div>
+                    <div
+                      className="ps-scan-source-pane ps-save-path-summary"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={
+                        ticketImportPath.trim()
+                          ? `已选工单文件：${ticketImportPath.trim()}，点此重新选择`
+                          : '点此选择 Photoshop 工单 JSON 文件'
+                      }
+                      onClick={(event) => {
+                        if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                        setTicketImportPickerOpen(true)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return
+                        if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                        event.preventDefault()
+                        setTicketImportPickerOpen(true)
+                      }}
+                    >
+                      <span
+                        className={`ps-save-path-summary__value${ticketImportPath.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                        title={ticketImportPath.trim() || undefined}
+                      >
+                        {ticketImportPath.trim() || '选择工单 JSON（.json）'}
+                      </span>
+                      {ticketImportPath.trim() ? (
+                        <button
+                          type="button"
+                          className="ps-save-path-summary__clear"
+                          aria-label="清除已选工单文件路径"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setTicketImportPath('')
+                          }}
+                        >
+                          清除
+                        </button>
+                      ) : null}
+                    </div>
+                    <PrimaryButton
+                      type="button"
+                      className="ps-scan-source-run"
+                      aria-label="导入并设为当前工单"
+                      onClick={() => void importTicket()}
+                    >
+                      导入工单
+                    </PrimaryButton>
+                  </div>
+                </div>
               </Field>
-              <PrimaryButton onClick={importTicket}>导入并设为当前工单</PrimaryButton>
+            </div>
+
+            <div className="ps-metrics ps-metrics--in-ticket" aria-label="扫描文字层分类与任务概况">
+              <div
+                className="ps-metric"
+                title="来自扫描阶段：按文字层分类统计；数值等于「普通文字」与「智能对象文字」之和。"
+              >
+                <span>图层数量</span>
+                <strong>{scanTextLayerTotal}</strong>
+              </div>
+              <div className="ps-metric"><span>普通文字</span><strong>{normalTaskCount}</strong></div>
+              <div className="ps-metric"><span>智能对象文字</span><strong>{smartTaskCount}</strong></div>
+              <div className="ps-metric"><span>可执行</span><strong>{executableIndexes.length}</strong></div>
             </div>
 
             <div className="ps-ticket-list">
@@ -468,9 +843,11 @@ export function PhotoshopApp() {
                     <span className="ps-ticket-top">
                       <strong>{ticket.ticket_id?.slice(0, 8) || '未命名'}</strong>
                       <small>{ticket.task_count || 0} 个任务</small>
+                      <span className="ps-ticket-time">建立：{formatTicketTime(ticket.created_at, ticket.updated_at)}</span>
                     </span>
-                    <span className="ps-ticket-time">建立：{formatTicketTime(ticket.created_at, ticket.updated_at)}</span>
-                    <span>{ticket.source_psd || '未记录来源'}</span>
+                    <span className="ps-ticket-path" title={ticket.source_psd ? String(ticket.source_psd) : undefined}>
+                      {ticket.source_psd || '未记录来源'}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -490,55 +867,71 @@ export function PhotoshopApp() {
           </section>
 
           <section className="ps-panel ps-output-panel">
-            <div className="ps-output-cart">
-              <div className="ps-output-cart-head">
-                <div>
-                  <strong>预设语言</strong>
-                  <small>一个工单可输出多个目标语言。</small>
-                </div>
-                <em>{targetLanguages.length || 1} 组输出</em>
+            <div className="ps-ai-quick-card">
+              <div className="ps-ai-quick-intro">
+                <h3 className="ps-ai-quick-title">工单需求</h3>
               </div>
-              <div className="ps-language-chips">
-                {targetLanguages.length ? targetLanguages.map((language) => (
-                  <button type="button" key={language} onClick={() => removeTargetLanguage(language)}>
-                    {language}<span>×</span>
-                  </button>
-                )) : <span className="ps-language-empty">原始任务</span>}
+              <div className="ps-ai-quick-actions" role="group" aria-label="Photoshop 工单需求快捷指令">
+                <button type="button" className="ps-ai-quick-btn" onClick={() => setLocaleRequestOpen(true)}>
+                  语种需求
+                </button>
+                <button type="button" className="ps-ai-quick-btn" onClick={() => pushAiComposerText(PS_AI_PROMPTS.translate)}>
+                  Ai翻译
+                </button>
+                <button type="button" className="ps-ai-quick-btn" onClick={() => pushAiComposerText(PS_AI_PROMPTS.copycheck)}>
+                  Ai检查
+                </button>
+                <button type="button" className="ps-ai-quick-btn" onClick={exportTicketToFile} disabled={!ticketText.trim()}>
+                  导出工单
+                </button>
               </div>
-              <div className="ps-language-add">
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      addTargetLanguages(e.target.value)
-                    }
+              <div className="ps-language-compact ps-save-path-compact">
+                <div
+                  className="ps-save-path-summary"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={
+                    saveOutputDir.trim()
+                      ? `输出目录已设为 ${saveOutputDir.trim()}，点此保存工单（不换目录）；需改目录请先清除`
+                      : '点此选择输出目录，确认后保存工单；未指定目录时修改后 PSD 与母版 PSD 同目录'
+                  }
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                    activateOutputPathRow()
                   }}
-                  className="ps-language-select"
-                >
-                  <option value="" disabled>选择预设语言...</option>
-                  {['zh-CN', 'en-US', 'ja-JP', 'ko-KR'].map((language) => (
-                    <option key={language} value={language}>{language}</option>
-                  ))}
-                </select>
-                <input
-                  value={languageDraft}
-                  onChange={(event) => setLanguageDraft(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      addTargetLanguages(languageDraft)
-                    }
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    if ((event.target as HTMLElement).closest('.ps-save-path-summary__clear')) return
+                    event.preventDefault()
+                    activateOutputPathRow()
                   }}
-                  placeholder="输入自定义语言"
-                />
-                <ToolbarButton onClick={() => addTargetLanguages(languageDraft)}>添加</ToolbarButton>
+                >
+                  <span
+                    className={`ps-save-path-summary__value${saveOutputDir.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                    title={
+                      saveOutputDir.trim()
+                        ? `${saveOutputDir.trim()} — 点击将工单保存到服务器（不弹出目录）。若要更换目录请先点「清除」。`
+                        : '选择输出目录后自动保存工单。未选择时修改后的 PSD 默认在母版 PSD 同目录。'
+                    }
+                  >
+                    {saveOutputDir.trim() || '点此选择输出目录；确认后保存工单（未选目录则与母版 PSD 同目录）'}
+                  </span>
+                  {saveOutputDir.trim() ? (
+                    <button
+                      type="button"
+                      className="ps-save-path-summary__clear"
+                      aria-label="清除已选目录（将改回与母版 PSD 同目录）"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setSaveOutputDir('')
+                      }}
+                    >
+                      清除
+                    </button>
+                  ) : null}
+                </div>
               </div>
-              <div className="ps-cart-stats">
-                <span><b>{sourceLayerCount || tasks.length || 0}</b> 源图层</span>
-                <span><b>{targetLanguages.length || ticketLanguages.length || 0}</b> 目标语言</span>
-                <span><b>{outputNames.length || (targetLanguages.length ? targetLanguages.length : 0)}</b> 输出文件</span>
-              </div>
-              <ToolbarButton onClick={applyLanguageCartToTicket} disabled={!ticketId || !tasks.length}>应用到当前工单</ToolbarButton>
             </div>
           </section>
 

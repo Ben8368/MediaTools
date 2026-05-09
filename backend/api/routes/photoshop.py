@@ -47,12 +47,21 @@ def create_router(
     async def photoshop_status():
         return JSONResponse(get_photoshop_status(get_current_workspace()))
 
+    @router.post("/api/photoshop/scan/cancel")
+    async def photoshop_scan_cancel():
+        count = job_registry.cancel_all_active_job_types(("photoshop_scan", "photoshop_scan_folder"))
+        if not count:
+            return JSONResponse({"ok": False, "error": "no active Photoshop scan"}, status_code=404)
+        return JSONResponse({"ok": True, "cancelled_count": count, "message": "cancel requested"})
+
     @router.post("/api/photoshop/scan")
     async def photoshop_scan(body: PhotoshopScanBody):
         workspace = get_current_workspace()
         job_id = job_registry.register(str(uuid.uuid4()), "photoshop_scan", body.psd_path or "Photoshop scan")
 
         def _on_scan_progress(progress: dict[str, Any]) -> None:
+            if job_registry.is_cancelled(job_id):
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
             layer_count = int(progress.get("layer_count", 0) or 0)
             smart_object_count = int(progress.get("smart_object_count", 0) or 0)
             percent = min(92.0, 18.0 + layer_count * 1.5 + smart_object_count * 0.5)
@@ -78,6 +87,7 @@ def create_router(
                 timeout_sec=body.timeout_sec,
                 workspace=workspace,
                 progress_callback=_on_scan_progress,
+                cancel_check=lambda: job_registry.is_cancelled(job_id),
             )
 
         loop = asyncio.get_running_loop()
@@ -86,6 +96,18 @@ def create_router(
         except Exception as exc:
             job_registry.finish(job_id, success=False)
             return JSONResponse({"ok": False, "error": str(exc), "job_id": job_id}, status_code=400)
+
+        if result.get("cancelled"):
+            job_registry.finish(job_id, success=False)
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "cancelled": True,
+                    "message": result.get("message") or "扫描已取消",
+                    "job_id": job_id,
+                },
+                status_code=200,
+            )
 
         job_registry.finish(job_id, success=result.get("ok", False))
         result["job_id"] = job_id
@@ -107,6 +129,8 @@ def create_router(
             items: list[dict[str, Any]] = []
             total = max(1, len(files))
             for index, path in enumerate(files, start=1):
+                if job_registry.is_cancelled(job_id):
+                    break
                 job_registry.update(job_id, f"Scanning {path.name}", min(95.0, index / total * 90.0))
                 try:
 
@@ -115,6 +139,8 @@ def create_router(
                         current_path: Path = path,
                         current_index: int = index,
                     ) -> None:
+                        if job_registry.is_cancelled(job_id):
+                            raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
                         layer_count = int(progress.get("layer_count", 0) or 0)
                         smart_object_count = int(progress.get("smart_object_count", 0) or 0)
                         base_percent = (current_index - 1) / total * 90.0
@@ -144,14 +170,34 @@ def create_router(
                         timeout_sec=body.timeout_sec,
                         workspace=workspace,
                         progress_callback=_on_scan_progress,
+                        cancel_check=lambda: job_registry.is_cancelled(job_id),
                     )
                     items.append({"path": str(path), **result})
+                    if result.get("cancelled"):
+                        break
                 except Exception as exc:  # keep folder batches useful even when one PSD fails
                     items.append({"ok": False, "path": str(path), "error": str(exc)})
             return items
 
         loop = asyncio.get_running_loop()
         items = await loop.run_in_executor(None, _run)
+
+        scan_cancelled = job_registry.is_cancelled(job_id) or any(item.get("cancelled") for item in items)
+        if scan_cancelled:
+            job_registry.finish(job_id, success=False)
+            return JSONResponse(
+                {
+                    "ok": False,
+                    "cancelled": True,
+                    "message": "扫描已取消",
+                    "job_id": job_id,
+                    "items": items,
+                    "count": len(items),
+                    "created_count": len([item for item in items if item.get("ok")]),
+                },
+                status_code=200,
+            )
+
         success_items = [item for item in items if item.get("ok")]
         job_registry.finish(job_id, success=bool(success_items))
         payload: dict[str, Any] = {

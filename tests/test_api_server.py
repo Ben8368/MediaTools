@@ -66,6 +66,31 @@ class TestJobRegistry(unittest.TestCase):
         self.assertIn("jobs", snapshot)
         self.assertIn("system", snapshot)
 
+    def test_cancel_latest_active_job_prefers_newest_photoshop_scan(self):
+        registry = self._make_registry()
+        registry.register("old", "photoshop_scan", "a")
+        registry.update("old", "s", 10.0, status="running")
+        registry.register("new", "photoshop_scan", "b")
+        registry.update("new", "s2", 20.0, status="running")
+        self.assertEqual(registry.cancel_latest_active_job(("photoshop_scan", "photoshop_scan_folder")), "new")
+        self.assertEqual(registry.snapshot()["jobs"][-1]["status"], "cancelled")
+        self.assertEqual(registry.cancel_latest_active_job(("photoshop_scan", "photoshop_scan_folder")), "old")
+        self.assertIsNone(registry.cancel_latest_active_job(("photoshop_scan", "photoshop_scan_folder")))
+
+    def test_cancel_all_active_job_types_cancels_every_matching_job(self):
+        registry = self._make_registry()
+        registry.register("a", "photoshop_scan", "x")
+        registry.update("a", "s", 10.0, status="running")
+        registry.register("b", "photoshop_scan", "y")
+        registry.update("b", "s2", 20.0, status="running")
+        registry.register("c", "download", "z")
+        registry.update("c", "d", 5.0, status="running")
+        self.assertEqual(registry.cancel_all_active_job_types(("photoshop_scan", "photoshop_scan_folder")), 2)
+        statuses = {j["id"]: j["status"] for j in registry.snapshot()["jobs"]}
+        self.assertEqual(statuses["a"], "cancelled")
+        self.assertEqual(statuses["b"], "cancelled")
+        self.assertEqual(statuses["c"], "running")
+
 
 class TestResultSuccess(unittest.TestCase):
     def test_result_success_with_ok_true(self):

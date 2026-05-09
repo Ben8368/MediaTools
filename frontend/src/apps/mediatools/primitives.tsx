@@ -7,10 +7,10 @@ export function ResultBox({ value }: { value: unknown }) {
   return <pre className="mt-result">{text}</pre>
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children }: { label?: string; children: React.ReactNode }) {
   return (
     <div className="mt-field">
-      <span className="mt-field__label">{label}</span>
+      {label ? <span className="mt-field__label">{label}</span> : null}
       {children}
     </div>
   )

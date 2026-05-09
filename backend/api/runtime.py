@@ -190,6 +190,37 @@ class JobRegistry:
         self._broadcast()
         return True
 
+    def cancel_latest_active_job(self, job_types: tuple[str, ...]) -> str | None:
+        """Cancel the most recently registered job still in pending/running with type in *job_types*.
+
+        Returns the cancelled job id, or None if no matching active job exists.
+        """
+        active_status = {"pending", "running"}
+        with self._lock:
+            target_id = None
+            for jid, job in reversed(list(self._jobs.items())):
+                if job.get("type") in job_types and job.get("status") in active_status:
+                    target_id = jid
+                    break
+        if target_id is None:
+            return None
+        return target_id if self.cancel(target_id) else None
+
+    def cancel_all_active_job_types(self, job_types: tuple[str, ...]) -> int:
+        """Set cancel flags for every job in *job_types* that is still pending or running. Returns count cancelled."""
+        active_status = {"pending", "running"}
+        with self._lock:
+            target_ids = [
+                jid
+                for jid, job in self._jobs.items()
+                if job.get("type") in job_types and job.get("status") in active_status
+            ]
+        count = 0
+        for jid in target_ids:
+            if self.cancel(jid):
+                count += 1
+        return count
+
     def is_cancelled(self, job_id: str) -> bool:
         with self._lock:
             if job_id in self._cancel_flags:

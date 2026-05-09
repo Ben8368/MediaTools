@@ -17,6 +17,7 @@ import {
 const apiMocks = vi.hoisted(() => ({
   addAERenderQueue: vi.fn(),
   analyzeWorkbenchSubtitle: vi.fn(),
+  cancelPhotoshopScan: vi.fn(),
   cancelTask: vi.fn(),
   cancelAEExecution: vi.fn(),
   clearTaskRecords: vi.fn(),
@@ -103,6 +104,7 @@ function resetApiMocks() {
   apiMocks.cancelAEExecution.mockResolvedValue({ ok: true })
   apiMocks.clearTaskRecords.mockResolvedValue({ ok: true })
   apiMocks.cancelPhotoshopExecution.mockResolvedValue({ ok: true })
+  apiMocks.cancelPhotoshopScan.mockResolvedValue({ ok: true, job_id: 'mock' })
   apiMocks.createAECheckpoint.mockResolvedValue({ ok: true })
   apiMocks.deleteAETicket.mockResolvedValue({ ok: true, deleted: true })
   apiMocks.deletePhotoshopTicket.mockResolvedValue({ ok: true, deleted: true })
@@ -277,11 +279,11 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    await screen.findByRole('button', { name: '扫描并生成工单' })
+    await screen.findByRole('button', { name: '点击扫描' })
     fireEvent.click(screen.getByText('02'))
     expect(await screen.findByText('建立：2026-05-07 19:30')).toBeInTheDocument()
     fireEvent.click(screen.getByText('01'))
-    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+    fireEvent.click(screen.getByRole('button', { name: '点击扫描' }))
 
     await waitFor(() => {
       expect(apiMocks.scanPhotoshopTicket).toHaveBeenCalledWith(expect.objectContaining({
@@ -336,12 +338,12 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    const scanButton = await screen.findByRole('button', { name: '扫描并生成工单' })
+    const scanButton = await screen.findByRole('button', { name: '点击扫描' })
     fireEvent.click(scanButton)
 
     expect(await screen.findByRole('status')).toHaveTextContent('扫描进行中')
     expect(screen.getByText(/正在连接 Photoshop/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '扫描中，请稍候...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '取消扫描' })).toBeEnabled()
     await waitFor(() => {
       expect(sockets.length).toBe(1)
     })
@@ -349,6 +351,7 @@ describe('MediaTools workflow apps', () => {
       sockets[0].onmessage?.({
         data: JSON.stringify({
           jobs: [{
+            id: 'ps-ws-scan-job',
             type: 'photoshop_scan',
             status: 'running',
             stage: '已发现 7 个文字层，正在扫描智能对象：Card',
@@ -365,6 +368,62 @@ describe('MediaTools workflow apps', () => {
     expect(screen.getByText('已发现 7 个文字层，正在扫描智能对象：Card')).toBeInTheDocument()
 
     resolveScan({ ok: true, ticket_id: 'ps-progress-1', ticket: { meta: {}, tasks: [] } })
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+    vi.unstubAllGlobals()
+  })
+
+  it('offers Photoshop scan cancel that requests job cancellation', async () => {
+    let resolveScan!: (value: unknown) => void
+    const sockets: Array<{ onmessage: ((event: { data: string }) => void) | null, close: () => void }> = []
+    class FakeWebSocket {
+      onmessage: ((event: { data: string }) => void) | null = null
+      close = vi.fn()
+
+      constructor() {
+        sockets.push(this)
+      }
+    }
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    apiMocks.scanPhotoshopTicket.mockReturnValueOnce(new Promise((resolve) => {
+      resolveScan = resolve
+    }))
+
+    render(<PhotoshopApp />)
+
+    const scanButton = await screen.findByRole('button', { name: '点击扫描' })
+    fireEvent.click(scanButton)
+
+    await waitFor(() => {
+      expect(sockets.length).toBe(1)
+    })
+    act(() => {
+      sockets[0].onmessage?.({
+        data: JSON.stringify({
+          jobs: [{
+            id: 'ps-cancel-test-job',
+            type: 'photoshop_scan',
+            status: 'running',
+            stage: 'scanning',
+            scan_layer_count: 1,
+            scan_normal_text_layer_count: 1,
+            scan_smart_text_layer_count: 0,
+            scan_smart_object_count: 0,
+          }],
+        }),
+      })
+    })
+
+    const cancelBtn = await screen.findByRole('button', { name: '取消扫描' })
+    expect(cancelBtn).not.toBeDisabled()
+    fireEvent.click(cancelBtn)
+
+    await waitFor(() => {
+      expect(apiMocks.cancelPhotoshopScan).toHaveBeenCalled()
+    })
+
+    resolveScan({ ok: true, ticket_id: 'ps-after-cancel', ticket: { meta: {}, tasks: [] } })
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
@@ -404,21 +463,22 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    await screen.findByRole('button', { name: '扫描并生成工单' })
+    await screen.findByRole('button', { name: '点击扫描' })
     fireEvent.click(screen.getByText('02'))
-    fireEvent.change(screen.getByPlaceholderText('输入自定义语言'), {
-      target: { value: 'zh-CN,en-US' },
-    })
-    fireEvent.click(screen.getAllByRole('button', { name: '添加' })[0])
+    fireEvent.click(screen.getByRole('button', { name: '语种需求' }))
+    const localeDialog = await screen.findByRole('dialog', { name: '语种需求' })
+    fireEvent.click(within(localeDialog).getByRole('button', { name: '简中 SC' }))
+    fireEvent.click(within(localeDialog).getByRole('button', { name: '英语 EN' }))
+    fireEvent.click(within(localeDialog).getByRole('button', { name: '确认' }))
     fireEvent.click(screen.getByText('01'))
-    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+    fireEvent.click(screen.getByRole('button', { name: '点击扫描' }))
 
     await waitFor(() => {
-      expect(apiMocks.scanPhotoshopTicket).toHaveBeenCalledWith(expect.objectContaining({
-        psd_path: '',
-        languages: ['zh-CN', 'en-US'],
-      }))
+      expect(apiMocks.scanPhotoshopTicket).toHaveBeenCalled()
     })
+    const scanPayload = apiMocks.scanPhotoshopTicket.mock.calls[0][0]
+    expect(scanPayload.psd_path).toBe('')
+    expect(new Set(scanPayload.languages)).toEqual(new Set(['zh-CN', 'en-US']))
     expect(await screen.findByDisplayValue('zh-CN.psd')).toBeInTheDocument()
     expect(screen.getByDisplayValue('en-US.psd')).toBeInTheDocument()
   })
@@ -469,8 +529,8 @@ describe('MediaTools workflow apps', () => {
 
     render(<PhotoshopApp />)
 
-    await screen.findByRole('button', { name: '扫描并生成工单' })
-    fireEvent.click(screen.getByRole('button', { name: '扫描并生成工单' }))
+    await screen.findByRole('button', { name: '点击扫描' })
+    fireEvent.click(screen.getByRole('button', { name: '点击扫描' }))
 
     const task2Replace = await screen.findByLabelText('替换文本 2')
     expect(task2Replace).toHaveAttribute('placeholder', '$9.99')

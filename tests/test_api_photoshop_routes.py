@@ -25,6 +25,12 @@ class FakeJobRegistry:
     def finish(self, job_id, success=True):
         self.finished[job_id] = success
 
+    def cancel_all_active_job_types(self, job_types):
+        return 0
+
+    def cancel_latest_active_job(self, job_types):
+        return None
+
 
 class TestApiPhotoshopRoutes(unittest.TestCase):
     def setUp(self):
@@ -168,6 +174,11 @@ class TestApiPhotoshopRoutes(unittest.TestCase):
 
         self.cancel_execution.side_effect = FileNotFoundError("missing")
         self.assertEqual(self.client.post("/api/photoshop/executions/missing/cancel").status_code, 404)
+
+    def test_scan_cancel_without_active_job_returns_404(self):
+        response = self.client.post("/api/photoshop/scan/cancel")
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("no active", response.json().get("error", "").lower())
 
 
 if __name__ == "__main__":

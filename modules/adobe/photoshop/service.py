@@ -216,6 +216,7 @@ def scan_photoshop_document(
     timeout_sec: int = 180,
     workspace: dict | None = None,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     runtime = _runtime()
     result_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
@@ -226,9 +227,16 @@ def scan_photoshop_document(
         opened_doc = False
         doc = None
         pythoncom.CoInitialize()
+
+        def _raise_if_cancelled() -> None:
+            if cancel_check and cancel_check():
+                raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
+
         try:
+            _raise_if_cancelled()
             connector = runtime["PhotoshopConnector"]()
             connector.connect()
+            _raise_if_cancelled()
             if psd_path:
                 doc = connector.open_document(psd_path)
                 opened_doc = True
@@ -239,6 +247,7 @@ def scan_photoshop_document(
 
             source_path = str(doc.FullName)
             if progress_callback:
+                _raise_if_cancelled()
                 progress_callback(
                     {
                         "stage": "正在连接 Photoshop 并读取文档",
@@ -254,6 +263,7 @@ def scan_photoshop_document(
                 doc,
                 source_path,
                 progress_callback=progress_callback,
+                cancel_check=cancel_check,
             )
             if not scan_rows:
                 result_queue.put(("ok", {"ok": False, "message": "No text layers found", "source_psd": source_path}))
@@ -294,7 +304,14 @@ def scan_photoshop_document(
                 )
             )
         except Exception as exc:
-            result_queue.put(("error", str(exc)))
+            if (
+                isinstance(exc, RuntimeError)
+                and bool(getattr(exc, "args", ()))
+                and str(exc.args[0]) == "MEDIATOOLS_SCAN_CANCELLED"
+            ):
+                result_queue.put(("cancelled", None))
+            else:
+                result_queue.put(("error", str(exc)))
         finally:
             if connector and doc is not None and opened_doc:
                 try:
@@ -318,6 +335,12 @@ def scan_photoshop_document(
     kind, payload = result_queue.get()
     if kind == "error":
         raise RuntimeError(payload)
+    if kind == "cancelled":
+        return {
+            "ok": False,
+            "cancelled": True,
+            "message": "扫描已取消",
+        }
     return payload
 
 
