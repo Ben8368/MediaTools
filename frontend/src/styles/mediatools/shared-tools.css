@@ -1,5 +1,6 @@
 /* ===== Shared MediaTools utility consoles ===== */
 .tool-app {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
@@ -1827,21 +1828,90 @@
   padding-bottom: 14px;
 }
 
-.decryptor-panel .dl-stage {
+/* 与下载器一致：工具栏在 .dl-panel 首行，.dl-stage 只吃剩余高度；内部用纵.flex 避免 2 行 grid 与 3 个子元素错位 */
+.decryptor-panel .dl-stage.decryptor-stage,
+.decryptor-panel .decryptor-stage {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+}
+
+.decryptor-panel .dl-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.decryptor-panel .dl-content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .decryptor-form {
+  display: grid;
+  gap: 12px;
   margin: 0 0 12px;
-  padding: 14px;
+  border-color: rgba(0,102,255,.20);
+  background: rgba(0,102,255,.06);
+  padding: 14px 16px;
 }
 
 .decryptor-form .tool-section-head {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
+.decryptor-app .mt-field,
 .decryptor-form .mt-field {
   gap: 5px;
+  color: rgba(255,255,255,.84);
+}
+
+.decryptor-app .mt-field__label {
+  color: rgba(255,255,255,.74);
+  font-weight: 700;
+}
+
+.decryptor-app .mt-field input,
+.decryptor-app .mt-path-input input {
+  border-color: rgba(255,255,255,.16);
+  background: #202226;
+  color: #f7f8fb;
+  color-scheme: dark;
+}
+
+.decryptor-app .mt-field input::placeholder,
+.decryptor-app .mt-path-input input::placeholder {
+  color: rgba(255,255,255,.45);
+}
+
+.decryptor-app .mt-path-input {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.decryptor-app .mt-btn {
+  min-height: 32px;
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.82);
+}
+
+.decryptor-app .mt-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.09);
+  color: #fff;
+}
+
+.decryptor-app .mt-btn--primary {
+  border-color: rgba(0,102,255,.35);
+  background: var(--fnos-brand);
+  color: #fff;
 }
 
 .decryptor-form .tool-segmented {
@@ -1853,12 +1923,16 @@
   gap: 10px;
 }
 
-.decryptor-form .tool-check-row {
-  margin: 10px 0;
+.decryptor-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .decryptor-table {
   min-height: 0;
+  flex: 1;
 }
 
 .decryptor-table .dl-list {
@@ -1889,6 +1963,39 @@
   }
 
   .settings-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .decryptor-app.dl-app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .decryptor-sidebar {
+    padding-top: 0;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+
+  .decryptor-sidebar .dl-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px;
+  }
+
+  .decryptor-sidebar .dl-nav-item {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .decryptor-panel {
+    padding: 10px 10px 14px;
+  }
+
+  .decryptor-app .mt-path-input {
     grid-template-columns: 1fr;
   }
 }

@@ -291,7 +291,7 @@
 }
 
 @media (max-width: 900px) {
-  .fm-picker {
+  .fm-picker--app-root {
     padding: 16px;
   }
 

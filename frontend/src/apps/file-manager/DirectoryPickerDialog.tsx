@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import { createFilebrowserDirectory, fetchFilebrowserDisks, getWorkspace } from '@/api'
 import {
@@ -23,7 +24,8 @@ export function DirectoryPickerDialog({
   value,
   mode = 'directory',
   title = '选择路径',
-  confirmLabel = '确定',
+  confirmLabel = '确认',
+  portalContainer,
   onClose,
   onPick,
 }: DirectoryPickerDialogProps) {
@@ -64,14 +66,16 @@ export function DirectoryPickerDialog({
         const nextDisks = diskData?.disks || []
         const workspacePath = workspace?.workspace?.project_root || workspace?.project_root || ''
         const initialPath = resolveInitialPath(value, workspacePath, nextDisks)
+        const initialSelection = canPickFile && value.trim() ? value.trim() : ''
+        const browsePath = initialSelection && !canPickDirectory ? parentPath(initialSelection) || initialSelection : initialPath
         setDisks(nextDisks)
-        setActiveDiskPath(nextDisks.find((disk: DiskInfo) => isPathOnDisk(initialPath, disk.path))?.path || '')
+        setActiveDiskPath(nextDisks.find((disk: DiskInfo) => isPathOnDisk(browsePath, disk.path))?.path || '')
         setSearchText('')
         resetHistory()
-        setSelectedPath(canPickDirectory ? initialPath : '')
+        setSelectedPath(canPickDirectory ? initialPath : initialSelection)
 
-        if (initialPath) {
-          const data = await navigate(initialPath)
+        if (browsePath) {
+          const data = await navigate(browsePath)
           if (alive && data?.path && canPickDirectory) setSelectedPath(data.path)
         }
       } catch {
@@ -83,7 +87,7 @@ export function DirectoryPickerDialog({
     return () => {
       alive = false
     }
-  }, [canPickDirectory, navigate, open, resetHistory, value])
+  }, [canPickDirectory, canPickFile, navigate, open, resetHistory, value])
 
   useEffect(() => {
     if (!addressFocusedRef.current) setAddressDraft(currentPath)
@@ -163,8 +167,8 @@ export function DirectoryPickerDialog({
 
   if (!open) return null
 
-  return (
-    <div className="fm-picker" onClick={onClose}>
+  const dialog = (
+    <div className="fm-picker fm-picker--app-root" onClick={onClose}>
       <div className="fm-picker__panel fm-picker__panel--compact" onClick={(event) => event.stopPropagation()}>
         <div className="fm-picker__header">
           <div>
@@ -323,11 +327,13 @@ export function DirectoryPickerDialog({
                 onClose()
               }}
             >
-              确认
+              {confirmLabel}
             </button>
           </div>
         </div>
       </div>
     </div>
   )
+
+  return portalContainer ? createPortal(dialog, portalContainer) : dialog
 }

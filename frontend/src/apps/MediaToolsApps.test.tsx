@@ -68,7 +68,31 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('@/api', () => apiMocks)
 
 vi.mock('@/apps/FileManagerApp', () => ({
-  DirectoryPickerDialog: () => null,
+  DirectoryPickerDialog: ({
+    open,
+    mode = 'directory',
+    onClose,
+    onPick,
+    title,
+  }: {
+    open: boolean
+    mode?: 'file' | 'directory' | 'any'
+    onClose: () => void
+    onPick: (path: string) => void
+    title?: string
+  }) => open ? (
+    <div role="dialog" aria-label={title || '选择路径'}>
+      <button
+        type="button"
+        onClick={() => {
+          onPick(mode === 'file' ? 'D:\\music\\song.ncm' : 'D:\\music')
+          onClose()
+        }}
+      >
+        {mode === 'file' ? 'mock pick file' : 'mock pick directory'}
+      </button>
+    </div>
+  ) : null,
 }))
 
 function resetApiMocks() {
@@ -177,6 +201,41 @@ describe('MediaTools utility apps', () => {
     render(<WorkspaceApp />)
     expect(await screen.findByText('工作区设置')).toBeInTheDocument()
     expect(apiMocks.getWorkspace).toHaveBeenCalled()
+  })
+
+  it('submits decryptor with a picked single audio file', async () => {
+    render(<DecryptorApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: '添加任务' }))
+    fireEvent.click(screen.getByRole('button', { name: '浏览文件' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'mock pick file' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始解密' }))
+
+    await waitFor(() => {
+      expect(apiMocks.runDecryptor).toHaveBeenCalledWith(expect.objectContaining({
+        input_type: '单文件',
+        input_path: 'D:\\music\\song.ncm',
+        output_dir: undefined,
+      }))
+    })
+  })
+
+  it('submits decryptor with a picked batch input folder', async () => {
+    render(<DecryptorApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: '添加任务' }))
+    fireEvent.click(screen.getByRole('button', { name: '文件夹批量' }))
+    fireEvent.click(screen.getAllByRole('button', { name: '浏览目录' })[0])
+    fireEvent.click(await screen.findByRole('button', { name: 'mock pick directory' }))
+    fireEvent.click(screen.getByRole('button', { name: '开始解密' }))
+
+    await waitFor(() => {
+      expect(apiMocks.runDecryptor).toHaveBeenCalledWith(expect.objectContaining({
+        input_type: '文件夹批量',
+        input_path: 'D:\\music',
+        output_dir: undefined,
+      }))
+    })
   })
 })
 

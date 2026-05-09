@@ -31,6 +31,7 @@ export type DirectoryPickerDialogProps = {
   mode?: PickerMode
   title?: string
   confirmLabel?: string
+  portalContainer?: HTMLElement | null
   onClose: () => void
   onPick: (path: string) => void
 }

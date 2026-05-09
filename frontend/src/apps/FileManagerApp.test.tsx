@@ -255,6 +255,27 @@ describe('FileManagerApp', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('opens the parent directory and preselects an existing file path', async () => {
+    const onClose = vi.fn()
+    const onPick = vi.fn()
+    const selectedFile = {
+      ...file,
+      name: 'song.ncm',
+      path: 'D:\\album\\song.ncm',
+      extension: '.ncm',
+    }
+    mockDirectory('D:\\album', [], [selectedFile])
+
+    render(<DirectoryPickerDialog open value={'D:\\album\\song.ncm'} mode="file" onClose={onClose} onPick={onPick} />)
+
+    expect(await screen.findByRole('textbox', { name: '当前路径' })).toHaveValue('D:\\album')
+    expect(await screen.findByText('song.ncm')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '确认' }))
+
+    expect(onPick).toHaveBeenCalledWith('D:\\album\\song.ncm')
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it('shows selected path in directory picker footer', async () => {
     render(<DirectoryPickerDialog open value="" mode="directory" onClose={vi.fn()} onPick={vi.fn()} />)
 

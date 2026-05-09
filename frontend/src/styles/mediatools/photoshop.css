@@ -1,5 +1,6 @@
 /* ===== Photoshop automation workspace ===== */
 .ps-app {
+  position: relative;
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
   height: 100%;

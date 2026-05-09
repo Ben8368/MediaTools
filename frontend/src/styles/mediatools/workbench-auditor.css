@@ -1,6 +1,7 @@
 /* ===== Workbench and auditor consoles ===== */
 .wb-app,
 .au-app {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 0;

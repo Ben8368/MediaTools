@@ -185,8 +185,6 @@ export function DecryptorApp() {
   const [inputType, setInputType] = useState('单文件')
   const [inputPath, setInputPath] = useState('')
   const [outputDir, setOutputDir] = useState('')
-  const [removeSource, setRemoveSource] = useState(false)
-  const [addToAssets, setAddToAssets] = useState(false)
   const [result, setResult] = useState<unknown>('等待提交')
   const [activeTasks, setActiveTasks] = useState<DownloadTask[]>([])
   const [historyTasks, setHistoryTasks] = useState<DownloadTask[]>([])
@@ -261,9 +259,11 @@ export function DecryptorApp() {
   }
 
   async function submit() {
+    const nextInputPath = inputPath.trim()
+    if (!nextInputPath) return
     setResult('正在提交解密任务...')
     try {
-      setResult(await runDecryptor({ input_type: inputType, input_path: inputPath, output_dir: outputDir, remove_source: removeSource, add_to_assets: addToAssets }))
+      setResult(await runDecryptor({ input_type: inputType, input_path: nextInputPath, output_dir: outputDir.trim() || undefined, remove_source: false, add_to_assets: false }))
       setShowAddForm(false)
       await refreshDecryptTasks()
     } catch (err: any) {
@@ -318,141 +318,139 @@ export function DecryptorApp() {
             ))}
           </nav>
         </aside>
-        <main className="dl-panel decryptor-panel">
-          <div className="dl-stage">
-            <div className="dl-toolbar">
-              <button className="dl-btn dl-btn--primary" type="button" onClick={() => setShowAddForm((value) => !value)}>
-                <PlusIcon />
-                {showAddForm ? '收起表单' : '添加任务'}
-              </button>
-              <button className="dl-btn" type="button" disabled={!retryableSelected.length} onClick={startSelected}>
-                <RetryIcon />
-                启动
-              </button>
-              <button className="dl-btn" type="button" disabled={!cancellableSelected.length} onClick={stopSelected}>
-                <StopIcon />
-                停止
-              </button>
-              <button className="dl-btn" type="button" disabled={filteredTasks.length === 0} onClick={toggleSelectAllVisible}>
-                <SelectAllIcon />
-                {allVisibleSelected ? '取消' : '全选'}
-              </button>
-              <button className="dl-btn" type="button" disabled={clearableSelected.length === 0 && clearableTasks.length === 0} onClick={clearRecords}>
-                <DeleteIcon />
-                {clearableSelected.length ? '清除所选' : '清除记录'}
-              </button>
-              <div className="dl-toolbar-spacer" />
-              <div className="dl-search">
-                <SearchIcon />
-                <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="搜索任务名称" />
-              </div>
+        <main className={`dl-panel decryptor-panel ${showAddForm ? 'decryptor-panel--with-form' : ''}`}>
+          <div className="dl-toolbar">
+            <button className="dl-btn dl-btn--primary" type="button" onClick={() => setShowAddForm((value) => !value)}>
+              <PlusIcon />
+              {showAddForm ? '收起表单' : '添加任务'}
+            </button>
+            <button className="dl-btn" type="button" disabled={!retryableSelected.length} onClick={startSelected}>
+              <RetryIcon />
+              启动
+            </button>
+            <button className="dl-btn" type="button" disabled={!cancellableSelected.length} onClick={stopSelected}>
+              <StopIcon />
+              停止
+            </button>
+            <button className="dl-btn" type="button" disabled={filteredTasks.length === 0} onClick={toggleSelectAllVisible}>
+              <SelectAllIcon />
+              {allVisibleSelected ? '取消' : '全选'}
+            </button>
+            <button className="dl-btn" type="button" disabled={clearableSelected.length === 0 && clearableTasks.length === 0} onClick={clearRecords}>
+              <DeleteIcon />
+              {clearableSelected.length ? '清除所选' : '清除记录'}
+            </button>
+            <div className="dl-toolbar-spacer" />
+            <div className="dl-search">
+              <SearchIcon />
+              <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="搜索任务名称" />
             </div>
+          </div>
 
+          <div className="dl-stage decryptor-stage">
             {showAddForm && (
               <section className="tool-panel decryptor-form">
-            <div className="tool-section-head">
-              <div>
-                <h3>解密设置</h3>
-                <p>{isBatchMode ? '选择输入文件夹，系统会扫描其中可处理的加密音频。' : '选择一个加密音频文件，输出文件夹可留空使用默认目录。'}</p>
-              </div>
-            </div>
-            <Field label="输入类型">
-              <div className="tool-segmented" role="group" aria-label="输入类型">
-                {['单文件', '文件夹批量'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={inputType === item ? 'tool-segmented-item tool-segmented-item--active' : 'tool-segmented-item'}
-                    onClick={() => selectInputType(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </Field>
-            <div className="tool-mode-fields">
-              <Field label={isBatchMode ? '输入文件夹' : '输入文件'}>
-                <PathInput
-                  key={inputType}
-                  value={inputPath}
-                  onChange={setInputPath}
-                  mode={isBatchMode ? 'directory' : 'file'}
-                  placeholder={isBatchMode ? '选择包含加密音频的文件夹' : '选择需要解密的音频文件'}
-                />
-              </Field>
-              <Field label={isBatchMode ? '输出文件夹' : '输出文件夹（可选）'}>
-                <PathInput
-                  value={outputDir}
-                  onChange={setOutputDir}
-                  mode="directory"
-                  placeholder={isBatchMode ? '选择批量解密输出目录' : '留空时输出到默认解密目录'}
-                />
-              </Field>
-            </div>
-            <div className="tool-check-row">
-              <label className="tool-check-card">
-                <input type="checkbox" checked={removeSource} onChange={(event) => setRemoveSource(event.target.checked)} />
-                <span className="tool-check-box" aria-hidden="true" />
-                <span>删除源文件</span>
-              </label>
-              <label className="tool-check-card">
-                <input type="checkbox" checked={addToAssets} onChange={(event) => setAddToAssets(event.target.checked)} />
-                <span className="tool-check-box" aria-hidden="true" />
-                <span>加入素材库</span>
-              </label>
-            </div>
-            <PrimaryButton onClick={submit} disabled={!inputPath}>开始解密</PrimaryButton>
+                <div className="tool-section-head">
+                  <div>
+                    <h3>解密设置</h3>
+                    <p>{isBatchMode ? '选择输入文件夹，系统会扫描其中可处理的加密音频。' : '选择加密音频文件；输出目录可留空，将保存到与源文件相同的文件夹。'}</p>
+                  </div>
+                </div>
+
+                <Field label="输入类型">
+                  <div className="tool-segmented" role="group" aria-label="输入类型">
+                    {['单文件', '文件夹批量'].map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className={inputType === item ? 'tool-segmented-item tool-segmented-item--active' : 'tool-segmented-item'}
+                        onClick={() => selectInputType(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <div className="tool-mode-fields">
+                  <Field label={isBatchMode ? '输入文件夹' : '输入文件'}>
+                    <PathInput
+                      key={inputType}
+                      value={inputPath}
+                      onChange={setInputPath}
+                      mode={isBatchMode ? 'directory' : 'file'}
+                      placeholder={isBatchMode ? '选择包含加密音频的文件夹' : '选择需要解密的音频文件'}
+                    />
+                  </Field>
+                  <Field label={isBatchMode ? '输出文件夹' : '输出文件夹（可选）'}>
+                    <PathInput
+                      value={outputDir}
+                      onChange={setOutputDir}
+                      mode="directory"
+                      placeholder={isBatchMode ? '选择批量解密输出目录，留空则输出到输入文件夹内' : '留空时输出到源文件所在目录'}
+                    />
+                  </Field>
+                </div>
+
+                <div className="decryptor-form-actions">
+                  <PrimaryButton onClick={submit} disabled={!inputPath.trim()}>开始解密</PrimaryButton>
+                  <ToolbarButton type="button" onClick={() => setShowAddForm(false)}>取消</ToolbarButton>
+                </div>
               </section>
             )}
 
-            <section className="dl-table decryptor-table">
-              <div className="dl-head">
-                <span className="dl-col-status" />
-                <span className="dl-col-name">任务名称</span>
-                <span className="dl-col-progress">进度</span>
-                <span className="dl-col-time">时间</span>
-              </div>
-              <div className="dl-list">
-                {filteredTasks.length === 0 && (
-                  <div className="dl-empty">
-                    <p>暂无解密任务</p>
-                    <small>点击“添加任务”提交单文件或文件夹批量解密。</small>
+            <div className="dl-body">
+              <div className="dl-content">
+                <section className="dl-table decryptor-table">
+                  <div className="dl-head">
+                    <span className="dl-col-status" />
+                    <span className="dl-col-name">任务名称</span>
+                    <span className="dl-col-progress">进度</span>
+                    <span className="dl-col-time">时间</span>
                   </div>
-                )}
-                {filteredTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`dl-row ${selectedIds.has(task.id) ? 'dl-row--selected' : ''} ${selectedTaskId === task.id ? 'dl-row--focused' : ''}`}
-                    onClick={() => setSelectedTaskId(task.id)}
-                  >
-                    <span className="dl-col-status">
-                      <input
-                        type="checkbox"
-                        aria-label={`select-decrypt-task-${task.id}`}
-                        checked={selectedIds.has(task.id)}
-                        onChange={() => toggleSelect(task.id)}
-                        onClick={(event) => event.stopPropagation()}
-                      />
-                      <StatusIcon status={task.status} />
-                    </span>
-                    <span className="dl-col-name">
-                      <strong>{task.name || '音频解密任务'}</strong>
-                      <small>{task.stage || task.status}</small>
-                    </span>
-                    <span className="dl-col-progress">
-                      <div className="dl-progress-bar">
-                        <div className="dl-progress-fill" style={{ width: `${Math.min(100, Math.max(0, task.progress || 0))}%` }} />
+                  <div className="dl-list">
+                    {filteredTasks.length === 0 && (
+                      <div className="dl-empty">
+                        <p>暂无解密任务</p>
+                        <small>点击“添加任务”提交单文件或文件夹批量解密。</small>
                       </div>
-                      <span className="dl-progress-text">{(task.progress || 0).toFixed(0)}%</span>
-                    </span>
-                    <span className="dl-col-time">{formatRelativeTime(task.created_at)}</span>
+                    )}
+                    {filteredTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className={`dl-row ${selectedIds.has(task.id) ? 'dl-row--selected' : ''} ${selectedTaskId === task.id ? 'dl-row--focused' : ''}`}
+                        onClick={() => setSelectedTaskId(task.id)}
+                      >
+                        <span className="dl-col-status">
+                          <input
+                            type="checkbox"
+                            aria-label={`select-decrypt-task-${task.id}`}
+                            checked={selectedIds.has(task.id)}
+                            onChange={() => toggleSelect(task.id)}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                          <StatusIcon status={task.status} />
+                        </span>
+                        <span className="dl-col-name">
+                          <strong>{task.name || '音频解密任务'}</strong>
+                          <small>{task.stage || task.status}</small>
+                        </span>
+                        <span className="dl-col-progress">
+                          <div className="dl-progress-bar">
+                            <div className="dl-progress-fill" style={{ width: `${Math.min(100, Math.max(0, task.progress || 0))}%` }} />
+                          </div>
+                          <span className="dl-progress-text">{(task.progress || 0).toFixed(0)}%</span>
+                        </span>
+                        <span className="dl-col-time">{formatRelativeTime(task.created_at)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  <div className="decryptor-receipt">
+                    <ResultBox value={result} />
+                  </div>
+                </section>
               </div>
-              <div className="decryptor-receipt">
-                <ResultBox value={result} />
-              </div>
-            </section>
+            </div>
           </div>
         </main>
       </div>

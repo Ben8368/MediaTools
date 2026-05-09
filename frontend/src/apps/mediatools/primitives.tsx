@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
 
@@ -9,10 +9,10 @@ export function ResultBox({ value }: { value: unknown }) {
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="mt-field">
-      <span>{label}</span>
+    <div className="mt-field">
+      <span className="mt-field__label">{label}</span>
       {children}
-    </label>
+    </div>
   )
 }
 
@@ -36,16 +36,24 @@ export function PathInput({
   placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  function openPicker() {
+    const root = rootRef.current?.closest('.dl-app, .ps-app, .ae-app, .tool-app, .wb-app, .au-app, .fm-app')
+    setPortalContainer(root instanceof HTMLElement ? root : null)
+    setOpen(true)
+  }
 
   return (
     <>
-      <div className="mt-path-input">
+      <div className="mt-path-input" ref={rootRef}>
         <input
           value={value}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
         />
-        <ToolbarButton type="button" onClick={() => setOpen(true)}>
+        <ToolbarButton type="button" onClick={openPicker}>
           {mode === 'directory' ? '浏览目录' : '浏览文件'}
         </ToolbarButton>
       </div>
@@ -55,6 +63,7 @@ export function PathInput({
         mode={mode}
         title={mode === 'directory' ? '选择目录' : '选择文件'}
         confirmLabel="确认"
+        portalContainer={portalContainer}
         onClose={() => setOpen(false)}
         onPick={onChange}
       />
