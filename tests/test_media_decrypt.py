@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import backend.services.media_decrypt as media_decrypt
+import backend.services.media.decrypt as media_decrypt
 
 
 def workspace(tmp_path):
@@ -19,18 +19,22 @@ def workspace(tmp_path):
     }
 
 
+def test_effective_decrypt_output_dir_uses_parent_when_empty_single(tmp_path):
+    audio = tmp_path / "music" / "song.ncm"
+    result = media_decrypt._effective_decrypt_output_dir("单文件", str(audio), None)
+    assert result == audio.parent.resolve()
+
+
+def test_effective_decrypt_output_dir_uses_input_folder_when_empty_batch(tmp_path):
+    album = tmp_path / "album"
+    result = media_decrypt._effective_decrypt_output_dir("文件夹批量", str(album), None)
+    assert result == album.resolve()
+
+
 def test_effective_decrypt_output_dir_uses_explicit_output(tmp_path):
     explicit = tmp_path / "custom"
     result = media_decrypt._effective_decrypt_output_dir("单文件", "song.ncm", str(explicit))
     assert result == explicit
-
-
-def test_effective_decrypt_output_dir_uses_folder_name_for_batch(tmp_path):
-    ws = workspace(tmp_path)
-    with patch.object(media_decrypt, "get_current_workspace", return_value=ws):
-        result = media_decrypt._effective_decrypt_output_dir("文件夹批量", str(tmp_path / "album"), None)
-
-    assert result == Path(ws["decrypted_dir"]) / "album"
 
 
 def test_snapshot_files_and_copy_to_assets(tmp_path):
@@ -83,8 +87,8 @@ def test_run_decrypt_job_single_file_success_without_assets(tmp_path):
     wrapper.decrypt.assert_called_once_with("song.ncm", str(output_dir), True, cancel_check=None)
     assert ["状态", "成功"] in result["summary_rows"]
     assert ["模式", "单文件"] in result["summary_rows"]
-    assert ["删除源文件", "是"] in result["summary_rows"]
-    assert ["加入素材库", "否"] in result["summary_rows"]
+    assert ["输出目录", str(output_dir)] in result["summary_rows"]
+    assert not any(row[0] == "删除源文件" for row in result["summary_rows"])
 
 
 def test_run_decrypt_job_batch_success_copies_created_files_to_assets(tmp_path):
@@ -115,7 +119,8 @@ def test_run_decrypt_job_batch_success_copies_created_files_to_assets(tmp_path):
 
     wrapper.decrypt_batch.assert_called_once()
     assert (Path(ws["assets_dir"]) / "song.flac").exists()
-    assert ["加入素材库", "是（复制 1 个文件）"] in result["summary_rows"]
+    assert ["状态", "成功"] in result["summary_rows"]
+    assert ["输出目录", str(output_dir)] in result["summary_rows"]
 
 
 def test_run_decrypt_job_skips_copy_when_output_is_assets_dir(tmp_path):
@@ -137,7 +142,8 @@ def test_run_decrypt_job_skips_copy_when_output_is_assets_dir(tmp_path):
             add_to_assets=True,
         )
 
-    assert ["加入素材库", "是（输出目录即素材库）"] in result["summary_rows"]
+    assert ["状态", "成功"] in result["summary_rows"]
+    assert ["输出目录", str(assets_dir)] in result["summary_rows"]
 
 
 def test_run_decrypt_job_failure_and_exception(tmp_path):
@@ -183,15 +189,16 @@ def test_status_text_helpers(tmp_path):
 
 
 def test_build_umcli_missing_source_and_subprocess_outcomes(tmp_path):
-    fake_service_file = tmp_path / "services" / "media_decrypt.py"
-    fake_service_file.parent.mkdir()
+    # __file__ 深度需与 backend/services/media/decrypt.py 一致，便于 build_umcli() 用 parents[3] 解析仓库根
+    fake_service_file = tmp_path / "backend" / "services" / "media" / "decrypt.py"
+    fake_service_file.parent.mkdir(parents=True)
     fake_service_file.write_text("", encoding="utf-8")
 
     with patch.object(media_decrypt, "__file__", str(fake_service_file)):
         assert "go.mod 不存在" in media_decrypt.build_umcli()
 
-    repo_root = fake_service_file.parent.parent
-    vendor = repo_root / "vendor" / "unlock-music"
+    repo_root = tmp_path
+    vendor = repo_root / "vendor" / "um-cli" / "source"
     vendor.mkdir(parents=True)
     (vendor / "go.mod").write_text("module test", encoding="utf-8")
 

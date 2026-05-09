@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from adapters import FFmpegAdapter, UmcliAdapter, YtdlpAdapter
-from backend.services.workspace import get_current_workspace, get_workspace_dir
+from backend.services.workspace import get_current_workspace
 
 
 def _normalize_input_type(input_type: str) -> str:
@@ -19,11 +19,10 @@ def _normalize_input_type(input_type: str) -> str:
 def _effective_decrypt_output_dir(input_type: str, input_path: str, output_dir: str | None) -> Path:
     if output_dir:
         return Path(output_dir)
-    workspace = get_current_workspace()
+    input_obj = Path(input_path)
     if input_type == "文件夹批量":
-        input_obj = Path(input_path)
-        return get_workspace_dir("decrypted", workspace) / input_obj.name
-    return get_workspace_dir("decrypted", workspace)
+        return input_obj.resolve()
+    return input_obj.resolve().parent
 
 def _snapshot_files(directory: Path) -> set[str]:
     if not directory.exists():
@@ -72,24 +71,18 @@ def run_decrypt_job(input_type: str, input_path: str, output_dir: str | None, re
 
         if result["success"]:
             output = result.get("output", "")
-            assets_dir = Path(get_current_workspace()["assets_dir"])
             after_files = _snapshot_files(effective_output_dir)
             created_files = [Path(path) for path in sorted(after_files - before_files)]
-            asset_note = "否"
             if add_to_assets:
-                if effective_output_dir.resolve() == assets_dir.resolve():
-                    asset_note = "是（输出目录即素材库）"
-                else:
-                    copied_count = _copy_to_assets(created_files, assets_dir)
-                    asset_note = f"是（复制 {copied_count} 个文件）"
+                assets_dir = Path(get_current_workspace()["assets_dir"])
+                if effective_output_dir.resolve() != assets_dir.resolve():
+                    _copy_to_assets(created_files, assets_dir)
             return {
                 "summary_rows": [
                     ["状态", "成功"],
                     ["模式", input_type],
                     ["输入", input_path],
                     ["输出目录", str(effective_output_dir)],
-                    ["删除源文件", "是" if remove_source else "否"],
-                    ["加入素材库", asset_note],
                 ],
                 "result_text": f"解密成功!\n{output[:500]}",
             }
@@ -122,15 +115,16 @@ def build_umcli() -> str:
     import platform
     import subprocess
 
-    vendor_dir = Path(__file__).parent.parent / "vendor" / "unlock-music"
-    bin_dir = Path(__file__).parent.parent / "bin"
+    repo_root = Path(__file__).resolve().parents[3]
+    vendor_dir = repo_root / "vendor" / "um-cli" / "source"
+    bin_dir = repo_root / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     suffix = ".exe" if platform.system() == "Windows" else ""
     output_bin = bin_dir / f"um-cli{suffix}"
 
     if not (vendor_dir / "go.mod").exists():
-        return "编译失败: vendor/unlock-music/go.mod 不存在，请确认源码已就位"
+        return "编译失败: vendor/um-cli/source/go.mod 不存在，请确认源码已就位（上游 https://git.um-react.app/um/cli）"
 
     try:
         cmd = ["go", "build", "-o", str(output_bin), "./cmd/um"]

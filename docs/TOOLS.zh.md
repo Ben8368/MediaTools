@@ -38,6 +38,8 @@ MediaTools 依赖的外部工具及管理方式。
 
 ## um-cli
 
+- 上游：<https://git.um-react.app/um/cli> · [最新发布](https://git.um-react.app/um/cli/releases/latest)
+- **vendor 树如何追随上游并保留补丁**：见 [VENDOR_UM_CLI.zh.md](./VENDOR_UM_CLI.zh.md)
 - 解密加密格式（如 `.ncm`）
 - 本地编译需要 Go
 - 使用：`python -m cli.main decryptor run -i song.ncm`

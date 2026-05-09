@@ -39,6 +39,9 @@ coverage.json
 *.out
 vendor/unlock-music/dist/
 
+# um-cli 补丁生成等临时目录
+.tmp_umcli_patchgen/
+
 # ===== MediaTools runtime =====
 # 外部二进制（手动放置或脚本下载）
 bin/ffmpeg

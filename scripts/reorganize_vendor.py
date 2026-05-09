@@ -168,7 +168,7 @@ def create_readme_files():
         },
         "um-cli": {
             "name": "Unlock Music CLI",
-            "repo": "https://github.com/unlock-music/cli",
+            "repo": "https://git.um-react.app/um/cli",
             "purpose": "音乐解密工具",
             "frequency": "按需更新",
             "update_cmd": "python main.py decrypt build"

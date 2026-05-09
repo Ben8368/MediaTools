@@ -65,7 +65,7 @@ class DecryptorWrapper:
             return {
                 "success": False,
                 "output": "",
-                "error": f"um-cli 未找到，请编译 vendor/unlock-music/ 并放置于: {self.umcli_bin}"
+                "error": f"um-cli 未找到，请从 https://git.um-react.app/um/cli 获取源码编译并放置于: {self.umcli_bin}"
             }
 
         cmd = self.command() + ["-i", input_path]
@@ -105,7 +105,7 @@ class DecryptorWrapper:
             return {
                 "success": False,
                 "output": "",
-                "error": f"um-cli 未找到，请编译 vendor/unlock-music/ 并放置于: {self.umcli_bin}"
+                "error": f"um-cli 未找到，请从 https://git.um-react.app/um/cli 获取源码编译并放置于: {self.umcli_bin}"
             }
 
         cmd = self.command() + ["-i", input_dir]

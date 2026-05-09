@@ -38,6 +38,7 @@ External tools that MediaTools depends on, and how they are managed.
 
 ## um-cli
 
+- Upstream: <https://git.um-react.app/um/cli> · [Latest release](https://git.um-react.app/um/cli/releases/latest)
 - Decrypt encrypted formats (e.g., `.ncm`)
 - Requires Go for local compilation
 - Use: `python -m cli.main decryptor run -i song.ncm`
