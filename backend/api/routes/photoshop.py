@@ -274,6 +274,26 @@ def create_router(
                 job_registry.update(job_id, "Execution cancelled", 100.0, "error")
                 return
             job_registry.finish(job_id, success=success)
+            # Push execution summary to notification bell
+            try:
+                from backend.services.notification import get_notification_manager
+                manager = get_notification_manager()
+                success_n = payload.get("successful_tasks", 0)
+                failed_n = payload.get("failed_tasks", 0)
+                if success_n > 0:
+                    manager.add_notification(
+                        level="NOTICE",
+                        module="photoshop.execution",
+                        message=f"工单 {ticket_id[:8]} 执行完成: 成功 {success_n} 条，失败 {failed_n} 条"
+                    )
+                else:
+                    manager.add_notification(
+                        level="ERROR",
+                        module="photoshop.execution",
+                        message=f"工单 {ticket_id[:8]} 执行失败: 无成功任务 ({payload.get('error', 'unknown')})"
+                    )
+            except Exception:
+                pass
 
         try:
             result = start_ticket_execution(

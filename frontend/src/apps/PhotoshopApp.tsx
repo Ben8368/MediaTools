@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppLayout } from '@/AppLayout'
 import {
@@ -37,6 +37,8 @@ import {
 
 type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
+type FilterCounts = Record<TaskFilter, number>
+const PHOTOSHOP_EXECUTION_TERMINAL_STATES = new Set(['done', 'error', 'cancelled'])
 
 /** 填入 Photoshop 助手输入框的快捷指令（发送前可改） */
 const PS_AI_PROMPTS = {
@@ -44,6 +46,10 @@ const PS_AI_PROMPTS = {
   copycheck: '请检查当前工单中各任务的 target_text 相对 original_text：是否存在错别字、语病、术语不一致或与使用场景不符；按任务顺序给出问题与修改建议。',
   locales: '请结合当前任务与已有语言字段，梳理多语言 / 输出方案（含 output_name 命名）；若信息不足请列出需要我补充的要点。',
 } as const
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
 
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
   if (!result && !execution) return <div className="ps-empty">暂无执行记录。</div>
@@ -76,6 +82,7 @@ export function PhotoshopApp() {
   const [activePanel, setActivePanel] = useState<'scan' | 'import' | 'result'>('scan')
   const [tickets, setTickets] = useState<AnyRecord[]>([])
   const [ticketId, setTicketId] = useState('')
+  const [ticket, setTicket] = useState<AnyRecord | null>(null)
   const [ticketText, setTicketText] = useState('')
   const [ticketImportPath, setTicketImportPath] = useState('')
   const [sourceMode, setSourceMode] = useState<'file' | 'folder' | null>(null)
@@ -111,24 +118,24 @@ export function PhotoshopApp() {
     setAiComposerSeed({ key: aiComposerNonceRef.current, text })
   }, [])
 
-  const parsedTicket = useMemo(() => {
-    try {
-      return JSON.parse(ticketText || '{}')
-    } catch {
-      return null
-    }
-  }, [ticketText])
+  const parsedTicket = ticket
 
   const tasks: AnyRecord[] = Array.isArray(parsedTicket?.tasks) ? parsedTicket.tasks : []
   const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
   const sourcePsd = activeTicket?.source_psd || parsedTicket?.meta?.source_psd || ''
-  const executableIndexes = automationTaskIndexes(tasks)
-  const selectedExecutableCount = selected.filter((index) => executableIndexes.includes(index)).length
-  const smartTaskCount = tasks.filter(isSmartObjectTask).length
+  const executableIndexes = useMemo(() => automationTaskIndexes(tasks), [tasks])
+  const executableIndexSet = useMemo(() => new Set(executableIndexes), [executableIndexes])
+  const selectedSet = useMemo(() => new Set(selected), [selected])
+  const selectedExecutableCount = useMemo(
+    () => selected.reduce((count, index) => count + (executableIndexSet.has(index) ? 1 : 0), 0),
+    [selected, executableIndexSet],
+  )
+  const smartTaskCount = useMemo(() => tasks.filter(isSmartObjectTask).length, [tasks])
   const normalTaskCount = tasks.length - smartTaskCount
   /** 与扫描面板「已发现文字层」一致：普通文字层 + 智能对象内文字层（与下方两项同源，二者之和） */
   const scanTextLayerTotal = normalTaskCount + smartTaskCount
-  const warningTaskCount = tasks.filter(hasTaskWarning).length
+  const warningTaskCount = useMemo(() => tasks.filter(hasTaskWarning).length, [tasks])
+  const filterCounts = useMemo(() => countTasksByFilter(tasks), [tasks])
 
   /** 实际扫描来源：有路径用路径；单文件/文件夹下路径留空则与「当前文档」相同 */
   const effectiveScanSource = useMemo((): 'active' | 'file' | 'folder' => {
@@ -160,19 +167,18 @@ export function PhotoshopApp() {
     return lines.join('\n')
   }, [status, ticketId, tasks.length, selected.length, sourcePsd, activePanel, targetLanguages, saveOutputDir])
 
+  const deferredTaskSearch = useDeferredValue(taskSearch)
   const filteredTaskEntries = useMemo(() => (
     tasks
       .map((task, index) => ({ task, index }))
       .filter(({ task }) => matchesTaskFilter(task, taskFilter))
-      .filter(({ task }) => matchesTaskSearch(task, taskSearch))
-  ), [tasks, taskFilter, taskSearch])
-  const visibleIndexes = filteredTaskEntries.map(({ index }) => index)
+      .filter(({ task }) => matchesTaskSearch(task, deferredTaskSearch))
+  ), [tasks, taskFilter, deferredTaskSearch])
+  const visibleIndexes = useMemo(() => filteredTaskEntries.map(({ index }) => index), [filteredTaskEntries])
 
-  function updateTask(index: number, patch: AnyRecord) {
-    const nextTicket = patchAutomationTask(parsedTicket, index, patch)
-    if (!nextTicket) return
-    setTicketText(JSON.stringify(nextTicket, null, 2))
-  }
+  const updateTask = useCallback((index: number, patch: AnyRecord) => {
+    setTicket((current) => patchAutomationTask(current, index, patch))
+  }, [])
 
   function updateTasks(indexes: number[], patch: AnyRecord) {
     if (!parsedTicket || !Array.isArray(parsedTicket.tasks)) return
@@ -183,25 +189,25 @@ export function PhotoshopApp() {
         indexSet.has(index) ? { ...task, ...patch } : task
       )),
     }
-    setTicketText(JSON.stringify(nextTicket, null, 2))
+    setTicket(nextTicket)
   }
 
-  function toggleTask(index: number, checked: boolean) {
+  const toggleTask = useCallback((index: number, checked: boolean) => {
     setSelected((items) => {
       if (checked) return items.includes(index) ? items : [...items, index]
       return items.filter((item) => item !== index)
     })
-  }
+  }, [])
 
   function saveTaskDialog(index: number, patch: AnyRecord, checked: boolean) {
     updateTask(index, patch)
     toggleTask(index, checked)
   }
 
-  function confirmTask(index: number) {
+  const confirmTask = useCallback((index: number) => {
     updateTask(index, { status: 'confirmed' })
     toggleTask(index, true)
-  }
+  }, [toggleTask, updateTask])
 
   function confirmVisibleTasks() {
     if (!visibleIndexes.length) return
@@ -238,7 +244,8 @@ export function PhotoshopApp() {
         const nextTicket = rebuildTicketForLanguages(parsedTicket, nextTargets)
         if (nextTicket) {
           const nextTasks = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
-          setTicketText(JSON.stringify(nextTicket, null, 2))
+          setTicket(nextTicket)
+          setTicketText('')
           setSelected(automationTaskIndexes(nextTasks))
         }
       }
@@ -257,7 +264,9 @@ export function PhotoshopApp() {
     setTicketId(nextId)
     const data = await fetchPhotoshopTicket(nextId)
     const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
-    setTicketText(JSON.stringify(data.ticket, null, 2))
+    setTicket(data.ticket || null)
+    setTicketText('')
+    setSaveOutputDir(String(data.ticket?.meta?.output_dir || ''))
     setTargetLanguages(uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean)))
     setSelected(automationTaskIndexes(nextTasks))
     setResult(data)
@@ -267,9 +276,11 @@ export function PhotoshopApp() {
     const data = await deletePhotoshopTicket(nextId)
     if (ticketId === nextId) {
       setTicketId('')
+      setTicket(null)
       setTicketText('')
       setSelected([])
       setTargetLanguages([])
+      setSaveOutputDir('')
     }
     setResult(data)
     await refresh()
@@ -308,8 +319,10 @@ export function PhotoshopApp() {
         const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
         const returnedLanguages = uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean))
         setTicketId(data.ticket_id)
-        setTicketText(JSON.stringify(data.ticket, null, 2))
-        setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
+      setTicket(data.ticket || null)
+      setTicketText('')
+      setSaveOutputDir(String(data.ticket?.meta?.output_dir || ''))
+      setTargetLanguages(returnedLanguages.length || !targetLanguages.length ? returnedLanguages : targetLanguages)
         setSelected(automationTaskIndexes(nextTasks))
         setActivePanel('import')
         await refresh()
@@ -339,7 +352,9 @@ export function PhotoshopApp() {
       const data = await importPhotoshopTicket(ticketImportPath)
       const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
       setTicketId(data.ticket_id)
-      setTicketText(JSON.stringify(data.ticket, null, 2))
+      setTicket(data.ticket || null)
+      setTicketText('')
+      setSaveOutputDir(String(data.ticket?.meta?.output_dir || ''))
       setTargetLanguages(uniqueStrings(nextTasks.map((task: AnyRecord) => task.language).filter(Boolean)))
       setSelected(automationTaskIndexes(nextTasks))
       setActivePanel('import')
@@ -352,9 +367,11 @@ export function PhotoshopApp() {
 
   async function save() {
     try {
-      const data = await updatePhotoshopTicket(ticketId, JSON.parse(ticketText || '{}'))
+      if (!ticket) throw new Error('当前没有可保存的工单')
+      const data = await updatePhotoshopTicket(ticketId, ticketWithOutputDir(ticket, saveOutputDir))
       const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
-      setTicketText(JSON.stringify(data.ticket, null, 2))
+      setTicket(data.ticket || null)
+      setTicketText('')
       setSelected((items) => items.filter((index) => index < nextTasks.length))
       setResult(data)
       await refresh()
@@ -381,17 +398,11 @@ export function PhotoshopApp() {
   }
 
   function exportTicketToFile() {
-    const raw = ticketText.trim()
-    if (!raw) {
+    if (!ticket) {
       setResult({ ok: false, error: '当前没有可导出的工单内容' })
       return
     }
-    let body = raw
-    try {
-      body = `${JSON.stringify(JSON.parse(raw), null, 2)}\n`
-    } catch {
-      body = `${raw}\n`
-    }
+    const body = `${JSON.stringify(ticket, null, 2)}\n`
     const blob = new Blob([body], { type: 'application/json;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -411,17 +422,44 @@ export function PhotoshopApp() {
       return
     }
     if (!ticketId) return
+    const currentTicketId = ticketId
     try {
       setExecution(dryRun ? '正在保存工单并执行 Dry Run...' : '正在保存工单并执行，完成后会在 Photoshop 中打开输出 PSD...')
-      const saved = await updatePhotoshopTicket(ticketId, JSON.parse(ticketText || '{}'))
-      setTicketText(JSON.stringify(saved.ticket, null, 2))
+      if (!ticket) throw new Error('当前没有可执行的工单')
+      const saved = await updatePhotoshopTicket(currentTicketId, ticketWithOutputDir(ticket, saveOutputDir))
+      setTicket(saved.ticket || null)
+      setTicketText('')
       setActivePanel('result')
       setResult(saved)
-      setExecution(await executePhotoshopTicket(ticketId, dryRun, selected))
+      const started = await executePhotoshopTicket(currentTicketId, dryRun, selected)
+      setExecution(started)
+      if (started?.ok !== false) {
+        const finalState = await waitForPhotoshopExecution(currentTicketId)
+        setExecution(finalState)
+        try {
+          const latest = await fetchPhotoshopTicket(currentTicketId)
+          setTicket(latest.ticket || null)
+          setTicketText('')
+          setResult(latest)
+        } catch {
+          // Keep the execution state visible even if the final ticket reload fails.
+        }
+      }
       await refresh()
     } catch (err: any) {
       setExecution({ ok: false, error: err?.message || '执行失败，请检查工单内容' })
     }
+  }
+
+  async function waitForPhotoshopExecution(currentTicketId: string) {
+    let latest: any = null
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      latest = await fetchPhotoshopExecution(currentTicketId)
+      const status = String(latest?.state?.status || '')
+      if (PHOTOSHOP_EXECUTION_TERMINAL_STATES.has(status)) return latest
+      await wait(1000)
+    }
+    return latest || { ok: false, error: '执行状态轮询超时，请手动刷新执行状态' }
   }
 
   async function refreshExecution() {
@@ -973,7 +1011,7 @@ export function PhotoshopApp() {
                       onClick={() => setTaskFilter(filter.id)}
                     >
                       {filter.label}
-                      <span>{filterCount(tasks, filter.id)}</span>
+                      <span>{filterCounts[filter.id]}</span>
                     </button>
                   ))}
                 </div>
@@ -994,74 +1032,19 @@ export function PhotoshopApp() {
               {warningTaskCount ? <p className="ps-task-warning">有 {warningTaskCount} 个任务带错误或备注，建议筛选“有错误/警告”后复核。</p> : null}
             </div>
             <div className="ps-task-list">
-              {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => {
-                const ready = isAutomationTaskExecutable(task)
-                const smart = isSmartObjectTask(task)
-                const originalLine = String(task.original_text || '').trim()
-                const layerFallback = String(smart ? (task.smart_object_inner_layer_name || task.layer_name) : task.layer_name || '').trim()
-                const primaryCopy = originalLine || layerFallback || `任务 ${index + 1}`
-                const taskWarning = hasTaskWarning(task)
-                const checkState = taskWarning ? 'warning' : ready ? 'ready' : 'pending'
-                const checkTitle = taskWarning
-                  ? `任务 ${index + 1} · 有错误/警告`
-                  : ready
-                    ? `任务 ${index + 1} · 可执行`
-                    : `任务 ${index + 1} · 待确认`
-                return (
-                  <div className={`ps-task ${selected.includes(index) ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}`} key={index}>
-                    <label className={`ps-task-check ps-task-check--${checkState}`} title={checkTitle}>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(index)}
-                        disabled={!ready}
-                        onChange={(event) => toggleTask(index, event.target.checked)}
-                      />
-                      <span>{index + 1}</span>
-                    </label>
-                    <div className="ps-task-main">
-                      <div className="ps-task-head">
-                        <div className="ps-task-head-main">
-                          <input
-                            className="ps-task-copy-input"
-                            aria-label={`替换文本 ${index + 1}`}
-                            value={task.target_text || ''}
-                            onChange={(event) => updateTask(index, { target_text: event.target.value })}
-                            placeholder={primaryCopy}
-                            title={primaryCopy}
-                          />
-                        </div>
-                        <div className="ps-task-badges">
-                          <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
-                          {taskWarning ? <em className="ps-badge ps-badge--warning">有错误/警告</em> : null}
-                        </div>
-                      </div>
-                      <div className="ps-task-toolbar">
-                        <div className="ps-task-field ps-task-field--fonts">
-                          <FontPicker
-                            compact
-                            hideLabels
-                            accent={smart ? 'purple' : 'blue'}
-                            ariaLabel={`目标字体 ${index + 1}`}
-                            value={task.target_font || ''}
-                            sourceFont={task.source_font}
-                            fonts={fontOptionsForTask(fonts, task)}
-                            onChange={(font) => updateTask(index, { target_font: font })}
-                          />
-                        </div>
-                        <div className="ps-task-field ps-task-field--output">
-                          <input
-                            aria-label={`输出名称 ${index + 1}`}
-                            value={task.output_name || ''}
-                            onChange={(event) => updateTask(index, { output_name: event.target.value })}
-                            placeholder="输出 · 默认命名"
-                          />
-                        </div>
-                        <ToolbarButton className="ps-task-confirm-btn" type="button" onClick={() => confirmTask(index)}>确认修改</ToolbarButton>
-                      </div>
-                    </div>
-                  </div>
-                )
-              }) : <div className="ps-empty">{tasks.length ? '当前筛选没有匹配任务。' : '等待扫描或选择工单。'}</div>}
+              {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => (
+                <PhotoshopTaskRow
+                  key={index}
+                  task={task}
+                  index={index}
+                  selected={selectedSet.has(index)}
+                  ready={executableIndexSet.has(index)}
+                  fonts={fonts}
+                  onUpdate={updateTask}
+                  onToggle={toggleTask}
+                  onConfirm={confirmTask}
+                />
+              )) : <div className="ps-empty">{tasks.length ? '当前筛选没有匹配任务。' : '等待扫描或选择工单。'}</div>}
             </div>
             <div className="ps-execute-dock" aria-label="工单执行操作">
               <div>
@@ -1092,10 +1075,29 @@ export function PhotoshopApp() {
           <div className="ps-result-grid">
             <ExecutionSummary result={result} execution={execution} />
           </div>
-          <details className="ps-json">
+          <details
+            className="ps-json"
+            onToggle={(event) => {
+              if ((event.currentTarget as HTMLDetailsElement).open && ticket) {
+                setTicketText(JSON.stringify(ticket, null, 2))
+              }
+            }}
+          >
             <summary>高级：工单 JSON 及原始执行结果</summary>
             <div className="ps-json-grid">
-              <textarea value={ticketText} onChange={(event) => setTicketText(event.target.value)} placeholder="工单 JSON" />
+              <textarea
+                value={ticketText}
+                onChange={(event) => {
+                  const nextText = event.target.value
+                  setTicketText(nextText)
+                  try {
+                    setTicket(JSON.parse(nextText || '{}'))
+                  } catch {
+                    // Keep the JSON draft editable until the user fixes syntax.
+                  }
+                }}
+                placeholder="工单 JSON"
+              />
               <textarea value={JSON.stringify({ result, execution }, null, 2)} readOnly placeholder="执行结果 JSON" />
             </div>
           </details>
@@ -1117,12 +1119,110 @@ export function PhotoshopApp() {
   )
 }
 
+type PhotoshopTaskRowProps = {
+  task: AnyRecord
+  index: number
+  selected: boolean
+  ready: boolean
+  fonts: string[]
+  onUpdate: (index: number, patch: AnyRecord) => void
+  onToggle: (index: number, checked: boolean) => void
+  onConfirm: (index: number) => void
+}
+
+const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
+  task,
+  index,
+  selected,
+  ready,
+  fonts,
+  onUpdate,
+  onToggle,
+  onConfirm,
+}: PhotoshopTaskRowProps) {
+  const smart = isSmartObjectTask(task)
+  const originalLine = String(task.original_text || '').trim()
+  const layerFallback = String(smart ? (task.smart_object_inner_layer_name || task.layer_name) : task.layer_name || '').trim()
+  const primaryCopy = originalLine || layerFallback || `任务 ${index + 1}`
+  const taskWarning = hasTaskWarning(task)
+  const checkState = taskWarning ? 'warning' : ready ? 'ready' : 'pending'
+  const checkTitle = taskWarning
+    ? `任务 ${index + 1} · 有错误/警告`
+    : ready
+      ? `任务 ${index + 1} · 可执行`
+      : `任务 ${index + 1} · 待确认`
+  const taskFontOptions = useMemo(() => fontOptionsForTask(fonts, task), [fonts, task])
+
+  return (
+    <div className={`ps-task ${selected ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}`}>
+      <label className={`ps-task-check ps-task-check--${checkState}`} title={checkTitle}>
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={!ready}
+          onChange={(event) => onToggle(index, event.target.checked)}
+        />
+        <span>{index + 1}</span>
+      </label>
+      <div className="ps-task-main">
+        <div className="ps-task-head">
+          <div className="ps-task-head-main">
+            <input
+              className="ps-task-copy-input"
+              aria-label={`替换文本 ${index + 1}`}
+              value={task.target_text || ''}
+              onChange={(event) => onUpdate(index, { target_text: event.target.value })}
+              placeholder={primaryCopy}
+              title={primaryCopy}
+            />
+          </div>
+          <div className="ps-task-badges">
+            <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
+            {taskWarning ? <em className="ps-badge ps-badge--warning">有错误/警告</em> : null}
+          </div>
+        </div>
+        <div className="ps-task-toolbar">
+          <div className="ps-task-field ps-task-field--fonts">
+            <FontPicker
+              compact
+              hideLabels
+              accent={smart ? 'purple' : 'blue'}
+              ariaLabel={`目标字体 ${index + 1}`}
+              value={task.target_font || ''}
+              sourceFont={task.source_font}
+              fonts={taskFontOptions}
+              onChange={(font) => onUpdate(index, { target_font: font })}
+            />
+          </div>
+          <div className="ps-task-field ps-task-field--output">
+            <input
+              aria-label={`输出名称 ${index + 1}`}
+              value={task.output_name || ''}
+              onChange={(event) => onUpdate(index, { output_name: event.target.value })}
+              placeholder="输出 · 默认命名"
+            />
+          </div>
+          <ToolbarButton className="ps-task-confirm-btn" type="button" onClick={() => onConfirm(index)}>确认修改</ToolbarButton>
+        </div>
+      </div>
+    </div>
+  )
+})
+
 function uniqueStrings(items: unknown[]) {
   return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
 function uniqueNumbers(items: number[]) {
   return Array.from(new Set(items))
+}
+
+function ticketWithOutputDir(ticket: AnyRecord, outputDir: string) {
+  const meta = { ...(ticket.meta || {}) }
+  const trimmed = outputDir.trim()
+  if (trimmed) meta.output_dir = trimmed
+  else delete meta.output_dir
+  return { ...ticket, meta }
 }
 
 const taskFilters: { id: TaskFilter, label: string }[] = [
@@ -1166,8 +1266,11 @@ function matchesTaskSearch(task: AnyRecord, search: string) {
   ].some((value) => String(value || '').toLowerCase().includes(needle))
 }
 
-function filterCount(tasks: AnyRecord[], filter: TaskFilter) {
-  return tasks.filter((task) => matchesTaskFilter(task, filter)).length
+function countTasksByFilter(tasks: AnyRecord[]): FilterCounts {
+  return taskFilters.reduce((counts, filter) => {
+    counts[filter.id] = tasks.filter((task) => matchesTaskFilter(task, filter.id)).length
+    return counts
+  }, {} as FilterCounts)
 }
 
 function formatTicketTime(createdAt: unknown, updatedAt: unknown) {

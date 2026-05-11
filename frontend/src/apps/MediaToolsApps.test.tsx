@@ -320,6 +320,49 @@ describe('MediaTools workflow apps', () => {
     expect(fontWeight).toHaveValue('Arial Narrow Bold')
   })
 
+  it('polls Photoshop execution and reloads the final ticket after starting execution', async () => {
+    const scannedTicket = {
+      meta: { source_psd: 'demo.psd' },
+      tasks: [{
+        layer_name: 'Title',
+        language: '',
+        original_text: 'Hello',
+        source_font: 'NotoSans',
+        target_text: '',
+        target_font: '',
+        output_name: '',
+        status: 'pending',
+      }],
+    }
+    const doneTicket = {
+      meta: { source_psd: 'demo.psd' },
+      tasks: [{ ...scannedTicket.tasks[0], target_text: 'Bonjour', status: 'done', notes: 'ok' }],
+    }
+    apiMocks.scanPhotoshopTicket.mockResolvedValueOnce({ ok: true, ticket_id: 'ps-exec-1', ticket: scannedTicket })
+    apiMocks.updatePhotoshopTicket.mockImplementation(async (_ticketId, ticket) => ({ ok: true, ticket }))
+    apiMocks.executePhotoshopTicket.mockResolvedValueOnce({ ok: true, ticket_id: 'ps-exec-1', job_id: 'job-1' })
+    apiMocks.fetchPhotoshopExecution.mockResolvedValueOnce({
+      ok: true,
+      state: { status: 'done', progress: 100, output_paths: ['D:/design/demo_photoshop.psd'] },
+    })
+    apiMocks.fetchPhotoshopTicket.mockResolvedValueOnce({ ok: true, ticket_id: 'ps-exec-1', ticket: doneTicket })
+
+    render(<PhotoshopApp />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '点击扫描' }))
+    const replacement = await screen.findByLabelText('替换文本 1')
+    fireEvent.change(replacement, { target: { value: 'Bonjour' } })
+    fireEvent.click(screen.getByRole('button', { name: '确认修改' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存并执行' }))
+
+    await waitFor(() => {
+      expect(apiMocks.executePhotoshopTicket).toHaveBeenCalledWith('ps-exec-1', false, [0])
+      expect(apiMocks.fetchPhotoshopExecution).toHaveBeenCalledWith('ps-exec-1')
+      expect(apiMocks.fetchPhotoshopTicket).toHaveBeenCalledWith('ps-exec-1')
+    })
+    expect(await screen.findByText('状态：done')).toBeInTheDocument()
+  })
+
   it('shows visible Photoshop scan progress while the backend request is pending', async () => {
     let resolveScan!: (value: unknown) => void
     const sockets: Array<{ onmessage: ((event: { data: string }) => void) | null, close: () => void }> = []

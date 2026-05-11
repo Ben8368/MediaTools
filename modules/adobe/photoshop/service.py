@@ -351,47 +351,6 @@ def _is_smart_object_task(task: Any) -> bool:
     )
 
 
-def _find_scan_row_for_task(scan_rows: list[Any], task: Any) -> Any | None:
-    is_smart_task = _is_smart_object_task(task)
-    task_layer_id = int(getattr(task, "layer_id", 0) or 0)
-    smart_object_layer_id = int(getattr(task, "smart_object_layer_id", 0) or 0)
-    smart_object_name = str(getattr(task, "smart_object_name", "") or "").strip()
-    inner_layer_name = str(getattr(task, "smart_object_inner_layer_name", "") or "").strip()
-    layer_name = str(getattr(task, "layer_name", "") or "").strip()
-    original_text = str(getattr(task, "original_text", "") or "")
-
-    for row in scan_rows:
-        row_is_smart = int(getattr(row, "smart_object_layer_id", 0) or 0) > 0
-        if row.layer_id == task_layer_id and row_is_smart == is_smart_task:
-            return row
-
-    if not is_smart_task:
-        return None
-
-    for row in scan_rows:
-        if int(getattr(row, "smart_object_layer_id", 0) or 0) <= 0:
-            continue
-        if smart_object_layer_id and int(getattr(row, "smart_object_layer_id", 0) or 0) != smart_object_layer_id:
-            continue
-        if smart_object_name and str(getattr(row, "smart_object_name", "") or "").strip() != smart_object_name:
-            continue
-        if (
-            inner_layer_name
-            and str(getattr(row, "smart_object_inner_layer_name", "") or "").strip() != inner_layer_name
-        ):
-            continue
-        if original_text and str(getattr(row, "original_text", getattr(row, "raw_text", "")) or "") != original_text:
-            continue
-        return row
-
-    for row in scan_rows:
-        if int(getattr(row, "smart_object_layer_id", 0) or 0) <= 0:
-            continue
-        if layer_name and str(getattr(row, "layer_name", "") or "").strip() == layer_name:
-            return row
-    return None
-
-
 def _should_execute_task(task: Any) -> bool:
     if task.status == "skip":
         return False

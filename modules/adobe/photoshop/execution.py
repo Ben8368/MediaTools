@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import threading
 import time
@@ -9,8 +10,58 @@ from typing import Any
 
 from modules.adobe.common.execution import AdobeExecutionState, _executions, _executions_guard
 
+_NOTICE = 25
+logging.addLevelName(_NOTICE, "NOTICE")
+
+def _log_notice(logger: logging.Logger, msg: str, *args: Any) -> None:
+    logger.log(_NOTICE, msg, *args)
+
+_log = logging.getLogger("photoshop.execution")
+
 ProgressCallback = Callable[[str, float], None]
 FinishCallback = Callable[[bool, dict[str, Any]], None]
+
+
+def _set_task_result(task: Any, result: Any) -> bool:
+    task.status = "done" if result.success else "error"
+    task.notes = result.message or ""
+    return bool(result.success)
+
+
+def _build_mapping(runtime: dict[str, Any], task: Any) -> Any:
+    return runtime["TextMapping"](
+        match_mode="exact",
+        original_text=task.original_text,
+        new_text=(task.target_text or "").strip() or None,
+        font=(task.target_font or "").strip() or None,
+    )
+
+
+def _resolve_smart_layer(connector: Any, doc: Any, task: Any) -> tuple[Any | None, int]:
+    layer_id = int(getattr(task, "smart_object_layer_id", 0) or 0)
+    layer = connector.find_layer_by_id(doc, layer_id) if layer_id else None
+    if layer is None:
+        return None, 0
+    try:
+        if not connector.is_smart_object_layer(layer):
+            return None, 0
+    except Exception:
+        return None, 0
+    return layer, layer_id
+
+
+def _output_directory(source_psd: str, ticket_meta: Any) -> Path:
+    configured = str(getattr(ticket_meta, "output_dir", "") or "").strip()
+    return Path(configured) if configured else Path(source_psd).parent
+
+
+def _output_filename(output_name: str, source_psd: str) -> str:
+    name = Path(str(output_name or "").strip()).name
+    return name or photoshop_default_output_name(source_psd)
+
+
+def photoshop_default_output_name(source_psd: str) -> str:
+    return f"{Path(source_psd).stem}_photoshop.psd"
 
 
 def start_ticket_execution_impl(
@@ -69,6 +120,9 @@ def start_ticket_execution_impl(
                 grouped_tasks = photoshop_service._group_tasks(candidate_tasks)
                 total_tasks = len(candidate_tasks)
                 completed = 0
+                successful_tasks = 0
+                failed_tasks = 0
+                _log_notice(_log, "🚀 开始执行工单 %s (%d 个任务)", ticket_id, total_tasks)
                 params = runtime["AdjustParams"](
                     tracking_min=-50,
                     tracking_step=5,
@@ -88,18 +142,17 @@ def start_ticket_execution_impl(
                         state.message = "Execution cancelled before writing output"
                         break
 
-                    target_name = output_name or photoshop_service._default_output_name(source_psd)
-                    # Save output next to the source PSD to keep it accessible; fall back to exports dir if not writable
-                    source_dir = Path(source_psd).parent
+                    target_name = _output_filename(output_name, source_psd)
+                    output_dir = _output_directory(source_psd, ticket.meta)
                     try:
-                        source_dir.mkdir(parents=True, exist_ok=True)
-                        candidate = source_dir / target_name
+                        output_dir.mkdir(parents=True, exist_ok=True)
+                        candidate = output_dir / target_name
                         # Never overwrite the source PSD itself
                         if candidate.resolve() == Path(source_psd).resolve():
-                            candidate = source_dir / photoshop_service._default_output_name(source_psd)
+                            candidate = output_dir / photoshop_service._default_output_name(source_psd)
                         output_path = candidate
-                    except Exception:
-                        output_path = photoshop_service._exports_dir(workspace) / ticket_id / target_name
+                    except Exception as exc:
+                        raise RuntimeError(f"Cannot prepare Photoshop output directory: {output_dir}") from exc
                     output_path.parent.mkdir(parents=True, exist_ok=True)
 
                     if not dry_run:
@@ -110,36 +163,67 @@ def start_ticket_execution_impl(
                             raise RuntimeError("No open Photoshop document found for dry run")
                         doc = connector.app.ActiveDocument
 
+                    target_errors: dict[int, str] = {}
                     for task in tasks:
                         if state.cancel_event.is_set():
                             state.status = "cancelled"
                             state.message = "Execution cancelled"
                             break
 
-                        state.message = f"Applying {task.layer_name}"
-                        completed += 1
-                        state.progress = round(completed / max(total_tasks, 1) * 100.0, 2)
-                        if on_progress:
-                            on_progress(state.message, state.progress)
-
-                        mapping = runtime["TextMapping"](
-                            match_mode="exact",
-                            original_text=task.original_text,
-                            new_text=(task.target_text or "").strip() or None,
-                            font=(task.target_font or "").strip() or None,
-                        )
-
                         if photoshop_service._is_smart_object_task(task):
-                            result = runtime["modify_smart_object_text_layer"](connector, doc, task, mapping, params)
+                            state.message = f"Applying smart object {task.layer_name}"
+                            completed += 1
+                            state.progress = round(completed / max(total_tasks, 1) * 100.0, 2)
+                            if on_progress:
+                                on_progress(state.message, state.progress)
+
+                            smart_layer, smart_layer_id = _resolve_smart_layer(connector, doc, task)
+                            if smart_layer is None:
+                                task.status = "error"
+                                task.notes = "Smart object layer not found during execution"
+                                failed_tasks += 1
+                                _log.warning("❌ [smart_object] %s: %s", task.layer_name, task.notes or "unknown error")
+                                continue
+                            task.smart_object_layer_id = smart_layer_id
+                            result = runtime["modify_smart_object_text_layer"](
+                                connector,
+                                doc,
+                                task,
+                                _build_mapping(runtime, task),
+                                params,
+                            )
+                            if _set_task_result(task, result):
+                                successful_tasks += 1
+                                _log_notice(_log, "✅ [smart_object] %s: %s", task.layer_name, result.message or "success")
+                            else:
+                                failed_tasks += 1
+                                _log.warning("❌ [smart_object] %s: %s", task.layer_name, result.message or "unknown error")
                         else:
+                            state.message = f"Applying {task.layer_name}"
+                            completed += 1
+                            state.progress = round(completed / max(total_tasks, 1) * 100.0, 2)
+                            if on_progress:
+                                on_progress(state.message, state.progress)
+
                             layer_obj = connector.find_layer_by_id(doc, int(getattr(task, "layer_id", 0) or 0))
                             if layer_obj is None:
                                 task.status = "error"
                                 task.notes = "Layer id not found during execution"
+                                failed_tasks += 1
+                                _log.warning("❌ [text_layer] %s: %s", task.layer_name, task.notes or "unknown error")
                                 continue
-                            result = runtime["modify_text_layer"](connector, layer_obj, mapping, params)
-                        task.status = "done" if result.success else "error"
-                        task.notes = result.message or ""
+                            original_font_size = float(getattr(task, "font_size", 0) or 0)
+                            result = runtime["modify_text_layer"](connector, layer_obj, _build_mapping(runtime, task), params)
+                            if _set_task_result(task, result):
+                                successful_tasks += 1
+                                _log_notice(_log, "✅ [text_layer] %s: font_size %.2f→%.2fpx, tracking %d→%d, leading %.1f→%.1f [%s]",
+                                    task.layer_name, original_font_size, float(getattr(result, "final_font_size", 0)),
+                                    int(getattr(result, "original_tracking", 0)), int(getattr(result, "final_tracking", 0)),
+                                    float(getattr(result, "original_leading", 0)), float(getattr(result, "final_leading", 0)),
+                                    str(getattr(result, "fit_status", "ok")))
+                            else:
+                                failed_tasks += 1
+                                _log.warning("❌ [text_layer] %s: %s", task.layer_name, result.message or "unknown error")
 
                     if state.cancel_event.is_set():
                         if not dry_run and doc is not None:
@@ -166,16 +250,46 @@ def start_ticket_execution_impl(
                         on_finish(False, {"status": "cancelled", "output_paths": output_paths, "ticket_id": ticket_id})
                     return
 
-                state.status = "done"
                 state.progress = 100.0
                 state.output_paths = output_paths
-                state.message = "Photoshop execution completed. The latest output PSD is open in Photoshop."
                 state.finished_at = time.time()
+                if successful_tasks <= 0:
+                    state.status = "error"
+                    state.error = "Photoshop execution completed without any successful task"
+                    state.message = state.error
+                    if on_finish:
+                        on_finish(
+                            False,
+                            {
+                                "status": "error",
+                                "error": state.error,
+                                "output_paths": output_paths,
+                                "ticket_id": ticket_id,
+                                "dry_run": dry_run,
+                                "failed_tasks": failed_tasks,
+                            },
+                        )
+                    return
+
+                state.status = "done"
+                state.message = "Photoshop execution completed. The latest output PSD is open in Photoshop."
+                if failed_tasks:
+                    state.message = f"{state.message} {failed_tasks} selected task(s) failed; check ticket notes."
                 if on_finish:
                     on_finish(
                         True,
-                        {"status": "done", "output_paths": output_paths, "ticket_id": ticket_id, "dry_run": dry_run},
+                        {
+                            "status": "done",
+                            "output_paths": output_paths,
+                            "ticket_id": ticket_id,
+                            "dry_run": dry_run,
+                            "successful_tasks": successful_tasks,
+                            "failed_tasks": failed_tasks,
+                        },
                     )
+                if successful_tasks > 0:
+                    summary = f"工单 {ticket_id} 执行完成: 成功 {successful_tasks} 条，失败 {failed_tasks} 条"
+                    _log_notice(_log, "📊 工单 %s 执行完成: 成功 %d 条, 失败 %d 条", ticket_id, successful_tasks, failed_tasks)
             except Exception as exc:
                 state.status = "error"
                 state.error = str(exc)

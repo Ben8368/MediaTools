@@ -92,6 +92,7 @@ class TicketMeta:
     created_at: str = ""
     created_by: str = "manual"  # manual / ai / scan
     source_psd: str = ""
+    output_dir: str = ""
     ai_analysis: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -120,6 +121,7 @@ class Ticket:
             created_at=meta_d.get("created_at", ""),
             created_by=meta_d.get("created_by", "manual"),
             source_psd=meta_d.get("source_psd", ""),
+            output_dir=meta_d.get("output_dir", ""),
             ai_analysis=meta_d.get("ai_analysis", {}),
         )
         tasks = [TicketTask.from_dict(t) for t in d.get("tasks", [])]

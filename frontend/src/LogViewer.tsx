@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { clearLogs, fetchLogMetadata, fetchLogs, getSystemMetrics, getUnreadNotificationCount } from '@/api'
+import { clearLogs, clearNotifications, fetchLogMetadata, fetchLogs, getSystemMetrics, getUnreadNotificationCount, markAllNotificationsAsRead } from '@/api'
 
 type LogEntry = {
   level: string
@@ -117,10 +117,13 @@ export function LogViewer() {
   const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages])
 
   async function handleClear() {
+    await markAllNotificationsAsRead()
+    await clearNotifications()
     await clearLogs()
     setPage(1)
     await loadLogs()
     await loadMetadata()
+    await loadUnreadCount()
   }
 
   function changeLevel(value: string) {
