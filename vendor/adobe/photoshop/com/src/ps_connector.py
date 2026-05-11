@@ -163,6 +163,45 @@ class PhotoshopConnector:
         except Exception:
             return None
 
+    def _descriptor_value_as_string(self, desc, key_id) -> str:
+        """Best-effort ActionDescriptor value reader for stable smart object keys."""
+        for getter in ("GetString", "GetInteger", "GetLargeInteger", "GetDouble", "GetBoolean", "GetPath"):
+            try:
+                value = getattr(desc, getter)(key_id)
+                text = str(value).strip()
+                if text:
+                    return text
+            except Exception:
+                pass
+        return ""
+
+    def get_smart_object_identity(self, layer) -> str:
+        """Return a shared-content identity for a smart object, or layer fallback when unavailable."""
+        layer_id = self.get_layer_id(layer)
+        desc = self.get_layer_descriptor(layer)
+        if desc is None:
+            return f"layer:{layer_id}" if layer_id else ""
+
+        for object_key in ("smartObjectMore", "smartObject"):
+            try:
+                object_key_id = self.app.StringIDToTypeID(object_key)
+                if not desc.HasKey(object_key_id):
+                    continue
+                smart_desc = desc.GetObjectValue(object_key_id)
+            except Exception:
+                continue
+            for value_key in ("placedID", "documentID", "ID", "link", "fileReference", "linked"):
+                try:
+                    value_key_id = self.app.StringIDToTypeID(value_key)
+                    if not smart_desc.HasKey(value_key_id):
+                        continue
+                    value = self._descriptor_value_as_string(smart_desc, value_key_id)
+                    if value:
+                        return f"{object_key}.{value_key}:{value}"
+                except Exception:
+                    pass
+        return f"layer:{layer_id}" if layer_id else ""
+
     def is_smart_object_layer(self, layer) -> bool:
         """Detect smart objects using both COM LayerKind and ActionDescriptor metadata."""
         try:
@@ -251,15 +290,26 @@ class PhotoshopConnector:
         layer_id = self.get_layer_id(layer)
         if not layer_id:
             raise RuntimeError("Smart object layer has no id")
+        return self.open_smart_object_contents_by_id(layer_id)
+
+    def open_smart_object_contents_by_id(self, layer_id: int):
+        """Open smart object contents by stable Photoshop layer id."""
+        if not layer_id:
+            raise RuntimeError("Smart object layer has no id")
         self.select_layer_by_id(layer_id)
         desc = win32com.client.Dispatch("Photoshop.ActionDescriptor")
         self.app.ExecuteAction(self.app.StringIDToTypeID("placedLayerEditContents"), desc, psDisplayNoDialogs)
         time.sleep(0.6)
-        # PS resets TypeUnits when switching documents; re-lock to px so Size reads/writes are consistent
-        try:
-            self.app.Preferences.TypeUnits = psTypePixels
-        except Exception:
-            pass
+        # 强制设置 TypeUnits 为 px，避免智能对象内部单位错乱
+        # 重试机制确保设置成功
+        for _ in range(3):
+            try:
+                self.app.Preferences.TypeUnits = psTypePixels
+                if self.app.Preferences.TypeUnits == psTypePixels:
+                    break
+                time.sleep(0.1)
+            except Exception:
+                time.sleep(0.1)
         return self.app.ActiveDocument
 
     # ========== 多画板(Artboard)支持 ==========

@@ -153,7 +153,6 @@ def scan_document_for_ticket(
     cancel_check: Callable[[], bool] | None = None,
 ) -> list[TicketScanRow]:
     rows: list[TicketScanRow] = []
-    layer_id = 1
     normal_text_layer_count = 0
     smart_text_layer_count = 0
     smart_object_count = 0
@@ -182,10 +181,13 @@ def scan_document_for_ticket(
             pass
 
     def append_row(layer, artboard_name: str, smart_layer=None, inner_layer_name: str = ""):
-        nonlocal layer_id, normal_text_layer_count, smart_text_layer_count
+        nonlocal normal_text_layer_count, smart_text_layer_count
         if cancel_check and cancel_check():
             raise RuntimeError("MEDIATOOLS_SCAN_CANCELLED")
         try:
+            photoshop_layer_id = ps.get_layer_id(layer)
+            if not photoshop_layer_id:
+                return
             ti = layer.TextItem
             raw_text = ti.Contents
             if not raw_text or not raw_text.strip():
@@ -197,7 +199,7 @@ def scan_document_for_ticket(
             line_count = len(_split_lines(raw_text)) or 1
             rows.append(
                 TicketScanRow(
-                    layer_id=layer_id,
+                    layer_id=photoshop_layer_id,
                     source_psd=os.path.basename(source_psd),
                     artboard=artboard_name,
                     layer_name=f"{smart_layer.Name} / {layer.Name}" if smart_layer is not None else layer.Name,
@@ -218,7 +220,6 @@ def scan_document_for_ticket(
                     smart_object_inner_layer_name=inner_layer_name or (layer.Name if smart_layer is not None else ""),
                 )
             )
-            layer_id += 1
             if smart_layer is not None:
                 smart_text_layer_count += 1
                 emit_progress(f"已发现 {len(rows)} 个文字层，正在扫描智能对象：{smart_layer.Name}", smart_layer.Name)
@@ -313,14 +314,10 @@ def modify_smart_object_text_layer(
     ps, parent_doc, row: TicketScanRow, mapping: TextMapping, params: AdjustParams
 ) -> ModifyResult:
     """Open a smart object, modify its matching inner text layer, then save it back to the parent PSD."""
-    try:
-        parent_doc.Activate()
-    except Exception:
-        pass
-
+    smart_layer_id = int(getattr(row, "smart_object_layer_id", 0) or 0)
     raw_text = getattr(row, "raw_text", None) or getattr(row, "original_text", "")
-    smart_layer = ps.find_layer_by_id(parent_doc, row.smart_object_layer_id)
-    if smart_layer is None:
+
+    if not smart_layer_id:
         return ModifyResult(
             layer_name=row.layer_name,
             original_text=raw_text,
@@ -334,32 +331,44 @@ def modify_smart_object_text_layer(
             original_height=row.height_px,
             final_height=row.height_px,
             success=False,
-            message="Smart object layer not found",
+            message="Smart object layer id is missing",
+        )
+
+    try:
+        parent_doc.Activate()
+    except Exception:
+        pass
+    try:
+        ps.app.Preferences.TypeUnits = 5
+    except Exception:
+        pass
+
+    smart_layer = ps.find_layer_by_id(parent_doc, smart_layer_id)
+    try:
+        is_smart_layer = smart_layer is not None and ps.is_smart_object_layer(smart_layer)
+    except Exception:
+        is_smart_layer = False
+    if smart_layer is None or not is_smart_layer:
+        return ModifyResult(
+            layer_name=row.layer_name,
+            original_text=raw_text,
+            new_text=raw_text,
+            original_font_size=row.font_size,
+            final_font_size=row.font_size,
+            original_tracking=row.tracking,
+            final_tracking=row.tracking,
+            original_width=row.width_px,
+            final_width=row.width_px,
+            original_height=row.height_px,
+            final_height=row.height_px,
+            success=False,
+            message=f"Smart object layer id {smart_layer_id} not found or is not a smart object",
         )
 
     smart_doc = None
     try:
-        smart_doc = ps.open_smart_object_contents(smart_layer)
-        candidates = ps.collect_text_layers(smart_doc)
-        target_layer = None
-        for layer in candidates:
-            try:
-                if (
-                    layer.Name == row.smart_object_inner_layer_name
-                    and _normalize_display_text(layer.TextItem.Contents.strip()) == row.original_text
-                ):
-                    target_layer = layer
-                    break
-            except Exception:
-                continue
-        if target_layer is None:
-            for layer in candidates:
-                try:
-                    if _normalize_display_text(layer.TextItem.Contents.strip()) == row.original_text:
-                        target_layer = layer
-                        break
-                except Exception:
-                    continue
+        smart_doc = ps.open_smart_object_contents_by_id(smart_layer_id)
+        target_layer = ps.find_layer_by_id(smart_doc, row.layer_id)
         if target_layer is None:
             return ModifyResult(
                 layer_name=row.layer_name,
@@ -374,9 +383,29 @@ def modify_smart_object_text_layer(
                 original_height=row.height_px,
                 final_height=row.height_px,
                 success=False,
-                message="Text layer inside smart object not found",
+                message=f"Text layer id {row.layer_id} inside smart object not found",
             )
-        result = modify_text_layer(ps, target_layer, mapping, params)
+        try:
+            current_text = _normalize_display_text(target_layer.TextItem.Contents.strip())
+        except Exception:
+            current_text = ""
+        if current_text != row.original_text:
+            return ModifyResult(
+                layer_name=row.layer_name,
+                original_text=raw_text,
+                new_text=raw_text,
+                original_font_size=row.font_size,
+                final_font_size=row.font_size,
+                original_tracking=row.tracking,
+                final_tracking=row.tracking,
+                original_width=row.width_px,
+                final_width=row.width_px,
+                original_height=row.height_px,
+                final_height=row.height_px,
+                success=False,
+                message=f"Text layer id {row.layer_id} content does not match ticket original text",
+            )
+        result = modify_text_layer(ps, target_layer, mapping, params, skip_temp_doc=True)
         if result.success:
             smart_doc.Save()
         return result
@@ -578,35 +607,23 @@ def _is_smart_ticket_row(row: TicketRow) -> bool:
     return row.layer_kind == "smart_object_text" or row.smart_object_layer_id > 0
 
 
-def _find_scan_row_for_ticket_row(scanned: list[TicketScanRow], ticket_row: TicketRow) -> TicketScanRow | None:
-    is_smart_row = _is_smart_ticket_row(ticket_row)
-    for row in scanned:
-        if row.layer_id == ticket_row.layer_id and bool(row.smart_object_layer_id) == is_smart_row:
-            return row
-
-    if not is_smart_row:
-        return None
-
-    for row in scanned:
-        if row.smart_object_layer_id <= 0:
-            continue
-        if ticket_row.smart_object_layer_id and row.smart_object_layer_id != ticket_row.smart_object_layer_id:
-            continue
-        if ticket_row.smart_object_name and row.smart_object_name != ticket_row.smart_object_name:
-            continue
-        if (
-            ticket_row.smart_object_inner_layer_name
-            and row.smart_object_inner_layer_name != ticket_row.smart_object_inner_layer_name
-        ):
-            continue
-        if ticket_row.original_text and row.original_text != ticket_row.original_text:
-            continue
-        return row
-
-    for row in scanned:
-        if row.smart_object_layer_id > 0 and row.layer_name == ticket_row.layer_name:
-            return row
-    return None
+def _ticket_error_result(row: TicketRow, message: str) -> ModifyResult:
+    return ModifyResult(
+        layer_name=row.layer_name,
+        original_text=row.original_text,
+        new_text=row.original_text,
+        original_font_size=row.font_size,
+        final_font_size=row.font_size,
+        original_tracking=row.tracking,
+        final_tracking=row.tracking,
+        original_width=row.width_px,
+        final_width=row.width_px,
+        original_height=row.height_px,
+        final_height=row.height_px,
+        success=False,
+        message=message,
+        fit_status="error",
+    )
 
 
 def execute_ticket(
@@ -640,81 +657,35 @@ def execute_ticket(
         shutil.copy2(psd_path, work_psd_path)
         doc = ps.open_document(work_psd_path)
         try:
-            scanned = scan_document_for_ticket(ps, doc, os.path.basename(psd_path))
             results: list[ModifyResult] = []
             for ticket_row in rows:
                 if not _should_apply_ticket_row(ticket_row):
                     continue
-                target = _find_scan_row_for_ticket_row(scanned, ticket_row)
-                if target is None:
-                    results.append(
-                        ModifyResult(
-                            layer_name=ticket_row.layer_name,
-                            original_text=ticket_row.original_text,
-                            new_text=ticket_row.original_text,
-                            original_font_size=ticket_row.font_size,
-                            final_font_size=ticket_row.font_size,
-                            original_tracking=ticket_row.tracking,
-                            final_tracking=ticket_row.tracking,
-                            original_width=ticket_row.width_px,
-                            final_width=ticket_row.width_px,
-                            original_height=ticket_row.height_px,
-                            final_height=ticket_row.height_px,
-                            success=False,
-                            message=(
-                                "SMART_OBJECT_TEXT_NOT_FOUND"
-                                if _is_smart_ticket_row(ticket_row)
-                                else "未找到 layer_id 对应的文字图层"
-                            ),
-                        )
-                    )
-                    continue
-                if target.artboard != ticket_row.artboard_name or target.layer_name != ticket_row.layer_name:
-                    results.append(
-                        ModifyResult(
-                            layer_name=ticket_row.layer_name,
-                            original_text=ticket_row.original_text,
-                            new_text=ticket_row.original_text,
-                            original_font_size=ticket_row.font_size,
-                            final_font_size=ticket_row.font_size,
-                            original_tracking=ticket_row.tracking,
-                            final_tracking=ticket_row.tracking,
-                            original_width=ticket_row.width_px,
-                            final_width=ticket_row.width_px,
-                            original_height=ticket_row.height_px,
-                            final_height=ticket_row.height_px,
-                            success=False,
-                            message="layer_id 对应图层信息与工单不一致",
-                        )
-                    )
-                    continue
 
                 mapping = TextMapping(
                     match_mode="exact",
-                    original_text=target.raw_text,
+                    original_text=ticket_row.original_text,
                     new_text=(ticket_row.target_text or "").strip() or None,
                     font=ticket_row.target_font or None,
                 )
-                if target.smart_object_layer_id:
-                    result = modify_smart_object_text_layer(ps, doc, target, mapping, params)
-                elif target.layer_obj is None:
-                    result = ModifyResult(
-                        layer_name=ticket_row.layer_name,
-                        original_text=ticket_row.original_text,
-                        new_text=ticket_row.original_text,
-                        original_font_size=ticket_row.font_size,
-                        final_font_size=ticket_row.font_size,
-                        original_tracking=ticket_row.tracking,
-                        final_tracking=ticket_row.tracking,
-                        original_width=ticket_row.width_px,
-                        final_width=ticket_row.width_px,
-                        original_height=ticket_row.height_px,
-                        final_height=ticket_row.height_px,
-                        success=False,
-                        message="TEXT_LAYER_OBJECT_NOT_AVAILABLE",
-                    )
+                if _is_smart_ticket_row(ticket_row):
+                    result = modify_smart_object_text_layer(ps, doc, ticket_row, mapping, params)
                 else:
-                    result = modify_text_layer(ps, target.layer_obj, mapping, params, font_metrics=font_metrics)
+                    target_layer = ps.find_layer_by_id(doc, ticket_row.layer_id)
+                    if target_layer is None:
+                        result = _ticket_error_result(ticket_row, f"Text layer id {ticket_row.layer_id} not found")
+                    else:
+                        try:
+                            current_text = _normalize_display_text(target_layer.TextItem.Contents.strip())
+                        except Exception:
+                            current_text = ""
+                        if current_text != ticket_row.original_text:
+                            result = _ticket_error_result(
+                                ticket_row,
+                                f"Text layer id {ticket_row.layer_id} content does not match ticket original text",
+                            )
+                        else:
+                            result = modify_text_layer(ps, target_layer, mapping, params, font_metrics=font_metrics)
                 # 打印关键信息
                 if result.message and ("[metrics]" in result.message or "警告" in result.message):
                     print(f"    [{ticket_row.artboard_name}] {ticket_row.layer_name}: {result.message}")
