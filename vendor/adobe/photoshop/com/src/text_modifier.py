@@ -17,8 +17,18 @@ class AdjustParams:
     """自适应调整参数"""
     tracking_min: float = -50         # tracking 下限（保守值，保证可读性）
     tracking_step: float = 5          # tracking 每次调整步长
-    font_size_min_ratio: float = 0.5  # 最小字号 = 原字号 × 此比例
+    font_size_min_ratio: float = 0.75  # 最小字号 = 原字号 × 此比例
     tolerance: float = 0.05           # 宽高容差，允许超出 5%
+    font_size_max_ratio: float = 1.25
+    font_size_binary_iterations: int = 8
+    font_size_refine_ratio: float = 0.05
+    font_size_refine_iterations: int = 5
+    tracking_delta: float = 120
+    tracking_binary_iterations: int = 6
+    leading_min_ratio: float = 0.85
+    leading_max_ratio: float = 1.15
+    leading_binary_iterations: int = 6
+    height_tolerance: float = 0.08
 
 
 @dataclass
@@ -167,6 +177,163 @@ def _get_bounds_wh(ps: PhotoshopConnector, layer) -> tuple[float, float]:
     return b[2] - b[0], b[3] - b[1]
 
 
+def _safe_float(value, fallback: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return fallback
+
+
+def _is_multiline_text(text: str) -> bool:
+    return "\r" in text or "\n" in text
+
+
+def _effective_leading(original_leading: float, font_size: float) -> float:
+    if original_leading and original_leading > 0:
+        return original_leading
+    return font_size * 1.2
+
+
+def _set_leading(text_item, leading: float) -> None:
+    try:
+        text_item.Leading = leading
+    except Exception:
+        pass
+
+
+def _restore_spacing(text_item, original_tracking: float, original_leading: float) -> None:
+    text_item.Tracking = original_tracking
+    if original_leading is not None:
+        _set_leading(text_item, original_leading)
+
+
+def _bounds_score(width: float, height: float, original_width: float, original_height: float, multiline: bool) -> float:
+    width_error = abs(width - original_width) / max(original_width, 1.0)
+    height_error = abs(height - original_height) / max(original_height, 1.0)
+    if multiline:
+        return width_error * 0.5 + height_error * 0.5
+    return width_error * 0.85 + height_error * 0.15
+
+
+def _is_acceptable(width: float, height: float, original_width: float, original_height: float, params: AdjustParams, multiline: bool) -> bool:
+    width_error = abs(width - original_width) / max(original_width, 1.0)
+    height_error = abs(height - original_height) / max(original_height, 1.0)
+    height_tolerance = params.tolerance if multiline else params.height_tolerance
+    return width_error <= params.tolerance and height_error <= height_tolerance
+
+
+def _is_too_large(width: float, height: float, original_width: float, original_height: float, multiline: bool) -> bool:
+    if multiline:
+        return (width * height) > (original_width * original_height)
+    return width > original_width
+
+
+def _capture_fit_state(ps: PhotoshopConnector, layer, text_item, original_width: float, original_height: float, multiline: bool) -> dict:
+    width, height = _get_bounds_wh(ps, layer)
+    try:
+        leading = float(text_item.Leading)
+    except Exception:
+        leading = -1.0
+    return {
+        "font_size": _safe_float(text_item.Size, 12.0),
+        "tracking": _safe_float(text_item.Tracking, 0.0),
+        "leading": leading,
+        "width": width,
+        "height": height,
+        "score": _bounds_score(width, height, original_width, original_height, multiline),
+    }
+
+
+def _restore_fit_state(text_item, state: dict) -> None:
+    text_item.Size = state["font_size"]
+    text_item.Tracking = state["tracking"]
+    _set_leading(text_item, state["leading"])
+    _wait_ps()
+
+
+def _binary_fit_font_size_only(ps: PhotoshopConnector, layer, text_item, original_width: float, original_height: float, original_size: float, params: AdjustParams, multiline: bool) -> dict:
+    low = original_size * params.font_size_min_ratio
+    high = original_size * params.font_size_max_ratio
+    best = None
+    for _ in range(max(1, int(params.font_size_binary_iterations))):
+        current = (low + high) / 2.0
+        text_item.Size = current
+        _wait_ps()
+        state = _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+        if best is None or state["score"] < best["score"]:
+            best = state
+        if _is_too_large(state["width"], state["height"], original_width, original_height, multiline):
+            high = current
+        else:
+            low = current
+    if best is not None:
+        _restore_fit_state(text_item, best)
+    return best or _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+
+
+def _binary_fit_tracking(ps: PhotoshopConnector, layer, text_item, original_width: float, original_height: float, original_tracking: float, params: AdjustParams, multiline: bool) -> dict:
+    low = original_tracking - abs(params.tracking_delta)
+    high = original_tracking + abs(params.tracking_delta)
+    best = None
+    for _ in range(max(1, int(params.tracking_binary_iterations))):
+        current = (low + high) / 2.0
+        text_item.Tracking = current
+        _wait_ps()
+        state = _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+        if best is None or state["score"] < best["score"]:
+            best = state
+        if state["width"] > original_width:
+            high = current
+        else:
+            low = current
+    if best is not None:
+        _restore_fit_state(text_item, best)
+    return best or _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+
+
+def _binary_fit_leading(ps: PhotoshopConnector, layer, text_item, original_width: float, original_height: float, original_leading: float, current_size: float, params: AdjustParams, multiline: bool) -> dict:
+    base_leading = _effective_leading(original_leading, current_size)
+    low = base_leading * params.leading_min_ratio
+    high = base_leading * params.leading_max_ratio
+    best = None
+    for _ in range(max(1, int(params.leading_binary_iterations))):
+        current = (low + high) / 2.0
+        _set_leading(text_item, current)
+        _wait_ps()
+        state = _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+        if best is None or state["score"] < best["score"]:
+            best = state
+        if state["height"] > original_height:
+            high = current
+        else:
+            low = current
+    if best is not None:
+        _restore_fit_state(text_item, best)
+    return best or _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+
+
+def _fit_spacing_at_current_size(ps: PhotoshopConnector, layer, text_item, original_width: float, original_height: float, original_tracking: float, original_leading: float, params: AdjustParams, multiline: bool) -> dict:
+    best = _binary_fit_tracking(ps, layer, text_item, original_width, original_height, original_tracking, params, multiline)
+    if multiline:
+        leading_state = _binary_fit_leading(
+            ps,
+            layer,
+            text_item,
+            original_width,
+            original_height,
+            original_leading,
+            _safe_float(text_item.Size, 12.0),
+            params,
+            multiline,
+        )
+        if leading_state["score"] < best["score"]:
+            best = leading_state
+        tracking_state = _binary_fit_tracking(ps, layer, text_item, original_width, original_height, original_tracking, params, multiline)
+        if tracking_state["score"] < best["score"]:
+            best = tracking_state
+    return best
+
+
 def modify_text_layer(
     ps: PhotoshopConnector,
     layer,
@@ -224,13 +391,6 @@ def modify_text_layer(
     # 确定目标字号（用户指定 > 原始值）
     user_specified_size = mapping.font_size is not None
     current_font_size = mapping.font_size if user_specified_size else original_font_size
-
-    # 字号缩减步长：原字号的 5% 和 1pt 取较大值
-    font_size_step = max(1.0, original_font_size * 0.05)
-    # 默认最小字号下限
-    # 注意：换字体后如果宽度超出超过 100%（如文字蒙版图层），
-    # 会在调整循环中动态放宽下限，允许压缩到原字号的 10%
-    min_font_size = original_font_size * params.font_size_min_ratio
 
     # 构建错误返回的辅助函数
     def error_result(msg: str) -> ModifyResult:
@@ -338,87 +498,85 @@ def modify_text_layer(
                 message=f"[metrics] scale={scale:.4f}, {original_font_size:.2f}px -> {adjusted_size:.2f}px",
             )
 
-    # --- Step 4 fallback: 自适应调整（比例跳跃法）---
-    # 仅在没有 font_metrics 缓存时使用
-    max_width = original_width * (1.0 + params.tolerance)
-    max_height = original_height * (1.0 + params.tolerance)
-    current_tracking = initial_tracking
-
-    # 第一次测量：换完字体后的实际尺寸
-    cur_w, cur_h = _get_bounds_wh(ps, layer)
-    
-    # 如果已经在容差内，直接完成
-    if cur_w <= max_width and cur_h <= max_height:
-        return ModifyResult(
-            layer_name=layer_name,
-            original_text=original_text,
-            new_text=new_content,
-            original_font_size=original_font_size,
-            final_font_size=current_font_size,
-            original_tracking=original_tracking,
-            final_tracking=current_tracking,
-            original_width=original_width,
-            final_width=cur_w,
-            original_height=original_height,
-            final_height=cur_h,
-            success=True,
-            message="无需调整，尺寸已在容差内",
-        )
-    
-    # 计算超出比例，选择超出更多的维度作为调整依据
-    width_ratio = cur_w / original_width
-    height_ratio = cur_h / original_height
-    exceed_ratio = max(width_ratio, height_ratio)
-    
-    # 比例跳跃：直接计算目标字号（留 2% 安全余量）
-    target_font_size = current_font_size / exceed_ratio * 0.98
-    min_font_size = original_font_size * params.font_size_min_ratio
-    
-    # 如果目标字号低于下限，尝试用 tracking 补偿
-    if target_font_size < min_font_size:
-        target_font_size = min_font_size
-        # 估算需要的 tracking 补偿量（粗略估计：tracking -10 约等于宽度缩减 1%）
-        needed_shrink = (cur_w / original_width - 1.0) * 100  # 需要缩减的百分比
-        estimated_tracking = max(params.tracking_min, -needed_shrink * 10)
-        current_tracking = estimated_tracking
-    
-    # 应用目标字号和 tracking
-    text_item.Size = target_font_size
-    text_item.Tracking = current_tracking
+    # --- Step 4 fallback: 两阶段自适应调整 ---
+    # 先只二分字号摸到接近值，再在该字号下微调 tracking/leading。
+    multiline = _is_multiline_text(new_content)
+    _restore_spacing(text_item, initial_tracking, original_leading)
     _wait_ps()
-    current_font_size = target_font_size
-    
-    # 第二次测量：验证调整效果
-    cur_w, cur_h = _get_bounds_wh(ps, layer)
-    
-    # 如果还超出，再做一次微调（最多一次）
-    if cur_w > max_width or cur_h > max_height:
-        width_ratio = cur_w / original_width
-        height_ratio = cur_h / original_height
-        exceed_ratio = max(width_ratio, height_ratio)
-        
-        # 第二次跳跃（更保守，留 5% 余量）
-        target_font_size = current_font_size / exceed_ratio * 0.95
-        target_font_size = max(target_font_size, min_font_size)
-        
-        text_item.Size = target_font_size
-        _wait_ps()
-        current_font_size = target_font_size
-        
-        # 最终测量
-        cur_w, cur_h = _get_bounds_wh(ps, layer)
 
-    # --- 最终结果 ---
-    final_width, final_height = cur_w, cur_h
+    best_state = _capture_fit_state(ps, layer, text_item, original_width, original_height, multiline)
+
+    font_state = _binary_fit_font_size_only(
+        ps,
+        layer,
+        text_item,
+        original_width,
+        original_height,
+        original_font_size,
+        params,
+        multiline,
+    )
+    if font_state["score"] < best_state["score"]:
+        best_state = font_state
+
+    spacing_state = _fit_spacing_at_current_size(
+        ps,
+        layer,
+        text_item,
+        original_width,
+        original_height,
+        initial_tracking,
+        original_leading,
+        params,
+        multiline,
+    )
+    if spacing_state["score"] < best_state["score"]:
+        best_state = spacing_state
+
+    if not _is_acceptable(spacing_state["width"], spacing_state["height"], original_width, original_height, params, multiline):
+        base_size = _safe_float(text_item.Size, original_font_size)
+        low = base_size * (1.0 - params.font_size_refine_ratio)
+        high = base_size * (1.0 + params.font_size_refine_ratio)
+        for _ in range(max(1, int(params.font_size_refine_iterations))):
+            current = (low + high) / 2.0
+            text_item.Size = current
+            _restore_spacing(text_item, initial_tracking, original_leading)
+            _wait_ps()
+
+            state = _fit_spacing_at_current_size(
+                ps,
+                layer,
+                text_item,
+                original_width,
+                original_height,
+                initial_tracking,
+                original_leading,
+                params,
+                multiline,
+            )
+            if state["score"] < best_state["score"]:
+                best_state = state
+            if _is_acceptable(state["width"], state["height"], original_width, original_height, params, multiline):
+                best_state = state
+                break
+            if _is_too_large(state["width"], state["height"], original_width, original_height, multiline):
+                high = current
+            else:
+                low = current
+
+    _restore_fit_state(text_item, best_state)
+
+    final_width, final_height = _get_bounds_wh(ps, layer)
+    current_font_size = _safe_float(text_item.Size, original_font_size)
+    current_tracking = _safe_float(text_item.Tracking, initial_tracking)
 
     msg = ""
-    if final_width > max_width or final_height > max_height:
-        w_exceed = ((final_width / original_width) - 1) * 100
-        h_exceed = ((final_height / original_height) - 1) * 100
+    if not _is_acceptable(final_width, final_height, original_width, original_height, params, multiline):
+        w_error = abs(final_width - original_width) / max(original_width, 1.0) * 100
+        h_error = abs(final_height - original_height) / max(original_height, 1.0) * 100
         msg = (
-            f"警告: 已达到调整下限 (字号={current_font_size:.1f}px, "
-            f"tracking={current_tracking:.0f})，"
-            f"宽度超出 {w_exceed:.1f}%, 高度超出 {h_exceed:.1f}%"
+            f"警告: 已保留最接近结果 (score={best_state['score']:.4f}, 字号={current_font_size:.1f}px, "
+            f"tracking={current_tracking:.0f})，宽度误差 {w_error:.1f}%, 高度误差 {h_error:.1f}%"
         )
 
     return ModifyResult(
@@ -568,7 +726,7 @@ def apply_from_cache(
     text_item = layer.TextItem
     layer_name = layer.Name
 
-    original_text, original_font, original_font_size, original_tracking = _capture_text_state(text_item)
+    original_text, original_font, original_font_size, original_tracking, original_leading = _capture_text_state(text_item)
     original_text = original_text.strip()
     original_font_size = round(float(original_font_size), 2)
     try:
@@ -590,7 +748,7 @@ def apply_from_cache(
     except Exception as e:
         if original_font is not None:
             try:
-                _restore_text_state(text_item, original_text, original_font, original_font_size, original_tracking)
+                _restore_text_state(text_item, original_text, original_font, original_font_size, original_tracking, original_leading)
             except Exception:
                 pass
         return ModifyResult(

@@ -25,14 +25,14 @@ if errorlevel 1 (
 cd ..
 
 echo [2/4] Checking existing MediaTools backend...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $pidFile=Join-Path $root '%PID_FILE%'; $listener=@(Get-NetTCPConnection -LocalPort 7860 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique); if ($listener.Count -gt 0) { foreach ($listenPid in $listener) { $proc=Get-CimInstance Win32_Process -Filter \"ProcessId=$listenPid\" -ErrorAction SilentlyContinue; if ($proc -and $proc.Name -match '^python' -and $proc.CommandLine -like '*app.py*') { Write-Host \"MediaTools backend already running on port 7860. PID=$listenPid\"; Set-Content -LiteralPath $pidFile -Value $listenPid -Encoding ascii; exit 10 } else { Write-Host \"Port 7860 is already used by another process. PID=$listenPid\"; exit 20 } } }; exit 0"
+powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& { . '%~dp0scripts\dev-startup-helpers.ps1'; exit (Test-ExistingMediaToolsBackend -PidFile '%cd%\%PID_FILE%' -Port 7860) }"
 if "%ERRORLEVEL%"=="10" goto OPEN_EXISTING
 if "%ERRORLEVEL%"=="20" goto PORT_BUSY
 if errorlevel 1 goto FAILED
 
 echo [2/4] Launching backend with watchdog...
 :WATCHDOG_LOOP
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path -LiteralPath '.').Path; $pidFile=Join-Path $root '%PID_FILE%'; $logFile=Join-Path $root '%LOG_FILE%'; $errFile=Join-Path $root '%ERR_FILE%'; Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue; $env:LOG_MODE='production'; $proc=Start-Process -FilePath 'python' -ArgumentList 'app.py' -WorkingDirectory $root -PassThru -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile; Set-Content -LiteralPath $pidFile -Value $proc.Id -Encoding ascii; Write-Host \"MediaTools backend started. PID=$($proc.Id)\"; Start-Sleep -Seconds 2; if ($proc.HasExited) { Write-Host \"MediaTools backend failed to start. ExitCode=$($proc.ExitCode). See %ERR_FILE%\"; exit 1 }; if ('%BROWSER_OPENED%' -ne '1') { Write-Host '[3/4] Opening WebUI...'; Start-Process '%URL%' }; $proc.WaitForExit(); exit $proc.ExitCode"
+powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& { . '%~dp0scripts\dev-startup-helpers.ps1'; exit (Invoke-MediaToolsBackendWatchdogCycle -RootDir '%cd%' -PidFile '%cd%\%PID_FILE%' -LogFile '%cd%\%LOG_FILE%' -ErrFile '%cd%\%ERR_FILE%' -Url '%URL%' -OpenBrowser ('%BROWSER_OPENED%' -ne '1')) }"
 set EXIT_CODE=%ERRORLEVEL%
 if "%BROWSER_OPENED%"=="0" set "BROWSER_OPENED=1"
 if "%EXIT_CODE%"=="3" (

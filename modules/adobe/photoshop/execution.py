@@ -72,8 +72,10 @@ def start_ticket_execution_impl(
                 params = runtime["AdjustParams"](
                     tracking_min=-50,
                     tracking_step=5,
-                    font_size_min_ratio=0.5,
+                    font_size_min_ratio=0.75,
+                    font_size_max_ratio=1.25,
                     tolerance=0.05,
+                    height_tolerance=0.08,
                 )
 
                 connector = runtime["PhotoshopConnector"]()

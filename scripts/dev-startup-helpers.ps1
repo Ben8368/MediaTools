@@ -1,8 +1,8 @@
-# MediaTools 开发模式启动辅助函数
+# MediaTools development startup helpers
 
 <#
 .SYNOPSIS
-通过端口号快速终止进程
+Stop processes by port number.
 #>
 function Stop-ProcessByPort {
     param(
@@ -13,19 +13,19 @@ function Stop-ProcessByPort {
         $connections = Get-NetTCPConnection -LocalPort $Ports -ErrorAction SilentlyContinue
         if ($connections) {
             $pids = $connections | Select-Object -ExpandProperty OwningProcess -Unique
-            foreach ($pid in $pids) {
-                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+            foreach ($processId in $pids) {
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
             }
         }
     }
     catch {
-        # 忽略错误，继续执行
+        # Ignore errors and continue.
     }
 }
 
 <#
 .SYNOPSIS
-智能等待端口就绪
+Wait for a port to become ready.
 #>
 function Wait-ForPort {
     param(
@@ -44,7 +44,7 @@ function Wait-ForPort {
             }
         }
         catch {
-            # 继续轮询
+            # Keep polling until timeout.
         }
 
         Start-Sleep -Milliseconds 500
@@ -55,7 +55,28 @@ function Wait-ForPort {
 
 <#
 .SYNOPSIS
-并行启动后端和 Vite，并等待两个端口都就绪
+Get the listener PID for a local port.
+#>
+function Get-ListeningProcessId {
+    param(
+        [int]$Port
+    )
+
+    $listenerPids = @(
+        Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+    )
+
+    if ($listenerPids.Count -gt 0) {
+        return $listenerPids[0]
+    }
+
+    return $null
+}
+
+<#
+.SYNOPSIS
+Start backend and Vite in parallel and wait for both ports.
 #>
 function Start-BackendAndVite {
     param(
@@ -70,7 +91,7 @@ function Start-BackendAndVite {
         [string]$VitePidFile
     )
 
-    # 启动后端
+    # Start backend.
     $env:MEDIATOOLS_FRONTEND_DEV_URL = $ViteUrl
     $env:LOG_MODE = 'development'
 
@@ -82,7 +103,7 @@ function Start-BackendAndVite {
         -RedirectStandardOutput $LogFile `
         -RedirectStandardError $ErrFile
 
-    # 启动 Vite
+    # Start Vite.
     $viteProc = Start-Process -FilePath 'cmd.exe' `
         -ArgumentList '/c', 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort' `
         -WorkingDirectory $FrontendDir `
@@ -91,7 +112,7 @@ function Start-BackendAndVite {
         -RedirectStandardOutput $ViteLogFile `
         -RedirectStandardError $ViteErrFile
 
-    # 并行等待两个端口就绪
+    # Wait for both ports to come up.
     $backendReady = $false
     $viteReady = $false
     $maxWait = 15
@@ -108,7 +129,7 @@ function Start-BackendAndVite {
 
         $elapsed += 1
 
-        # 检查进程是否已退出
+        # Stop early if either process exits before its port is ready.
         if ($backendProc.HasExited -and -not $backendReady) {
             Write-Host "Backend failed to start. See $ErrFile"
             return $false
@@ -125,12 +146,95 @@ function Start-BackendAndVite {
         return $false
     }
 
-    # 保存 PID
+    $viteListenerPid = Get-ListeningProcessId -Port 5173
+    if (-not $viteListenerPid) {
+        $viteListenerPid = $viteProc.Id
+    }
+
+    # Persist PIDs for cleanup.
     Set-Content -LiteralPath $PidFile -Value $backendProc.Id -Encoding ascii
-    Set-Content -LiteralPath $VitePidFile -Value $viteProc.Id -Encoding ascii
+    Set-Content -LiteralPath $VitePidFile -Value $viteListenerPid -Encoding ascii
 
     Write-Host "Backend started. PID=$($backendProc.Id)"
-    Write-Host "Vite started. PID=$($viteProc.Id)"
+    Write-Host "Vite started. PID=$viteListenerPid"
 
     return $true
+}
+
+<#
+.SYNOPSIS
+Check whether the MediaTools backend is already listening on a port.
+#>
+function Test-ExistingMediaToolsBackend {
+    param(
+        [string]$PidFile,
+        [int]$Port = 7860
+    )
+
+    $listenerPids = @(
+        Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+    )
+
+    if ($listenerPids.Count -eq 0) {
+        return 0
+    }
+
+    foreach ($listenerPid in $listenerPids) {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$listenerPid" -ErrorAction SilentlyContinue
+        if ($proc -and $proc.Name -match '^python' -and $proc.CommandLine -like '*app.py*') {
+            Write-Host "MediaTools backend already running on port $Port. PID=$listenerPid"
+            Set-Content -LiteralPath $PidFile -Value $listenerPid -Encoding ascii
+            return 10
+        }
+    }
+
+    Write-Host "Port $Port is already used by another process. PID=$($listenerPids[0])"
+    return 20
+}
+
+<#
+.SYNOPSIS
+Run one backend watchdog cycle for the production startup script.
+#>
+function Invoke-MediaToolsBackendWatchdogCycle {
+    param(
+        [string]$RootDir,
+        [string]$PidFile,
+        [string]$LogFile,
+        [string]$ErrFile,
+        [string]$Url,
+        [bool]$OpenBrowser = $false
+    )
+
+    Remove-Item -LiteralPath $LogFile -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue
+
+    $env:LOG_MODE = 'production'
+
+    $proc = Start-Process -FilePath 'python' `
+        -ArgumentList 'app.py' `
+        -WorkingDirectory $RootDir `
+        -PassThru `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $LogFile `
+        -RedirectStandardError $ErrFile
+
+    Set-Content -LiteralPath $PidFile -Value $proc.Id -Encoding ascii
+    Write-Host "MediaTools backend started. PID=$($proc.Id)"
+
+    Start-Sleep -Seconds 2
+
+    if ($proc.HasExited) {
+        Write-Host "MediaTools backend failed to start. ExitCode=$($proc.ExitCode). See $ErrFile"
+        return 1
+    }
+
+    if ($OpenBrowser) {
+        Write-Host '[3/4] Opening WebUI...'
+        Start-Process $Url
+    }
+
+    $proc.WaitForExit()
+    return $proc.ExitCode
 }

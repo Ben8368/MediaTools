@@ -28,7 +28,7 @@ def get_weight_value(weight_name: str) -> int:
     return 400
 
 
-MIN_WEIGHT_VALUE = 400  # 不允许映射到比 Regular 更细的字重（防止字体过细难以辨认）
+MIN_WEIGHT_VALUE = 0  # 默认保留原始细字重；需要限制时由调用方传 min_weight。
 
 
 def find_closest_weight(original_font: str, target_family: str, available_weights: list, min_weight: int = MIN_WEIGHT_VALUE, separator: str = "-") -> str:
