@@ -18,6 +18,16 @@ RUNTIME_MODULES = [
     "text_modifier.py",
     "config_reader.py",
     "ticket_json.py",
+    # 核心模块
+    "text_models.py",
+    "text_utils.py",
+    "text_logger.py",
+    "font_resolver.py",
+    "document_scanner.py",
+    "adaptive_lab.py",
+    "adaptive_algorithm.py",
+    "workorder_applier.py",
+    "smart_object_handler.py",
 ]
 PHOTOSHOP_PROCESS_NAMES = ("Photoshop.exe",)
 
