@@ -19,7 +19,7 @@ import {
 } from '@/api'
 import { AiIcon } from '@/apps/downloader/icons'
 import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
-import { AutomationTaskDialog } from '@/apps/mediatools/AutomationTaskDialog'
+import { AutomationTaskDialog, AutomationTaskDialogMemo } from '@/apps/mediatools/AutomationTaskDialog'
 import { FontPicker } from '@/apps/mediatools/FontPicker'
 import { PhotoshopLocaleRequestDialog, type PhotoshopLocaleRequestResult } from '@/apps/mediatools/PhotoshopLocaleRequestDialog'
 import { PhotoshopMiniAiChat } from '@/apps/mediatools/PhotoshopMiniAiChat'
@@ -207,15 +207,17 @@ export function PhotoshopApp() {
     })
   }, [])
 
-  function saveTaskDialog(index: number, patch: AnyRecord, checked: boolean) {
+  const saveTaskDialog = useCallback((index: number, patch: AnyRecord, checked: boolean) => {
     updateTask(index, patch)
     toggleTask(index, checked)
-  }
+  }, [updateTask, toggleTask])
 
   const confirmTask = useCallback((index: number) => {
     updateTask(index, { status: 'confirmed' })
     toggleTask(index, true)
   }, [toggleTask, updateTask])
+
+  const closeTaskDialog = useCallback(() => setEditingTaskIndex(null), [])
 
   function confirmVisibleTasks() {
     if (!visibleIndexes.length) return
@@ -1111,7 +1113,7 @@ export function PhotoshopApp() {
           </details>
         </section>
         </main>
-        <AutomationTaskDialog
+        <AutomationTaskDialogMemo
           open={editingTaskIndex !== null}
           title={`Photoshop 任务 ${(editingTaskIndex ?? 0) + 1}`}
           task={editingTaskIndex !== null ? tasks[editingTaskIndex] : null}
@@ -1119,7 +1121,7 @@ export function PhotoshopApp() {
           selected={editingTaskIndex !== null ? selected.includes(editingTaskIndex) : false}
           fonts={fonts}
           accent="blue"
-          onClose={() => setEditingTaskIndex(null)}
+          onClose={closeTaskDialog}
           onSave={saveTaskDialog}
         />
       </div>

@@ -178,9 +178,11 @@ def modify_text_layer(
             record.new_font_ps = record.font
 
     # 6. 调用自适应算法
+    new_font_ps = record.new_font_ps or record.font
+    new_text = record.new_text or record.text
     try:
         with LabDocument(ps.app, dpi=72.0) as lab:
-            adapted_params = lab.find_adapted_params(record, logger)
+            adapted_params = lab.find_adapted_params(record, new_font_ps, new_text, logger)
     except Exception as exc:
         logger.log_error('Adaptive algorithm failed', exc)
         return ModifyResult(

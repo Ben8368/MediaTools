@@ -52,15 +52,15 @@ def scan_document_for_ticket(
     log_path = os.path.join(tempfile.gettempdir(), f'scan_{os.getpid()}.log')
     logger = PSALogger(log_path)
 
-    # 调用核心扫描
+    # 调用核心扫描，实时触发进度回调
     try:
-        records = scan_document(ps.app, doc, logger)
+        records = scan_document(ps.app, doc, logger, progress_callback=progress_callback)
     except Exception as exc:
         if 'CANCELLED' in str(exc):
             raise RuntimeError('MEDIATOOLS_SCAN_CANCELLED')
         raise
 
-    # 转换为 TicketScanRow 格式，同时触发进度回调让前端看到数量
+    # 转换为 TicketScanRow 格式
     scan_rows = []
     normal_count = 0
     smart_count = 0
@@ -68,11 +68,9 @@ def scan_document_for_ticket(
         if cancel_check and cancel_check():
             raise RuntimeError('MEDIATOOLS_SCAN_CANCELLED')
 
-        # 解析 layer_path 获取 artboard
         parts = rec.layer_path.split('/')
         artboard = parts[0] if len(parts) > 1 else '(无画板)'
 
-        # 提取字体家族和字重
         font_family = rec.font.split('-')[0] if '-' in rec.font else rec.font
         font_weight = rec.font.split('-')[1] if '-' in rec.font else 'Regular'
 
@@ -103,20 +101,6 @@ def scan_document_for_ticket(
             smart_object_name=rec.so_psb_name if is_so else '',
             smart_object_inner_layer_name=rec.layer_name if is_so else '',
         ))
-
-        if progress_callback:
-            try:
-                progress_callback({
-                    'stage': f'已发现 {len(scan_rows)} 个文字层',
-                    'layer_count': len(scan_rows),
-                    'normal_text_layer_count': normal_count,
-                    'smart_text_layer_count': smart_count,
-                    'smart_object_count': smart_count,
-                    'skipped_smart_object_count': 0,
-                    'smart_object_name': rec.so_psb_name if is_so else '',
-                })
-            except Exception:
-                pass
 
     return scan_rows
 

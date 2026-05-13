@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 
 import { FontPicker } from '@/apps/mediatools/FontPicker'
 import { PrimaryButton, ToolbarButton } from '@/apps/mediatools/primitives'
@@ -110,3 +110,5 @@ export function AutomationTaskDialog({
     </div>
   )
 }
+
+export const AutomationTaskDialogMemo = memo(AutomationTaskDialog)

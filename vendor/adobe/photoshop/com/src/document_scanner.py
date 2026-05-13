@@ -12,7 +12,7 @@ from text_utils import (
 )
 
 
-def scan_document(app, doc, logger=None) -> list[TextLayerRecord]:
+def scan_document(app, doc, logger=None, progress_callback=None) -> list[TextLayerRecord]:
     records: list[TextLayerRecord] = []
     visited_psbs: set[str] = set()
     dpi = float(safe_get(doc, "Resolution", 72.0))
@@ -37,6 +37,7 @@ def scan_document(app, doc, logger=None) -> list[TextLayerRecord]:
             records=records,
             visited_psbs=visited_psbs,
             logger=logger,
+            progress_callback=progress_callback,
         )
 
     if logger:
@@ -58,6 +59,7 @@ def _walk_layers(
     visited_psbs: set[str],
     logger,
     so_chain: list[dict] | None = None,
+    progress_callback=None,
 ):
     try:
         layers = container.Layers
@@ -93,6 +95,21 @@ def _walk_layers(
                 records.append(record)
                 if logger:
                     logger.log_scan_layer(record)
+                if progress_callback:
+                    try:
+                        normal = sum(1 for r in records if not r.in_smart_object)
+                        smart = len(records) - normal
+                        progress_callback({
+                            "stage": f"已发现 {len(records)} 个文字层",
+                            "layer_count": len(records),
+                            "normal_text_layer_count": normal,
+                            "smart_text_layer_count": smart,
+                            "smart_object_count": smart,
+                            "skipped_smart_object_count": 0,
+                            "smart_object_name": so_psb_name or "",
+                        })
+                    except Exception:
+                        pass
             except Exception as e:
                 if logger:
                     logger.log_error(f"scan text layer {'/'.join(current_path)}", e)
@@ -147,6 +164,7 @@ def _walk_layers(
                         visited_psbs=visited_psbs,
                         logger=logger,
                         so_chain=new_chain,
+                        progress_callback=progress_callback,
                     )
 
                 # Close SO doc without saving
@@ -176,6 +194,7 @@ def _walk_layers(
                     visited_psbs=visited_psbs,
                     logger=logger,
                     so_chain=so_chain,
+                    progress_callback=progress_callback,
                 )
             except Exception:
                 pass
