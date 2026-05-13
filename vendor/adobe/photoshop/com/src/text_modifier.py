@@ -180,8 +180,13 @@ def modify_text_layer(
     # 6. 调用自适应算法
     new_font_ps = record.new_font_ps or record.font
     new_text = record.new_text or record.text
+    # 记录当前活跃文档，lab 关闭后恢复
     try:
-        with LabDocument(ps.app, dpi=72.0) as lab:
+        _active_doc_before_lab = ps.app.ActiveDocument
+    except Exception:
+        _active_doc_before_lab = None
+    try:
+        with LabDocument(ps.app, 72.0) as lab:
             adapted_params = lab.find_adapted_params(record, new_font_ps, new_text, logger)
     except Exception as exc:
         logger.log_error('Adaptive algorithm failed', exc)
@@ -201,6 +206,13 @@ def modify_text_layer(
             message=str(exc),
             fit_status='error',
         )
+    finally:
+        # lab 关闭后恢复之前的活跃文档
+        if _active_doc_before_lab is not None:
+            try:
+                ps.app.ActiveDocument = _active_doc_before_lab
+            except Exception:
+                pass
 
     # 7. 应用结果到图层
     if adapted_params and adapted_params.converged:
