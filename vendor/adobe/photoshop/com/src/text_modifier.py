@@ -182,7 +182,7 @@ def modify_text_layer(
         with LabDocument(ps.app, dpi=72.0) as lab:
             adapted_params = lab.find_adapted_params(record, logger)
     except Exception as exc:
-        logger.log_error(f'Adaptive algorithm failed: {exc}')
+        logger.log_error('Adaptive algorithm failed', exc)
         return ModifyResult(
             layer_name=record.layer_name,
             original_text=record.text,
@@ -218,7 +218,7 @@ def modify_text_layer(
             if record.new_text:
                 ti.Contents = record.new_text
         except Exception as exc:
-            logger.log_error(f'Failed to apply params: {exc}')
+            logger.log_error('Failed to apply params', exc)
             adapted_params.converged = False
 
     # 8. 转换为 ModifyResult

@@ -71,6 +71,14 @@ function ExecutionSummary({ result, execution }: { result: any, execution: any }
            <p>状态：{execution.state?.status || '未知'}</p>
            {execution.state?.progress !== undefined && <p>进度：{execution.state.progress}%</p>}
            {execution.state?.message && <p>{execution.state.message}</p>}
+           {execution.state?.output_paths?.length > 0 && (
+             <div>
+               <p>输出文件：</p>
+               {execution.state.output_paths.map((p: string, i: number) => (
+                 <p key={i} style={{wordBreak: 'break-all', fontSize: '0.85em', opacity: 0.8}}>{p}</p>
+               ))}
+             </div>
+           )}
          </div>
        )}
     </div>
