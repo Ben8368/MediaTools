@@ -38,6 +38,11 @@ class TicketScanRow:
     smart_object_layer_id: int = 0
     smart_object_name: str = ""
     smart_object_inner_layer_name: str = ""
+    so_chain: list = None
+
+    def __post_init__(self):
+        if self.so_chain is None:
+            self.so_chain = []
 
 
 def scan_document_for_ticket(
@@ -100,17 +105,24 @@ def scan_document_for_ticket(
             smart_object_layer_id=rec.so_layer_id if is_so else 0,
             smart_object_name=rec.so_psb_name if is_so else '',
             smart_object_inner_layer_name=rec.layer_name if is_so else '',
+            so_chain=rec.so_chain if is_so else [],
         ))
 
     return scan_rows
 
 
 def modify_smart_object_text_layer(ps, parent_doc, row: TicketScanRow, mapping: TextMapping, params) -> Any:
-    """修改智能对象内的文字图层"""
+    """修改智能对象内的文字图层
+
+    Supports multi-level SO nesting via so_chain. Adds canvas expansion
+    (boundary protection) after each SO modification to prevent text clipping.
+    """
     from text_modifier import ModifyResult, modify_text_layer
+    from text_utils import expand_so_canvas
 
     smart_layer_id = int(getattr(row, 'smart_object_layer_id', 0) or 0)
     raw_text = getattr(row, 'raw_text', None) or getattr(row, 'original_text', '')
+    so_chain = getattr(row, 'so_chain', None) or []
 
     if not smart_layer_id:
         return ModifyResult(
@@ -130,13 +142,13 @@ def modify_smart_object_text_layer(ps, parent_doc, row: TicketScanRow, mapping: 
             fit_status='error',
         )
 
-    # 激活父文档
+    # Activate parent document
     try:
         parent_doc.Activate()
     except Exception:
         pass
 
-    # 查找 SO 图层
+    # Find outermost SO layer
     smart_layer = ps.find_layer_by_id(parent_doc, smart_layer_id)
     if smart_layer is None or not ps.is_smart_object_layer(smart_layer):
         return ModifyResult(
@@ -156,46 +168,131 @@ def modify_smart_object_text_layer(ps, parent_doc, row: TicketScanRow, mapping: 
             fit_status='error',
         )
 
-    # 进入 SO
-    smart_doc = None
+    result = None
+    opened_docs = []  # Stack of (doc, layer_id) for cleanup and canvas expansion
+
     try:
-        smart_doc = ps.open_smart_object_contents_by_id(smart_layer_id)
-        target_layer = ps.find_layer_by_id(smart_doc, row.layer_id)
+        if so_chain and len(so_chain) > 1:
+            # Multi-level SO: navigate through each SO in the chain
+            # so_chain[0] is the outermost (already found as smart_layer)
+            # so_chain[1:] are nested SOs to enter sequentially
+            current_doc = parent_doc
 
-        if target_layer is None:
-            return ModifyResult(
-                layer_name=row.layer_name,
-                original_text=raw_text,
-                new_text=raw_text,
-                original_font_size=row.font_size,
-                final_font_size=row.font_size,
-                original_tracking=row.tracking,
-                final_tracking=row.tracking,
-                original_width=row.width_px,
-                final_width=row.width_px,
-                original_height=row.height_px,
-                final_height=row.height_px,
-                success=False,
-                message=f'Text layer id {row.layer_id} inside smart object not found',
-                fit_status='error',
-            )
+            for depth, entry in enumerate(so_chain):
+                so_id = entry.get("layer_id")
+                if so_id is None:
+                    continue
 
-        # 调用修改
-        result = modify_text_layer(ps, target_layer, mapping, params, skip_temp_doc=True)
+                # Find the SO layer at this depth
+                if depth == 0:
+                    so_layer = smart_layer
+                else:
+                    so_layer = ps.find_layer_by_id(current_doc, so_id)
 
-        # 保存 SO 文档
-        if result.success:
-            smart_doc.Save()
+                if so_layer is None:
+                    return ModifyResult(
+                        layer_name=row.layer_name,
+                        original_text=raw_text,
+                        new_text=raw_text,
+                        original_font_size=row.font_size,
+                        final_font_size=row.font_size,
+                        original_tracking=row.tracking,
+                        final_tracking=row.tracking,
+                        original_width=row.width_px,
+                        final_width=row.width_px,
+                        original_height=row.height_px,
+                        final_height=row.height_px,
+                        success=False,
+                        message=f'SO layer id {so_id} not found at depth {depth}',
+                        fit_status='error',
+                    )
+
+                # Enter this SO
+                inner_doc = ps.open_smart_object_contents_by_id(so_id)
+                opened_docs.append((inner_doc, so_id))
+
+                if depth == len(so_chain) - 1:
+                    # Innermost SO: find and modify the text layer
+                    current_doc = inner_doc
+                    target_layer = ps.find_layer_by_id(current_doc, row.layer_id)
+
+                    if target_layer is None:
+                        return ModifyResult(
+                            layer_name=row.layer_name,
+                            original_text=raw_text,
+                            new_text=raw_text,
+                            original_font_size=row.font_size,
+                            final_font_size=row.font_size,
+                            original_tracking=row.tracking,
+                            final_tracking=row.tracking,
+                            original_width=row.width_px,
+                            final_width=row.width_px,
+                            original_height=row.height_px,
+                            final_height=row.height_px,
+                            success=False,
+                            message=f'Text layer id {row.layer_id} inside nested SO not found',
+                            fit_status='error',
+                        )
+
+                    result = modify_text_layer(ps, target_layer, mapping, params, skip_temp_doc=True)
+                else:
+                    current_doc = inner_doc
+        else:
+            # Single-level SO (original path, or legacy ticket without chain)
+            smart_doc = ps.open_smart_object_contents_by_id(smart_layer_id)
+            opened_docs.append((smart_doc, smart_layer_id))
+
+            target_layer = ps.find_layer_by_id(smart_doc, row.layer_id)
+
+            if target_layer is None:
+                return ModifyResult(
+                    layer_name=row.layer_name,
+                    original_text=raw_text,
+                    new_text=raw_text,
+                    original_font_size=row.font_size,
+                    final_font_size=row.font_size,
+                    original_tracking=row.tracking,
+                    final_tracking=row.tracking,
+                    original_width=row.width_px,
+                    final_width=row.width_px,
+                    original_height=row.height_px,
+                    final_height=row.height_px,
+                    success=False,
+                    message=f'Text layer id {row.layer_id} inside smart object not found',
+                    fit_status='error',
+                )
+
+            result = modify_text_layer(ps, target_layer, mapping, params, skip_temp_doc=True)
+
+        # Boundary protection: expand canvas at each SO level (innermost first)
+        if result and result.success:
+            size_ratio = result.final_font_size / max(row.font_size, 0.1)
+            expansion = max(1.2, min(3.0, size_ratio * 1.1))
+
+            for so_doc, so_id in reversed(opened_docs):
+                try:
+                    ps.app.ActiveDocument = so_doc
+                    expand_so_canvas(ps.app, so_doc, expansion)
+                except Exception:
+                    pass
+
+            # Save SO documents (innermost first)
+            for so_doc, so_id in reversed(opened_docs):
+                try:
+                    so_doc.Save()
+                except Exception:
+                    pass
 
         return result
 
     finally:
-        if smart_doc is not None:
+        # Close all SO documents (outermost first, or just all)
+        for so_doc, so_id in opened_docs:
             try:
-                ps.close_document(smart_doc, save=False)
+                ps.close_document(so_doc, save=False)
             except Exception:
                 pass
-            try:
-                parent_doc.Activate()
-            except Exception:
-                pass
+        try:
+            parent_doc.Activate()
+        except Exception:
+            pass

@@ -26,7 +26,7 @@ RUNTIME_MODULES = [
     "document_scanner.py",
     "adaptive_lab.py",
     "adaptive_algorithm.py",
-    "workorder_applier.py",
+    "psa_applier.py",
     "smart_object_handler.py",
 ]
 PHOTOSHOP_PROCESS_NAMES = ("Photoshop.exe",)

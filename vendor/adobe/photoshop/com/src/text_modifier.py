@@ -9,8 +9,10 @@ from typing import Any
 
 from text_models import TextLayerRecord, AdaptedParams
 from text_logger import PSALogger
+from text_utils import safe_get, pt_to_px
 from font_resolver import build_font_index, resolve_font
 from adaptive_lab import LabDocument
+from psa_applier import process_layer, resolve_font_for_record
 from config_reader import TextMapping
 
 
@@ -105,9 +107,13 @@ def modify_text_layer(
     params: AdjustParams,
     skip_temp_doc: bool = False,
     font_metrics: dict = None,
+    font_index: dict = None,
 ) -> ModifyResult:
-    """修改单个文字图层"""
-    # 1. 获取图层当前状态
+    """修改单个文字图层
+
+    Uses PSA's process_layer() for calibration (Method A), verify+refine
+    (Method B), and SO boundary protection.
+    """
     ti = layer.TextItem
     current_text = ti.Contents.strip()
     current_font = ti.Font
@@ -118,10 +124,27 @@ def modify_text_layer(
     except Exception:
         current_tracking = 0.0
 
+    # Read actual values from the layer — NOT hardcoded
+    auto_leading = bool(safe_get(ti, "UseAutoLeading", True))
+    leading_pt = 0.0
+    if not auto_leading:
+        try:
+            leading_pt = float(safe_get(ti, "Leading", 0.0) or 0.0)
+        except Exception:
+            leading_pt = 0.0
+
+    # Read document DPI from the active document
+    try:
+        dpi = float(safe_get(ps.app.ActiveDocument, "Resolution", 72.0))
+    except Exception:
+        dpi = 72.0
+
     bounds = ps.get_layer_bounds(layer)
     current_height = bounds[3] - bounds[1]
 
-    # 2. 构造 TextLayerRecord
+    size_px = pt_to_px(current_size, dpi)
+    leading_px = pt_to_px(leading_pt, dpi)
+
     record = TextLayerRecord(
         layer_id=ps.get_layer_id(layer),
         layer_name=layer.Name,
@@ -134,17 +157,17 @@ def modify_text_layer(
         text=current_text,
         font=current_font,
         size_pt=current_size,
-        size_px=current_size,
+        size_px=size_px,
         tracking=current_tracking,
-        auto_leading=True,
-        leading_pt=-1.0,
-        leading_px=-1.0,
+        auto_leading=auto_leading,
+        leading_pt=leading_pt,
+        leading_px=leading_px,
         bounds_left=0.0,
         bounds_top=0.0,
         bounds_right=0.0,
         bounds_bottom=0.0,
         bounds_h_px=current_height,
-        dpi=72.0,
+        dpi=dpi,
         enabled=True,
         new_text=mapping.new_text if mapping.new_text else None,
         new_font_family=mapping.font if mapping.font else None,
@@ -152,44 +175,44 @@ def modify_text_layer(
         new_font_ps=None,
     )
 
-    # 3. 检查是否需要修改
+    # Check if modification is needed
     if not record.new_text and not record.new_font_family:
         return _adapted_params_to_result(record, None)
 
-    # 4. 创建临时 logger
+    # Build font index (once, or reuse caller-provided)
+    if font_index is None:
+        font_index = build_font_index(ps.app)
+
+    # Resolve target font
+    record.new_font_ps = resolve_font_for_record(record, font_index,
+                                                  PSALogger(os.path.join(tempfile.gettempdir(), f'modify_{os.getpid()}.log')))
+
+    # Open lab with correct DPI, delegate to PSA's process_layer
     log_path = os.path.join(tempfile.gettempdir(), f'modify_{os.getpid()}.log')
     logger = PSALogger(log_path)
 
-    # 5. 构建字体索引并解析目标字体
-    font_index = build_font_index(ps.app)
-
-    if record.new_font_family:
-        resolved_font = resolve_font(
-            font_index=font_index,
-            target_family=record.new_font_family,
-            target_weight_kw='',
-            preserve_italic=False,
-            original_ps_name=record.font,
-        )
-        if resolved_font:
-            record.new_font_ps = resolved_font
-        else:
-            logger.log_warning(f'Font family not found: {record.new_font_family}, using original')
-            record.new_font_ps = record.font
-
-    # 6. 调用自适应算法
-    new_font_ps = record.new_font_ps or record.font
-    new_text = record.new_text or record.text
-    # 记录当前活跃文档，lab 关闭后恢复
     try:
         _active_doc_before_lab = ps.app.ActiveDocument
     except Exception:
         _active_doc_before_lab = None
+
+    adapted_params = None
     try:
-        with LabDocument(ps.app, 72.0) as lab:
-            adapted_params = lab.find_adapted_params(record, new_font_ps, new_text, logger)
+        with LabDocument(ps.app, dpi) as lab:
+            adapted_params = process_layer(ps.app, ps.app.ActiveDocument, record,
+                                           lab, logger, in_so=False)
     except Exception as exc:
         logger.log_error('Adaptive algorithm failed', exc)
+        adapted_params = None
+    finally:
+        if _active_doc_before_lab is not None:
+            try:
+                ps.app.ActiveDocument = _active_doc_before_lab
+            except Exception:
+                pass
+        logger.close()
+
+    if adapted_params is None:
         return ModifyResult(
             layer_name=record.layer_name,
             original_text=record.text,
@@ -203,37 +226,8 @@ def modify_text_layer(
             original_height=record.bounds_h_px,
             final_height=record.bounds_h_px,
             success=False,
-            message=str(exc),
+            message='Adaptive algorithm failed',
             fit_status='error',
         )
-    finally:
-        # lab 关闭后恢复之前的活跃文档
-        if _active_doc_before_lab is not None:
-            try:
-                ps.app.ActiveDocument = _active_doc_before_lab
-            except Exception:
-                pass
 
-    # 7. 应用结果到图层
-    if adapted_params and adapted_params.converged:
-        try:
-            ti.Font = adapted_params.font_ps
-            ti.Size = adapted_params.size_pt
-
-            if adapted_params.auto_leading:
-                ti.UseAutoLeading = True
-            else:
-                ti.UseAutoLeading = False
-                ti.Leading = adapted_params.leading_pt
-
-            if hasattr(ti, 'Tracking'):
-                ti.Tracking = adapted_params.tracking
-
-            if record.new_text:
-                ti.Contents = record.new_text
-        except Exception as exc:
-            logger.log_error('Failed to apply params', exc)
-            adapted_params.converged = False
-
-    # 8. 转换为 ModifyResult
     return _adapted_params_to_result(record, adapted_params)

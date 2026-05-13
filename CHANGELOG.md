@@ -4,6 +4,20 @@
 
 All significant changes are documented here. For upstream tool changes, refer to each tool's CHANGELOG in `vendor/`.
 
+## 2026-05-13
+
+### Photoshop Algorithm Enhancement
+
+- Ported PSA reference project's mature adaptive text-fitting algorithms into the PS module
+- **Method A (Calibration):** New calibration step measures original text in lab document, computes scale factor (`real_h / lab_h`), and uses calibrated target height — eliminates systematic errors caused by font metric differences between lab and real PSD
+- **Method B (Verify+Refine):** New post-apply verification measures real rendered height and iteratively refines font size (up to 5 rounds for faux-bold, 3 for normal) until converged within 2-6px tolerance
+- **SO Boundary Protection:** Smart Object canvas automatically expanded after modification (1.2x–3.0x based on size ratio) to prevent text clipping
+- Fixed hardcoded values in `text_modifier.py`: `dpi` now read from active document, `auto_leading` and `leading_pt` read from actual TextItem properties
+- Added optional `font_index` parameter to `modify_text_layer()` to avoid rebuilding font index per layer
+- Added `so_chain` field to `TicketScanRow` for multi-level smart object navigation
+- New file `psa_applier.py` replaces empty `workorder_applier.py` with core processing functions
+- Verified with 52-layer debug.psd: 100% convergence, 0 errors
+
 ## 2026-05-07
 
 ### BrowserApp UI and FontPicker
