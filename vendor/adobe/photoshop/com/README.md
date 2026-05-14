@@ -62,4 +62,4 @@ connector = runtime["PhotoshopConnector"]()
 ---
 
 **维护者**: MediaTools Team  
-**最后更新**: 2026-05-06
+**最后更新**: 2026-05-14

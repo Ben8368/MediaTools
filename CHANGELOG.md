@@ -1,8 +1,15 @@
 # Changelog
 
-> [中文版](./CHANGELOG.zh.md) · Chinese
-
 All significant changes are documented here. For upstream tool changes, refer to each tool's CHANGELOG in `vendor/`.
+
+## 2026-05-14
+
+### Git History Cleanup
+
+- Removed large PSD files (>100MB) from git history using `git-filter-repo`
+- Slimmed `vendor/adobe/photoshop/com/tuning/test.psd` from ~180MB to 31MB
+- Updated `vendor/adobe/README.md` to reflect correct directory structure including `tuning/` folder
+- Removed broken link to non-existent `CHANGELOG.zh.md`
 
 ## 2026-05-13
 
