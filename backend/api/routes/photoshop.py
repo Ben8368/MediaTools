@@ -362,4 +362,20 @@ def create_router(
             return JSONResponse(result, status_code=400)
         return JSONResponse(result)
 
+    @router.get("/api/photoshop/logs/read")
+    async def photoshop_log_read(path: str = ""):
+        """Read a Photoshop execution log file by its path."""
+        if not path:
+            return JSONResponse({"ok": False, "error": "path parameter is required"}, status_code=400)
+        try:
+            log_file = Path(path)
+            workspace = get_current_workspace()
+            allowed = resolve_allowed_path(str(log_file.parent), workspace)
+            if not allowed or not log_file.exists():
+                return JSONResponse({"ok": False, "error": "log file not found or access denied"}, status_code=404)
+            content = log_file.read_text(encoding="utf-8", errors="replace")
+            return JSONResponse({"ok": True, "path": str(log_file), "content": content})
+        except Exception as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
     return router

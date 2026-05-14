@@ -56,9 +56,15 @@ class ModifyResult:
     score: float = 0.0
     fit_document_resolution: float = 0.0
     fit_status: str = ""
+    log_path: str = ""
+    original_font: str = ""
+    new_font: str = ""
+    converged: bool = False
+    skipped: bool = False
 
 
-def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | None) -> ModifyResult:
+def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | None,
+                             log_path: str = "") -> ModifyResult:
     """转换结果格式"""
     if params is None:
         return ModifyResult(
@@ -78,10 +84,16 @@ def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | N
             original_leading=record.leading_pt,
             final_leading=record.leading_pt,
             fit_status='skipped',
+            log_path=log_path,
+            original_font=record.font,
+            new_font=record.font,
+            converged=False,
+            skipped=True,
         )
 
+    is_fallback = params.iterations_log and 'direct_fallback_no_reflow' in params.iterations_log
     msg = 'converged' if params.converged else 'not converged'
-    if params.iterations_log and 'direct_fallback_no_reflow' in params.iterations_log:
+    if is_fallback:
         msg = 'applied (direct fallback, no adaptive reflow)'
 
     return ModifyResult(
@@ -101,10 +113,14 @@ def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | N
         original_leading=record.leading_pt,
         final_leading=params.leading_pt,
         fit_status=(
-            'fallback'
-            if params.iterations_log and 'direct_fallback_no_reflow' in params.iterations_log
+            'fallback' if is_fallback
             else ('ok' if params.converged else 'overflow')
         ),
+        log_path=log_path,
+        original_font=record.font,
+        new_font=params.font_ps,
+        converged=params.converged,
+        skipped=False,
     )
 
 
@@ -124,6 +140,7 @@ def modify_text_layer(
     skip_temp_doc: bool = False,
     font_metrics: dict = None,
     font_index: dict = None,
+    output_dir: str = "",
 ) -> ModifyResult:
     """修改单个文字图层
 
@@ -161,6 +178,36 @@ def modify_text_layer(
     size_px = pt_to_px(current_size, dpi)
     leading_px = pt_to_px(leading_pt, dpi)
 
+    new_text_raw = _normalize_paragraph_breaks_for_ps(mapping.new_text) if mapping.new_text else None
+    new_font_family = mapping.font if mapping.font else None
+
+    # Skip decorative single English char layers (decorative, not meaningful text)
+    stripped = (current_text or "").strip()
+    if len(stripped) == 1 and stripped.isascii() and stripped.isalpha():
+        return ModifyResult(
+            layer_name=layer.Name,
+            original_text=current_text,
+            new_text=new_text_raw or current_text,
+            original_font_size=current_size,
+            final_font_size=current_size,
+            original_tracking=current_tracking,
+            final_tracking=current_tracking,
+            original_width=0.0,
+            final_width=0.0,
+            original_height=current_height,
+            final_height=current_height,
+            success=True,
+            message=f'skipped (decorative single char "{stripped}")',
+            original_leading=leading_pt,
+            final_leading=leading_pt,
+            fit_status='skipped',
+            log_path='',
+            original_font=current_font,
+            new_font=current_font,
+            converged=True,
+            skipped=True,
+        )
+
     record = TextLayerRecord(
         layer_id=ps.get_layer_id(layer),
         layer_name=layer.Name,
@@ -185,21 +232,23 @@ def modify_text_layer(
         bounds_h_px=current_height,
         dpi=dpi,
         enabled=True,
-        new_text=_normalize_paragraph_breaks_for_ps(mapping.new_text) if mapping.new_text else None,
-        new_font_family=mapping.font if mapping.font else None,
+        new_text=new_text_raw,
+        new_font_family=new_font_family,
         new_font_weight='',
         new_font_ps=None,
     )
 
     # Check if modification is needed
     if not record.new_text and not record.new_font_family:
-        return _adapted_params_to_result(record, None)
+        return _adapted_params_to_result(record, None, log_path="")
 
     # Build font index (once, or reuse caller-provided)
     if font_index is None:
         font_index = build_font_index(ps.app)
 
-    log_path = os.path.join(tempfile.gettempdir(), f'modify_{os.getpid()}.log')
+    # Log to output_dir when available; otherwise fall back to temp
+    log_dir = output_dir if output_dir else tempfile.gettempdir()
+    log_path = os.path.join(log_dir, f'modify_{os.getpid()}_{layer.Name}.log')
     logger = PSALogger(log_path)
 
     # Resolve target font（与下方 adaptive 共用同一 logger）
@@ -214,7 +263,7 @@ def modify_text_layer(
     fallback_error: Exception | None = None
     try:
         with LabDocument(ps.app, dpi) as lab:
-            adapted_params = process_layer(ps.app, ps.app.ActiveDocument, record,
+            adapted_params = process_layer(ps.app, _active_doc_before_lab, record,
                                            lab, logger, in_so=False)
     except Exception as exc:
         logger.log_error('Adaptive algorithm failed', exc)
@@ -232,7 +281,7 @@ def modify_text_layer(
         try:
             from psa_applier import apply_params_to_layer, real_bounds_h
 
-            doc = ps.app.ActiveDocument
+            doc = _active_doc_before_lab
             fb = AdaptedParams(
                 font_ps=record.new_font_ps or record.font,
                 size_pt=record.size_pt,
@@ -279,6 +328,11 @@ def modify_text_layer(
             success=False,
             message=f'Adaptive algorithm failed{err_tail}',
             fit_status='error',
+            log_path=log_path,
+            original_font=record.font,
+            new_font=record.new_font_ps or record.font,
+            converged=False,
+            skipped=False,
         )
 
-    return _adapted_params_to_result(record, adapted_params)
+    return _adapted_params_to_result(record, adapted_params, log_path=log_path)

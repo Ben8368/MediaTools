@@ -112,6 +112,8 @@ def start_ticket_execution_impl(
             connector = None
             doc = None
             output_paths: list[str] = []
+            layer_results: list[dict] = []
+            log_paths: list[str] = []
             pythoncom.CoInitialize()
             try:
                 ticket = runtime["load_ticket_json"](str(ticket_path))
@@ -134,6 +136,7 @@ def start_ticket_execution_impl(
                 completed = 0
                 successful_tasks = 0
                 failed_tasks = 0
+                skipped_tasks = 0
                 _log_notice(_log, "🚀 开始执行工单 %s (%d 个任务)", ticket_id, total_tasks)
                 params = runtime["AdjustParams"](
                     tracking_min=-50,
@@ -176,6 +179,12 @@ def start_ticket_execution_impl(
                         doc = connector.app.ActiveDocument
 
                     target_errors: dict[int, str] = {}
+                    # Build font index once per output group for reuse across tasks
+                    try:
+                        _font_index = runtime["build_font_index"](connector.app)
+                    except Exception:
+                        _font_index = None
+
                     for task in tasks:
                         if state.cancel_event.is_set():
                             state.status = "cancelled"
@@ -193,6 +202,16 @@ def start_ticket_execution_impl(
                                 _log_notice(_log, "⏭ %s: %s", task.layer_name, _PRESERVE_COPY_MESSAGE)
                             else:
                                 failed_tasks += 1
+                            skipped_tasks += 1
+                            layer_results.append({
+                                "layer_name": task.layer_name,
+                                "original_text": getattr(task, "original_text", ""),
+                                "new_text": getattr(task, "target_text", ""),
+                                "skipped": True,
+                                "converged": True,
+                                "message": _PRESERVE_COPY_MESSAGE,
+                                "fit_status": "skipped",
+                            })
                             continue
 
                         if photoshop_service._is_smart_object_task(task):
@@ -223,6 +242,24 @@ def start_ticket_execution_impl(
                             else:
                                 failed_tasks += 1
                                 _log.warning("❌ [smart_object] %s: %s", task.layer_name, result.message or "unknown error")
+                            if hasattr(result, 'skipped') and result.skipped:
+                                skipped_tasks += 1
+                            if hasattr(result, 'log_path') and result.log_path:
+                                log_paths.append(result.log_path)
+                            layer_results.append({
+                                "layer_name": getattr(result, "layer_name", task.layer_name),
+                                "original_text": getattr(result, "original_text", ""),
+                                "new_text": getattr(result, "new_text", ""),
+                                "original_font_size": getattr(result, "original_font_size", 0),
+                                "final_font_size": getattr(result, "final_font_size", 0),
+                                "original_font": getattr(result, "original_font", ""),
+                                "new_font": getattr(result, "new_font", ""),
+                                "converged": getattr(result, "converged", False),
+                                "skipped": getattr(result, "skipped", False),
+                                "message": getattr(result, "message", ""),
+                                "fit_status": getattr(result, "fit_status", ""),
+                                "log_path": getattr(result, "log_path", ""),
+                            })
                         else:
                             state.message = f"Applying {task.layer_name}"
                             completed += 1
@@ -238,17 +275,39 @@ def start_ticket_execution_impl(
                                 _log.warning("❌ [text_layer] %s: %s", task.layer_name, task.notes or "unknown error")
                                 continue
                             original_font_size = float(getattr(task, "font_size", 0) or 0)
-                            result = runtime["modify_text_layer"](connector, layer_obj, _build_mapping(runtime, task), params)
+                            result = runtime["modify_text_layer"](
+                                connector, layer_obj, _build_mapping(runtime, task), params,
+                                font_index=_font_index,
+                                output_dir=str(output_dir),
+                            )
                             if _set_task_result(task, result):
                                 successful_tasks += 1
                                 _log_notice(_log, "✅ [text_layer] %s: font_size %.2f→%.2fpx, tracking %d→%d, leading %.1f→%.1f [%s]",
-                                    task.layer_name, original_font_size, float(getattr(result, "final_font_size", 0)),
+                                    task.layer_name, float(getattr(result, "original_font_size", 0)), float(getattr(result, "final_font_size", 0)),
                                     int(getattr(result, "original_tracking", 0)), int(getattr(result, "final_tracking", 0)),
                                     float(getattr(result, "original_leading", 0)), float(getattr(result, "final_leading", 0)),
                                     str(getattr(result, "fit_status", "ok")))
                             else:
                                 failed_tasks += 1
                                 _log.warning("❌ [text_layer] %s: %s", task.layer_name, result.message or "unknown error")
+                            if hasattr(result, 'skipped') and result.skipped:
+                                skipped_tasks += 1
+                            if hasattr(result, 'log_path') and result.log_path:
+                                log_paths.append(result.log_path)
+                            layer_results.append({
+                                "layer_name": getattr(result, "layer_name", task.layer_name),
+                                "original_text": getattr(result, "original_text", ""),
+                                "new_text": getattr(result, "new_text", ""),
+                                "original_font_size": getattr(result, "original_font_size", 0),
+                                "final_font_size": getattr(result, "final_font_size", 0),
+                                "original_font": getattr(result, "original_font", ""),
+                                "new_font": getattr(result, "new_font", ""),
+                                "converged": getattr(result, "converged", False),
+                                "skipped": getattr(result, "skipped", False),
+                                "message": getattr(result, "message", ""),
+                                "fit_status": getattr(result, "fit_status", ""),
+                                "log_path": getattr(result, "log_path", ""),
+                            })
 
                     if state.cancel_event.is_set():
                         if not dry_run and doc is not None:
@@ -268,11 +327,18 @@ def start_ticket_execution_impl(
 
                 runtime["save_ticket_json"](ticket, str(ticket_path))
 
+                state.layer_results = layer_results
+                state.log_paths = log_paths
+
                 if state.status == "cancelled":
                     state.finished_at = time.time()
                     state.output_paths = output_paths
                     if on_finish:
-                        on_finish(False, {"status": "cancelled", "output_paths": output_paths, "ticket_id": ticket_id})
+                        on_finish(False, {
+                            "status": "cancelled", "output_paths": output_paths,
+                            "ticket_id": ticket_id, "layer_results": layer_results,
+                            "log_paths": log_paths,
+                        })
                     return
 
                 state.progress = 100.0
@@ -292,6 +358,8 @@ def start_ticket_execution_impl(
                                 "ticket_id": ticket_id,
                                 "dry_run": dry_run,
                                 "failed_tasks": failed_tasks,
+                                "layer_results": layer_results,
+                                "log_paths": log_paths,
                             },
                         )
                     return
@@ -310,6 +378,9 @@ def start_ticket_execution_impl(
                             "dry_run": dry_run,
                             "successful_tasks": successful_tasks,
                             "failed_tasks": failed_tasks,
+                            "skipped_tasks": skipped_tasks,
+                            "layer_results": layer_results,
+                            "log_paths": log_paths,
                         },
                     )
                 if successful_tasks > 0:

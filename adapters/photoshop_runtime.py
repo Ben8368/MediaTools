@@ -122,4 +122,5 @@ class PhotoshopAutomationAdapter:
             "load_ticket_json": importlib.import_module("ticket_json").load_ticket_json,
             "save_ticket_json": importlib.import_module("ticket_json").save_ticket_json,
             "pythoncom": importlib.import_module("pythoncom"),
+            "build_font_index": importlib.import_module("font_resolver").build_font_index,
         }

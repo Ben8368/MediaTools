@@ -562,6 +562,24 @@ def test_start_ticket_execution_distinguishes_normal_and_smart_rows(tmp_path, mo
             "dry_run": True,
             "successful_tasks": 2,
             "failed_tasks": 0,
+            "skipped_tasks": 0,
+            "layer_results": [
+                {
+                    "layer_name": "Title", "original_text": "", "new_text": "",
+                    "original_font_size": 0, "final_font_size": 0,
+                    "original_font": "", "new_font": "",
+                    "converged": False, "skipped": False,
+                    "message": "normal", "fit_status": "", "log_path": "",
+                },
+                {
+                    "layer_name": "Card / Price", "original_text": "", "new_text": "",
+                    "original_font_size": 0, "final_font_size": 0,
+                    "original_font": "", "new_font": "",
+                    "converged": False, "skipped": False,
+                    "message": "smart", "fit_status": "", "log_path": "",
+                },
+            ],
+            "log_paths": [],
         },
     )]
 
