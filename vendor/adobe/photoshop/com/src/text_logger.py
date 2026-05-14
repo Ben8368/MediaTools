@@ -20,9 +20,10 @@ class PSALogger:
         self._fh.write(full + "\n")
         self._fh.flush()
         try:
-            print(full)
-        except UnicodeEncodeError:
-            print(full.encode("utf-8", errors="replace").decode("ascii", errors="replace"))
+            sys.stdout.buffer.write((full + "\n").encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
+        except Exception:
+            pass
 
     def log_info(self, msg: str):
         self._write(f"INFO: {msg}")
