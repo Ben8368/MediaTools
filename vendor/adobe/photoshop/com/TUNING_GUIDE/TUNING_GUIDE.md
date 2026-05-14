@@ -8,12 +8,12 @@
 ## 目录结构
 
 ```
-C:\MediaTools\
-├── test\
+C:\MediaTools\vendor\adobe\photoshop\com\
+├── TUNING_GUIDE\
 │   ├── test.psd                ← 母版，永远不动
 │   ├── TUNING_GUIDE.md         ← 本文档
 │   └── （测试过程产生的文件）
-└── vendor\adobe\photoshop\com\src\
+└── src\
     ├── main.py                 ← CLI 入口
     ├── adaptive_lab.py         ← Lab 文档 + find_adapted_params()
     ├── adaptive_algorithm.py   ← Phase 1/2/3 算法
@@ -92,6 +92,7 @@ def mirror_text(text: str) -> str:
 
 - Photoshop 已启动并处于前台（整个过程约 40 分钟，不要切换活动文档）
 - Python 环境已配置，工作目录为 `C:\MediaTools\vendor\adobe\photoshop\com\src\`
+- 测试文件位于 `C:\MediaTools\vendor\adobe\photoshop\com\TUNING_GUIDE\test.psd`
 
 ### Step 1：test.psd → test-mirror.psd
 
@@ -143,10 +144,10 @@ def mirror_text(text: str) -> str:
 
 ## 四、产生的数据文件
 
-每轮测试完成后，`test\` 目录下会有：
+每轮测试完成后，`TUNING_GUIDE\` 目录下会有：
 
 ```
-test\
+TUNING_GUIDE\
 ├── test.psd                    ← 母版，不动
 ├── test-mirror.psd             ← Step 1 输出
 ├── test-mirror-mirror.psd      ← Step 2 输出，最终对比对象
