@@ -46,9 +46,12 @@ class TicketTask:
     smart_object_layer_id: int = 0
     smart_object_name: str = ""
     smart_object_inner_layer_name: str = ""
+    so_chain: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        # asdict recurses into dataclasses but so_chain is list[dict], already handled correctly
+        return d
 
     @staticmethod
     def from_dict(d: dict) -> "TicketTask":
@@ -57,6 +60,8 @@ class TicketTask:
         layer_kind = str(d.get("layer_kind", "") or "").strip()
         if not layer_kind:
             layer_kind = "smart_object_text" if smart_object_layer_id else "text"
+        raw_chain = d.get("so_chain")
+        so_chain = raw_chain if isinstance(raw_chain, list) else []
         return TicketTask(
             layer_id=int(d.get("layer_id", 0)),
             artboard_name=str(d.get("artboard_name", "")),
@@ -65,6 +70,7 @@ class TicketTask:
             smart_object_layer_id=smart_object_layer_id,
             smart_object_name=str(d.get("smart_object_name", "")),
             smart_object_inner_layer_name=str(d.get("smart_object_inner_layer_name", "")),
+            so_chain=so_chain,
             output_name=str(d.get("output_name", "")),
             language=str(d.get("language", "")),
             line_count=int(d.get("line_count", 1)),

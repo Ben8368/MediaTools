@@ -60,6 +60,11 @@ class FakeTicketTask:
     smart_object_name: str = ""
     smart_object_inner_layer_name: str = ""
     preserve_copy: bool = False
+    so_chain: list = None
+
+    def __post_init__(self):
+        if self.so_chain is None:
+            self.so_chain = []
 
 
 @dataclass
@@ -758,27 +763,74 @@ def test_start_ticket_execution_marks_error_when_all_tasks_fail(tmp_path, monkey
     assert finished and finished[0][0] is False
 
 
-def test_build_mapping_preserve_copy_uses_original_and_source_font():
+def test_preserve_copy_skips_modify_calls(tmp_path, monkeypatch):
     from modules.adobe.photoshop import execution
 
-    captured: dict = {}
+    ws = patch_workspace(monkeypatch, tmp_path)
+    ticket_id = "ticket-preserve"
+    service._ticket_path(ticket_id, ws).write_text("{}", encoding="utf-8")
+    with service._execution_lock:
+        service._executions.clear()
 
-    def _tm(**kw):
-        captured.update(kw)
-        return kw
-
-    runtime = {"TextMapping": _tm}
-    task = Mock(
-        original_text="Product™",
-        target_text="误译",
-        target_font="Arial",
-        source_font="Noto Sans",
+    preserve_task = FakeTicketTask(
+        layer_id=1,
+        artboard_name="Board",
+        layer_name="Brand",
+        output_name="out.psd",
+        language="zh",
+        line_count=1,
+        alignment="left",
+        font_size=12,
+        tracking=0,
+        width_px=100,
+        height_px=20,
+        source_psd="source.psd",
+        source_font="SourceFont",
+        original_text="ProductX",
+        target_text="",
+        target_font="",
+        status="confirmed",
+        layer_kind="text",
         preserve_copy=True,
     )
-    execution._build_mapping(runtime, task)
-    assert captured["original_text"] == "Product™"
-    assert captured["new_text"] == "Product™"
-    assert captured["font"] == "Noto Sans"
+    ticket = FakeTicket(FakeTicketMeta(created_by="test", source_psd="C:/design/source.psd"), [preserve_task])
+    modify_text_layer = Mock(return_value=SimpleNamespace(success=True, message="unexpected"))
+    modify_smart = Mock(return_value=SimpleNamespace(success=True, message="unexpected"))
+    runtime = fake_runtime(rows=[])
+    runtime.update(
+        {
+            "load_ticket_json": Mock(return_value=ticket),
+            "save_ticket_json": Mock(),
+            "TextMapping": lambda **kwargs: SimpleNamespace(**kwargs),
+            "AdjustParams": lambda **kwargs: SimpleNamespace(**kwargs),
+            "modify_text_layer": modify_text_layer,
+            "modify_smart_object_text_layer": modify_smart,
+        }
+    )
+    monkeypatch.setattr(service, "_runtime", lambda: runtime)
+
+    class ImmediateThread:
+        def __init__(self, target, daemon=True):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr(execution.threading, "Thread", ImmediateThread)
+
+    result = execution.start_ticket_execution_impl(
+        ticket_id,
+        dry_run=True,
+        workspace=ws,
+        job_id="job-1",
+        on_finish=lambda *_a: None,
+    )
+
+    assert result["ok"] is True
+    modify_text_layer.assert_not_called()
+    modify_smart.assert_not_called()
+    assert preserve_task.status == "done"
+    assert "固定文案" in (preserve_task.notes or "")
 
 
 def test_task_helpers_and_start_execution_delegate(monkeypatch):

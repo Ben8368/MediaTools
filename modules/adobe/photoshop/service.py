@@ -215,6 +215,7 @@ def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str
             "smart_object_layer_id": smart_object_layer_id,
             "smart_object_name": getattr(row, "smart_object_name", "") or "",
             "smart_object_inner_layer_name": getattr(row, "smart_object_inner_layer_name", "") or "",
+            "so_chain": list(getattr(row, "so_chain", None) or []),
         }
 
     for row in scan_rows:

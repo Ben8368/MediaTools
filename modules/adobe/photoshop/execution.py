@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from modules.adobe.common.execution import AdobeExecutionState, _executions, _executions_guard
@@ -21,6 +22,14 @@ _log = logging.getLogger("photoshop.execution")
 ProgressCallback = Callable[[str, float], None]
 FinishCallback = Callable[[bool, dict[str, Any]], None]
 
+_PRESERVE_COPY_MESSAGE = "固定文案：已跳过写入，保留从母版复制到该 PSD 后的图层内容"
+
+
+def _task_preserve_copy(task: Any) -> bool:
+    if isinstance(task, dict):
+        return bool(task.get("preserve_copy"))
+    return bool(getattr(task, "preserve_copy", False))
+
 
 def _set_task_result(task: Any, result: Any) -> bool:
     task.status = "done" if result.success else "error"
@@ -30,13 +39,6 @@ def _set_task_result(task: Any, result: Any) -> bool:
 
 def _build_mapping(runtime: dict[str, Any], task: Any) -> Any:
     orig = str(getattr(task, "original_text", "") or "")
-    if bool(getattr(task, "preserve_copy", False)):
-        return runtime["TextMapping"](
-            match_mode="exact",
-            original_text=orig,
-            new_text=orig,
-            font=(str(getattr(task, "source_font", None) or "").strip() or None),
-        )
     tt = getattr(task, "target_text", None)
     new_text = None if tt is None else str(tt)
     return runtime["TextMapping"](
@@ -179,6 +181,19 @@ def start_ticket_execution_impl(
                             state.status = "cancelled"
                             state.message = "Execution cancelled"
                             break
+
+                        if _task_preserve_copy(task):
+                            state.message = f"Skip fixed copy: {task.layer_name}"
+                            completed += 1
+                            state.progress = round(completed / max(total_tasks, 1) * 100.0, 2)
+                            if on_progress:
+                                on_progress(state.message, state.progress)
+                            if _set_task_result(task, SimpleNamespace(success=True, message=_PRESERVE_COPY_MESSAGE)):
+                                successful_tasks += 1
+                                _log_notice(_log, "⏭ %s: %s", task.layer_name, _PRESERVE_COPY_MESSAGE)
+                            else:
+                                failed_tasks += 1
+                            continue
 
                         if photoshop_service._is_smart_object_task(task):
                             state.message = f"Applying smart object {task.layer_name}"
