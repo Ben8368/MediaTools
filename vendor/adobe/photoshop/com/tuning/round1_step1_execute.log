@@ -1,0 +1,71 @@
+[2026-05-15 01:14:33] INFO: Font index: 261 families
+[2026-05-15 01:14:33] INFO: Working copy: C:\MediaTools\vendor\adobe\photoshop\com\tuning\smoke-mirror.psd
+[2026-05-15 01:14:34] INFO: Processing 2 direct + 2 SO layers
+[2026-05-15 01:14:35] BEFORE [上下排版/组 2/Seedance 2.0]: text='Seedance 2.0' font=NotoSans-Bold size_pt=53.9933 size_px=72.0000 tracking=0.0 auto_leading=False leading_pt=62.2422 bounds_h=42.00px
+[2026-05-15 01:14:35] APPLY: [上下排版/组 2/Seedance 2.0] target_h=42.00px font_resolved=NotoSans-Bold
+[2026-05-15 01:14:37] INFO: CALIBRATE [上下排版/组 2/Seedance 2.0]: real_h=42.00px lab_h=56.00px scale=0.7500
+    [iter 01 size] tried=53.9933 → h=56.00px  target=56.00px CONVERGED
+    [iter 02 size] tried=33.7458 → h=36.00px  target=56.00px
+    [iter 03 size] tried=43.8695 → h=46.00px  target=56.00px
+    [iter 04 size] tried=48.9314 → h=51.00px  target=56.00px
+    [iter 05 size] tried=51.4623 → h=54.00px  target=56.00px
+    [iter 08 size] tried=53.4726 → h=56.00px  target=56.00px CONVERGED
+    [iter 09 size] tried=53.3890 → h=55.00px  target=56.00px
+    [iter 10 size] tried=53.4724 → h=56.00px  target=56.00px CONVERGED
+[2026-05-15 01:15:00] INFO: VERIFY [上下排版/组 2/Seedance 2.0]: real_h=56.00px target=42.00px diff=+14.00px
+[2026-05-15 01:15:00] INFO: REFINE 1 [上下排版/组 2/Seedance 2.0]: size=40.1043pt real_h=42.00px target=42.00px
+[2026-05-15 01:15:01] INFO: REFINE 2 [上下排版/组 2/Seedance 2.0]: size=40.1043pt real_h=42.00px target=42.00px
+[2026-05-15 01:15:01] RESULT [上下排版/组 2/Seedance 2.0]: OK font=NotoSans-Bold size_pt=40.1043 size_px=53.4791 auto_leading=False leading_pt=46.6817 tracking=0.0 final_h=42.00px target_h=42.00px
+[2026-05-15 01:15:01] AFTER  [上下排版/组 2/Seedance 2.0] [OK]: text='0.2 ecnadeeS' font=NotoSans-Bold size_pt=40.1043 size_px=53.4791 tracking=0.0 auto_leading=False leading_pt=46.6817 final_h=42.00px
+[2026-05-15 01:15:01] BEFORE [上下排版/组 2/Dreamina ]: text='Dreamina ' font=NotoSans-Medium size_pt=53.9933 size_px=72.0000 tracking=0.0 auto_leading=False leading_pt=62.2422 bounds_h=41.00px
+[2026-05-15 01:15:01] APPLY: [上下排版/组 2/Dreamina ] target_h=41.00px font_resolved=NotoSans-Medium
+[2026-05-15 01:15:04] INFO: CALIBRATE [上下排版/组 2/Dreamina ]: real_h=41.00px lab_h=55.00px scale=0.7455
+    [iter 01 size] tried=53.9933 → h=55.00px  target=55.00px CONVERGED
+    [iter 02 size] tried=33.7458 → h=35.00px  target=55.00px
+    [iter 03 size] tried=43.8695 → h=45.00px  target=55.00px
+    [iter 04 size] tried=48.9314 → h=50.00px  target=55.00px
+    [iter 05 size] tried=51.4623 → h=52.00px  target=55.00px
+    [iter 06 size] tried=52.7278 → h=54.00px  target=55.00px
+    [iter 08 size] tried=53.4693 → h=54.00px  target=55.00px
+    [iter 09 size] tried=53.5528 → h=55.00px  target=55.00px CONVERGED
+    [iter 10 size] tried=53.4691 → h=54.00px  target=55.00px
+    [iter 11 size] tried=53.5527 → h=55.00px  target=55.00px CONVERGED
+[2026-05-15 01:15:30] INFO: VERIFY [上下排版/组 2/Dreamina ]: real_h=55.00px target=41.00px diff=+14.00px
+[2026-05-15 01:15:31] INFO: REFINE 1 [上下排版/组 2/Dreamina ]: size=39.9211pt real_h=41.00px target=41.00px
+[2026-05-15 01:15:32] INFO: REFINE 2 [上下排版/组 2/Dreamina ]: size=39.9211pt real_h=41.00px target=41.00px
+[2026-05-15 01:15:32] RESULT [上下排版/组 2/Dreamina ]: OK font=NotoSans-Medium size_pt=39.9211 size_px=53.2348 auto_leading=False leading_pt=46.3987 tracking=0.0 final_h=41.00px target_h=41.00px
+[2026-05-15 01:15:32] AFTER  [上下排版/组 2/Dreamina ] [OK]: text=' animaerD' font=NotoSans-Medium size_pt=39.9211 size_px=53.2348 tracking=0.0 auto_leading=False leading_pt=46.3987 final_h=41.00px
+[2026-05-15 01:15:34] BEFORE [Supports text, image, video,and audio input types, reshaping au]: text='Supports text, image, video,and audio input types,\rreshaping audiovisual standards' font=NotoSans-Regular size_pt=24.4651 size_px=24.4651 tracking=0.0 auto_leading=False leading_pt=31.4551 bounds_h=65.00px
+[2026-05-15 01:15:34] APPLY: [Supports text, image, video,and audio input types, reshaping au] target_h=65.00px font_resolved=NotoSans-Regular
+[2026-05-15 01:15:36] INFO: CALIBRATE [Supports text, image, video,and audio input types, reshaping au]: real_h=65.00px lab_h=56.00px scale=1.1607
+    [iter 01 size] tried=24.4651 → h=56.00px  target=56.00px CONVERGED
+    [iter 02 size] tried=15.2907 → h=47.00px  target=56.00px
+    [iter 03 size] tried=19.8779 → h=51.00px  target=56.00px
+    [iter 04 size] tried=22.1715 → h=54.00px  target=56.00px
+    [iter 08 lead] tried=33.0494 → h=56.00px  target=56.00px CONVERGED
+    [iter 09 lead] tried=33.0494 → h=56.00px  target=56.00px CONVERGED
+[2026-05-15 01:16:09] INFO: BOUNDARY PROTECT [Supports text, image, video,and audio input types, reshaping au]: Expanded SO canvas by 19% (scale=1.200, size_ratio=0.906)
+[2026-05-15 01:16:10] INFO: VERIFY [Supports text, image, video,and audio input types, reshaping au]: real_h=56.00px target=65.00px diff=-9.00px
+[2026-05-15 01:16:10] INFO: REFINE 1 [Supports text, image, video,and audio input types, reshaping au]: size=25.7348pt real_h=66.00px target=65.00px
+[2026-05-15 01:16:11] INFO: REFINE 2 [Supports text, image, video,and audio input types, reshaping au]: size=25.3448pt real_h=64.00px target=65.00px
+[2026-05-15 01:16:11] RESULT [Supports text, image, video,and audio input types, reshaping au]: OK font=NotoSans-Regular size_pt=25.3448 size_px=25.3448 auto_leading=False leading_pt=37.7797 tracking=46.875 final_h=64.00px target_h=65.00px
+[2026-05-15 01:16:11] AFTER  [Supports text, image, video,and audio input types, reshaping au] [OK]: text=',sepyt tupni oidua dna,oediv ,egami ,txet stroppuS\rsdradnats lausivoidua gnipahser' font=NotoSans-Regular size_pt=25.3448 size_px=25.3448 tracking=46.875 auto_leading=False leading_pt=37.7797 final_h=64.00px
+[2026-05-15 01:16:14] BEFORE [Multimodal Creation All -Around Reference]: text='Multimodal Creation All\r-Around Reference' font=NotoSans-Bold size_pt=62.9102 size_px=62.9102 tracking=0.0 auto_leading=False leading_pt=69.9003 bounds_h=136.00px
+[2026-05-15 01:16:14] APPLY: [Multimodal Creation All -Around Reference] target_h=136.00px font_resolved=NotoSans-Bold
+[2026-05-15 01:16:16] INFO: CALIBRATE [Multimodal Creation All -Around Reference]: real_h=136.00px lab_h=119.00px scale=1.1429
+    [iter 01 size] tried=62.9102 → h=119.00px  target=119.00px CONVERGED
+    [iter 02 size] tried=39.3189 → h=101.00px  target=119.00px
+    [iter 03 size] tried=51.1146 → h=110.00px  target=119.00px
+    [iter 04 size] tried=57.0124 → h=115.00px  target=119.00px
+    [iter 08 lead] tried=72.8690 → h=117.00px  target=119.00px
+    [iter 09 lead] tried=75.0551 → h=121.00px  target=119.00px
+    [iter 10 lead] tried=72.8034 → h=117.00px  target=119.00px
+    [iter 11 lead] tried=74.9875 → h=121.00px  target=119.00px
+    [iter 12 lead] tried=72.7379 → h=117.00px  target=119.00px
+[2026-05-15 01:16:52] INFO: BOUNDARY PROTECT [Multimodal Creation All -Around Reference]: Expanded SO canvas by 19% (scale=1.200, size_ratio=0.932)
+[2026-05-15 01:16:52] INFO: VERIFY [Multimodal Creation All -Around Reference]: real_h=116.00px target=136.00px diff=-20.00px
+[2026-05-15 01:16:53] INFO: REFINE 1 [Multimodal Creation All -Around Reference]: size=68.7235pt real_h=136.00px target=136.00px
+[2026-05-15 01:16:54] INFO: REFINE 2 [Multimodal Creation All -Around Reference]: size=68.7235pt real_h=136.00px target=136.00px
+[2026-05-15 01:16:54] RESULT [Multimodal Creation All -Around Reference]: OK font=NotoSans-Bold size_pt=68.7235 size_px=68.7235 auto_leading=False leading_pt=82.4682 tracking=40.625 final_h=136.00px target_h=136.00px
+[2026-05-15 01:16:54] AFTER  [Multimodal Creation All -Around Reference] [OK]: text='llA noitaerC ladomitluM\recnerefeR dnuorA-' font=NotoSans-Bold size_pt=68.7235 size_px=68.7235 tracking=40.625 auto_leading=False leading_pt=82.4682 final_h=136.00px
+[2026-05-15 01:16:55] INFO: Done: C:\MediaTools\vendor\adobe\photoshop\com\tuning\smoke-mirror.psd
