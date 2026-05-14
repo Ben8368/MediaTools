@@ -62,13 +62,16 @@ class NotificationManager:
 
     def mark_as_read(self, notification_id: str) -> bool:
         """Mark a notification as read."""
+        found = False
         with self._lock:
             for notification in self._notifications:
                 if notification.id == notification_id:
                     notification.read = True
-                    self._save_to_disk()
-                    return True
-        return False
+                    found = True
+                    break
+        if found:
+            self._save_to_disk()
+        return found
 
     def mark_all_as_read(self) -> int:
         """Mark all notifications as read."""
@@ -76,8 +79,8 @@ class NotificationManager:
             count = sum(1 for n in self._notifications if not n.read)
             for notification in self._notifications:
                 notification.read = True
-            if count > 0:
-                self._save_to_disk()
+        if count > 0:
+            self._save_to_disk()
         return count
 
     def get_unread_count(self) -> int:
@@ -92,7 +95,7 @@ class NotificationManager:
         self._save_to_disk()
 
     def _save_to_disk(self) -> None:
-        """Save notifications to disk."""
+        """Save notifications to disk. Must be called without holding self._lock."""
         try:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
             with self._lock:

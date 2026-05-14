@@ -2,11 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { LeftNavbar } from '@/LeftNavbar'
+import { useNotificationUnreadStore } from '@/notificationUnreadStore'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
 
 const apiMocks = vi.hoisted(() => ({
-  restartSystem: vi.fn(),
+  getUnreadNotificationCount: vi.fn(),
   shutdownSystem: vi.fn(),
 }))
 
@@ -14,8 +15,10 @@ vi.mock('@/api', () => apiMocks)
 
 describe('LeftNavbar shutdown flow', () => {
   beforeEach(() => {
-    apiMocks.restartSystem.mockReset()
+    apiMocks.getUnreadNotificationCount.mockReset()
     apiMocks.shutdownSystem.mockReset()
+    apiMocks.getUnreadNotificationCount.mockResolvedValue({ unread_count: 0 })
+    useNotificationUnreadStore.setState({ unreadNotificationCount: 0, cooldownUntil: 0 })
     useSystemStore.setState({ showLauncher: false, themeMode: 'dark', wallpaper: 2 })
     useWindowStore.setState({ windows: [], maxZ: 100 })
   })
@@ -38,28 +41,22 @@ describe('LeftNavbar shutdown flow', () => {
     confirmSpy.mockRestore()
   })
 
-  it('shows a restart confirmation state after backend restart succeeds', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    apiMocks.restartSystem.mockResolvedValue({ ok: true })
+  it('shows unread badge when notification API reports a positive count', async () => {
+    apiMocks.getUnreadNotificationCount.mockResolvedValue({ unread_count: 7 })
 
     render(<LeftNavbar />)
 
-    fireEvent.click(screen.getByLabelText('power-menu'))
-    fireEvent.click(screen.getByLabelText('restart-backend'))
-
     await waitFor(() => {
-      expect(apiMocks.restartSystem).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('7')).toBeInTheDocument()
     })
-    expect(screen.getByText('MediaTools 正在重启')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '重新连接' })).toBeInTheDocument()
-
-    confirmSpy.mockRestore()
   })
 
   it('opens logs through the shared window manager', () => {
     render(<LeftNavbar />)
 
     fireEvent.click(screen.getByTitle('日志'))
+
+    expect(apiMocks.getUnreadNotificationCount).toHaveBeenCalled()
 
     expect(useWindowStore.getState().getWindowByType('logs')).toMatchObject({
       appType: 'logs',

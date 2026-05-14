@@ -48,6 +48,8 @@
 .ps-app .dl-mini-ai.ps-mini-ai {
   left: calc(200px + 12px);
   bottom: 16px;
+  /* 高于 .ps-execute-dock（sticky z-index:20），避免输入区与发送被底部工单栏遮挡 */
+  z-index: 30;
 }
 
 .ps-flow-step {

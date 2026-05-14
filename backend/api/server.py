@@ -68,7 +68,7 @@ from backend.services.workbench import analyze_subtitle_for_workbench, export_cl
 from backend.services.workspace import get_current_workspace, set_current_workspace
 
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
-FRONTEND_DEV_SERVER = (os.environ.get("MEDIATOOLS_FRONTEND_DEV_URL") or "").rstrip("/")
+FRONTEND_DEV_SERVER = (os.environ.get("MEDIATOOLS_FRONTEND_DEV_URL") or "").strip().rstrip("/")
 
 app = FastAPI(
     title="MediaTools API",

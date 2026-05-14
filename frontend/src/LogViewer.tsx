@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { clearLogs, clearNotifications, fetchLogMetadata, fetchLogs, getSystemMetrics, getUnreadNotificationCount, markAllNotificationsAsRead } from '@/api'
+import { clearLogs, clearNotifications, fetchLogMetadata, fetchLogs, getSystemMetrics, markAllNotificationsAsRead } from '@/api'
+import { useNotificationUnreadStore } from '@/notificationUnreadStore'
 
 type LogEntry = {
   level: string
@@ -42,8 +43,10 @@ export function LogViewer() {
   const [modules, setModules] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [unreadCount, setUnreadCount] = useState(0)
   const [logMode, setLogMode] = useState<'production' | 'development'>('production')
+  const pullUnreadNotificationCount = useNotificationUnreadStore((s) => s.pullUnreadNotificationCount)
+  const setUnreadNotificationCount = useNotificationUnreadStore((s) => s.setUnreadNotificationCount)
+  const setClearCooldown = useNotificationUnreadStore((s) => s.setClearCooldown)
 
   const availableLevels = logMode === 'development' ? DEVELOPMENT_LEVELS : PRODUCTION_LEVELS
 
@@ -67,15 +70,6 @@ export function LogViewer() {
       setLoading(false)
     }
   }, [level, module, page, pageSize])
-
-  const loadUnreadCount = useCallback(async () => {
-    try {
-      const data = await getUnreadNotificationCount()
-      setUnreadCount(data?.unread_count ?? 0)
-    } catch {
-      setUnreadCount(0)
-    }
-  }, [])
 
   const loadMetadata = useCallback(async () => {
     try {
@@ -104,26 +98,33 @@ export function LogViewer() {
   }, [])
 
   useEffect(() => {
+    void pullUnreadNotificationCount()
+  }, [pullUnreadNotificationCount])
+
+  useEffect(() => {
     void loadLogs()
     void loadMetadata()
-    void loadUnreadCount()
     const timer = window.setInterval(() => {
       void loadLogs()
-      void loadUnreadCount()
     }, 3000)
     return () => window.clearInterval(timer)
-  }, [loadLogs, loadMetadata, loadUnreadCount])
+  }, [loadLogs, loadMetadata])
 
   const pages = useMemo(() => buildPages(page, totalPages), [page, totalPages])
 
   async function handleClear() {
-    await markAllNotificationsAsRead()
-    await clearNotifications()
-    await clearLogs()
-    setPage(1)
-    await loadLogs()
-    await loadMetadata()
-    await loadUnreadCount()
+    try {
+      await markAllNotificationsAsRead()
+      await clearNotifications()
+      await clearLogs()
+      setUnreadNotificationCount(0)
+      setClearCooldown()
+      setPage(1)
+      await loadLogs()
+      await loadMetadata()
+    } finally {
+      await pullUnreadNotificationCount()
+    }
   }
 
   function changeLevel(value: string) {

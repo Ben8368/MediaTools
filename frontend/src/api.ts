@@ -136,7 +136,8 @@ export const deleteTaskRecord = (taskId: string, allowActive = false) => request
 export const clearTaskRecords = (payload?: Record<string, unknown>) => post('/api/tasks/clear', payload)
 
 export const fetchNotifications = (unreadOnly = false) => get('/api/notifications', { unread_only: unreadOnly })
-export const getUnreadNotificationCount = () => get('/api/notifications/unread-count')
+export const getUnreadNotificationCount = () =>
+  request('/api/notifications/unread-count', { cache: 'no-store' })
 export const markNotificationAsRead = (notificationId: string) => post(`/api/notifications/mark-as-read/${notificationId}`)
 export const markAllNotificationsAsRead = () => post('/api/notifications/mark-all-as-read')
 export const clearNotifications = () => post('/api/notifications/clear')

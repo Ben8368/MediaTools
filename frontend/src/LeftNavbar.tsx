@@ -1,5 +1,6 @@
-import { shutdownSystem, getUnreadNotificationCount } from '@/api'
+import { shutdownSystem } from '@/api'
 import { getAppIcon } from '@/icon-library'
+import { useNotificationUnreadStore } from '@/notificationUnreadStore'
 import { useSystemStore } from '@/store'
 import { useWindowStore } from '@/windowStore'
 import { useEffect, useState } from 'react'
@@ -10,10 +11,11 @@ export function LeftNavbar() {
   const openWindow = useWindowStore((state) => state.openWindow)
   const minimizeWindow = useWindowStore((state) => state.minimizeWindow)
   const focusWindow = useWindowStore((state) => state.focusWindow)
+  const unreadNotificationCount = useNotificationUnreadStore((s) => s.unreadNotificationCount)
+  const pullUnreadNotificationCount = useNotificationUnreadStore((s) => s.pullUnreadNotificationCount)
   const [showPowerMenu, setShowPowerMenu] = useState(false)
   const [isShuttingDown, setIsShuttingDown] = useState(false)
   const [powerComplete, setPowerComplete] = useState<'shutdown' | null>(null)
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
 
   const uniqueRunningApps = windows.filter(
     (windowItem, index, allWindows) =>
@@ -21,18 +23,10 @@ export function LeftNavbar() {
   )
 
   useEffect(() => {
-    async function loadUnreadCount() {
-      try {
-        const data = await getUnreadNotificationCount()
-        setUnreadNotificationCount(data?.unread_count ?? 0)
-      } catch {
-        setUnreadNotificationCount(0)
-      }
-    }
-    void loadUnreadCount()
-    const timer = window.setInterval(() => void loadUnreadCount(), 3000)
+    void pullUnreadNotificationCount()
+    const timer = window.setInterval(() => void pullUnreadNotificationCount(), 3000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [pullUnreadNotificationCount])
 
   function doClick(appType: string) {
     const existingWindow = windows.find((windowItem) => windowItem.appType === appType)
@@ -178,7 +172,15 @@ export function LeftNavbar() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
         <Btn icon={<IconGlobe />} tooltip="网络" />
         <div style={{ position: 'relative' }}>
-          <Btn icon={<IconBell />} tooltip="日志" active={windows.some((item) => item.appType === 'logs' && !item.isMinimized)} onClick={() => openWindow('logs')} />
+          <Btn
+            icon={<IconBell />}
+            tooltip="日志"
+            active={windows.some((item) => item.appType === 'logs' && !item.isMinimized)}
+            onClick={() => {
+              void pullUnreadNotificationCount()
+              openWindow('logs')
+            }}
+          />
           {unreadNotificationCount > 0 && (
             <div
               style={{

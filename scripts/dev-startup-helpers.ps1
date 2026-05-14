@@ -210,6 +210,8 @@ function Invoke-MediaToolsBackendWatchdogCycle {
     Remove-Item -LiteralPath $LogFile -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $ErrFile -Force -ErrorAction SilentlyContinue
 
+    # 生产模式必须走 frontend/dist；若残留开发代理变量，静态站点会变成 502。
+    Remove-Item Env:\MEDIATOOLS_FRONTEND_DEV_URL -ErrorAction SilentlyContinue
     $env:LOG_MODE = 'production'
 
     $proc = Start-Process -FilePath 'python' `

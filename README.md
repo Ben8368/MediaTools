@@ -95,7 +95,7 @@ FastAPI routes available at `http://127.0.0.1:7860/docs`.
 | Group | Path Prefix | File |
 |---|---|---|
 | System | `/api/system`, `/api/modules` | `backend/api/routes/system.py` |
-| Media | `/api/media` | `backend/api/routes/media.py` |
+| Media | `/api/fetcher`, `/api/encoder`, `/api/decryptor` | `backend/api/routes/media.py` |
 | Workspace | `/api/workspace` | `backend/api/routes/workspace.py` |
 | Workbench | `/api/workbench` | `backend/api/routes/workbench.py` |
 | Assets | `/api/assets` | `backend/api/routes/assets.py` |
@@ -103,12 +103,16 @@ FastAPI routes available at `http://127.0.0.1:7860/docs`.
 | filebrowser | `/api/filebrowser` | `backend/api/routes/filebrowser.py` |
 | Task center | `/api/tasks` | `backend/api/routes/task_center.py` |
 | Logs | `/api/logs` | `backend/api/routes/log.py` |
+| Model Config | `/api/model-config` | `backend/api/routes/model_config.py` |
+| Notification | `/api/notifications` | `backend/api/routes/notification.py` |
+| Path Picker | `/api/path-picker` | `backend/api/routes/path_picker.py` |
+| Downloader AI | `/api/downloader/ai` | `backend/api/routes/downloader_ai.py` |
 | Photoshop | `/api/photoshop` | `backend/api/routes/photoshop.py` |
 | Adobe/AE | `/api/adobe` | `backend/api/routes/adobe.py` |
 | Auditor | `/api/auditor` | `backend/api/routes/auditor.py` |
 | WeChat Moments | `/api/wechat_moments` | `backend/api/routes/wechat.py` |
 | Browser control | `/api/browser` | `backend/api/routes/browser.py` |
-| AI Assistant | `/api/agent/*` | `backend/agent/routes.py` |
+| AI Assistant | `/api/agent/*` | `backend/api/server.py` |
 
 Set `API_SECRET_KEY` when binding to non-localhost addresses.
 
@@ -131,6 +135,10 @@ MediaTools/
 ├── vendor/             # Third-party source/embedded tools
 ├── docs/               # Project documentation
 ├── tests/              # Python tests
+├── scripts/            # Development helper scripts
+├── data/               # Runtime data files
+├── assets/             # Static resources
+├── LICENSES/           # Third-party licenses
 ├── bin/                # Local binaries (not committed)
 ├── runtime/            # Runtime state (not committed)
 └── projects/           # Workspace data (not committed)

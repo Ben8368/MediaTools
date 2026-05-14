@@ -9,7 +9,7 @@ type FontPickerProps = {
   emptyLabel?: string
   accent?: 'blue' | 'purple'
   compact?: boolean
-  /** 隐藏「字体家族」「字重」列标题，仅保留控件本身（任务行等紧凑场景） */
+  /** 隐藏列标题，仅保留控件本身（任务行等紧凑场景） */
   hideLabels?: boolean
   onChange: (value: string) => void
 }
@@ -130,54 +130,19 @@ export function FontPicker({
 }: FontPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [styleOpen, setStyleOpen] = useState(false)
-  const [styleQuery, setStyleQuery] = useState('')
-  
+
   const allFonts = useMemo(() => uniqueFonts([value, sourceFont || '', ...fonts]), [fonts, sourceFont, value])
   const groups = useMemo(() => buildGroups(allFonts, query), [allFonts, query])
-  
+
   const currentFont = value ? parseFont(value) : null
   const sourceFontInfo = sourceFont ? parseFont(sourceFont) : null
-  
-  const currentFamily = currentFont?.family || ''
-  const currentStyle = currentFont?.style || ''
-  
-  const activeFamily = currentFamily || sourceFontInfo?.family || ''
-  const activeGroup = useMemo(() => {
-    let group = groups.find(g => g.family === activeFamily)
-    if (!group) {
-      const allGroups = buildGroups(allFonts, '')
-      group = allGroups.find(g => g.family === activeFamily)
-    }
-    return group
-  }, [groups, allFonts, activeFamily])
-  
-  const availableStyles = activeGroup?.variants || []
 
-  const filteredStyles = useMemo(() => {
-    const needle = styleQuery.trim().toLowerCase()
-    if (!needle) return availableStyles
-    return availableStyles.filter(
-      (variant) =>
-        variant.style.toLowerCase().includes(needle)
-        || variant.value.toLowerCase().includes(needle),
-    )
-  }, [availableStyles, styleQuery])
+  const currentFamily = currentFont?.family || ''
 
   const defaultEmptyLabel = emptyLabel || (sourceFontInfo ? `沿用源字体：${sourceFontInfo.family}` : '沿用源字体')
 
-  const closedStyleInputValue = currentFont?.style || sourceFontInfo?.style || ''
-
-  const styleSummary =
-    currentFont?.style
-    || (sourceFontInfo && !value.trim() ? sourceFontInfo.style : '')
-    || '字重'
-
-  const weightPickerDisabled = !sourceFont?.trim() && !currentFamily
-
   const closeMenus = () => {
     setOpen(false)
-    setStyleOpen(false)
   }
 
   const handleFamilyChange = (newFamily: string) => {
@@ -188,21 +153,14 @@ export function FontPicker({
       return
     }
     const allGroups = buildGroups(allFonts, '')
-    const group = allGroups.find(g => g.family === newFamily)
+    const group = allGroups.find((g) => g.family === newFamily)
     if (group && group.variants.length > 0) {
-      const matchedStyle = group.variants.find(v => v.style === currentStyle)
-      onChange(matchedStyle ? matchedStyle.value : group.variants[0].value)
+      onChange(group.family)
     } else {
       onChange(newFamily)
     }
     setQuery('')
     setOpen(false)
-  }
-
-  const handleStylePick = (nextValue: string) => {
-    onChange(nextValue)
-    setStyleQuery('')
-    setStyleOpen(false)
   }
 
   const halfClass = `font-picker-half ${hideLabels ? 'font-picker-half--nolabel' : ''}`
@@ -215,7 +173,7 @@ export function FontPicker({
       }}
     >
       <label className={halfClass}>
-        {!hideLabels ? <b>{label}家族</b> : null}
+        {!hideLabels ? <b>{label}</b> : null}
         <div className={`font-picker ${open ? 'font-picker--open' : 'font-picker--closed'} ${currentFamily ? 'font-picker--selected' : ''}`}>
           {!open && (
             <div className="font-picker-summary" aria-hidden="true">
@@ -223,12 +181,11 @@ export function FontPicker({
             </div>
           )}
           <input
-            aria-label={`${ariaLabel} 家族`}
+            aria-label={ariaLabel}
             value={open ? query : currentFamily}
             onChange={(event) => {
               setQuery(event.target.value)
               setOpen(true)
-              setStyleOpen(false)
             }}
             onKeyDown={(event) => {
               if (event.key !== 'Enter') return
@@ -239,7 +196,6 @@ export function FontPicker({
             onFocus={() => {
               setQuery('')
               setOpen(true)
-              setStyleOpen(false)
             }}
             placeholder={currentFamily || defaultEmptyLabel}
           />
@@ -248,7 +204,6 @@ export function FontPicker({
             aria-label="展开字体列表"
             onClick={() => {
               setOpen((next) => !next)
-              setStyleOpen(false)
             }}
           >
             ⌄
@@ -278,88 +233,6 @@ export function FontPicker({
                   <span>{group.family}</span>
                 </button>
               ))}
-            </div>
-          )}
-        </div>
-      </label>
-      <label className={halfClass}>
-        {!hideLabels ? <b>字重</b> : null}
-        <div
-          className={`font-picker ${styleOpen ? 'font-picker--open' : 'font-picker--closed'} ${closedStyleInputValue ? 'font-picker--selected' : ''}`}
-        >
-          {!styleOpen && (
-            <div className="font-picker-summary" aria-hidden="true">
-              <span>{styleSummary}</span>
-            </div>
-          )}
-          <input
-            aria-label={`${ariaLabel} 字重`}
-            disabled={weightPickerDisabled}
-            value={styleOpen ? styleQuery : closedStyleInputValue}
-            onChange={(event) => {
-              setStyleQuery(event.target.value)
-              setStyleOpen(true)
-              setOpen(false)
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
-              event.preventDefault()
-              const pick = filteredStyles[0]
-              if (pick) {
-                handleStylePick(pick.value)
-                return
-              }
-              if (!value.trim() && sourceFontInfo) handleStylePick('')
-            }}
-            onFocus={() => {
-              setStyleQuery('')
-              setStyleOpen(true)
-              setOpen(false)
-            }}
-            placeholder={styleSummary}
-          />
-          <button
-            type="button"
-            aria-label="展开字重列表"
-            disabled={weightPickerDisabled}
-            onClick={() => {
-              if (weightPickerDisabled) return
-              setStyleOpen((next) => !next)
-              setOpen(false)
-            }}
-          >
-            ⌄
-          </button>
-          {styleOpen && !weightPickerDisabled && (
-            <div className="font-picker-menu" role="listbox">
-              {!value.trim() && sourceFontInfo ? (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={!value.trim()}
-                  className={`font-picker-option ${!value.trim() ? 'font-picker-option--active' : ''}`}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleStylePick('')}
-                >
-                  <span>沿用源字重：{sourceFontInfo.style}</span>
-                </button>
-              ) : null}
-              {filteredStyles.map((variant) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={currentFont?.value === variant.value}
-                  className={`font-picker-option ${currentFont?.value === variant.value ? 'font-picker-option--active' : ''}`}
-                  key={variant.value}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => handleStylePick(variant.value)}
-                >
-                  <span>{variant.style}</span>
-                </button>
-              ))}
-              {!filteredStyles.length && (Boolean(value.trim()) || !sourceFontInfo) ? (
-                <div className="font-picker-empty">没有匹配的字重</div>
-              ) : null}
             </div>
           )}
         </div>

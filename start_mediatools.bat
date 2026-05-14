@@ -17,12 +17,23 @@ echo.
 if not exist runtime mkdir runtime
 
 echo [1/4] Building frontend...
-cd frontend
-call npm run build >nul 2>&1
-if errorlevel 1 (
-    echo Warning: Frontend build failed. Continuing with existing build...
+pushd frontend
+call npm run build > "%~dp0runtime\mediatools-frontend-build.log" 2>&1
+if errorlevel 1 goto frontend_build_warn
+popd
+goto frontend_build_done
+
+:frontend_build_warn
+popd
+echo Warning: Frontend build failed. Log: runtime\mediatools-frontend-build.log
+if not exist "frontend\dist\index.html" (
+    echo ERROR: frontend\dist\index.html missing. Install Node.js and npm, run "cd frontend ^& npm ci ^& npm run build", then retry.
+    pause
+    exit /b 1
 )
-cd ..
+echo Continuing with existing frontend\dist ...
+
+:frontend_build_done
 
 echo [2/4] Checking existing MediaTools backend...
 powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -Command "& { . '%~dp0scripts\dev-startup-helpers.ps1'; exit (Test-ExistingMediaToolsBackend -PidFile '%cd%\%PID_FILE%' -Port 7860) }"

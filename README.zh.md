@@ -95,7 +95,7 @@ FastAPI 路由在 `http://127.0.0.1:7860/docs` 可查看。
 | 分组 | 路径前缀 | 文件 |
 |---|---|---|
 | 系统状态 | `/api/system`, `/api/modules` | `backend/api/routes/system.py` |
-| 媒体任务 | `/api/media` | `backend/api/routes/media.py` |
+| 媒体任务 | `/api/fetcher`, `/api/encoder`, `/api/decryptor` | `backend/api/routes/media.py` |
 | 工作区 | `/api/workspace` | `backend/api/routes/workspace.py` |
 | 工作台 | `/api/workbench` | `backend/api/routes/workbench.py` |
 | 素材 | `/api/assets` | `backend/api/routes/assets.py` |
@@ -103,12 +103,16 @@ FastAPI 路由在 `http://127.0.0.1:7860/docs` 可查看。
 | filebrowser | `/api/filebrowser` | `backend/api/routes/filebrowser.py` |
 | 任务中心 | `/api/tasks` | `backend/api/routes/task_center.py` |
 | 日志 | `/api/logs` | `backend/api/routes/log.py` |
+| 模型配置 | `/api/model-config` | `backend/api/routes/model_config.py` |
+| 通知 | `/api/notifications` | `backend/api/routes/notification.py` |
+| 路径选择 | `/api/path-picker` | `backend/api/routes/path_picker.py` |
+| 下载 AI | `/api/downloader/ai` | `backend/api/routes/downloader_ai.py` |
 | Photoshop | `/api/photoshop` | `backend/api/routes/photoshop.py` |
 | Adobe/AE | `/api/adobe` | `backend/api/routes/adobe.py` |
 | 审核 | `/api/auditor` | `backend/api/routes/auditor.py` |
 | 朋友圈 | `/api/wechat_moments` | `backend/api/routes/wechat.py` |
 | 浏览器控制 | `/api/browser` | `backend/api/routes/browser.py` |
-| AI 助手 | `/api/agent/*` | `backend/agent/routes.py` |
+| AI 助手 | `/api/agent/*` | `backend/api/server.py` |
 
 绑定非 localhost 地址时需设置 `API_SECRET_KEY`。
 
@@ -131,6 +135,10 @@ MediaTools/
 ├── vendor/             # 第三方源码/嵌入工具
 ├── docs/               # 项目文档
 ├── tests/              # Python 测试
+├── scripts/            # 开发辅助脚本
+├── data/               # 运行时数据文件
+├── assets/             # 静态资源
+├── LICENSES/           # 第三方许可证
 ├── bin/                # 本地二进制工具（不提交）
 ├── runtime/            # 运行时状态（不提交）
 └── projects/           # 工作区数据（不提交）
