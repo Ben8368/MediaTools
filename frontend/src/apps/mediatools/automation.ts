@@ -1,9 +1,32 @@
 export type AutomationRecord = Record<string, any>
 
+export function isSmartObjectTask(task: AutomationRecord) {
+  return task.layer_kind === 'smart_object_text' || Number(task.smart_object_layer_id || 0) > 0
+}
+
+/** 与 Photoshop 扫描一致：工单里「母版文案」来源，用于对照 target_text、Ai 翻译 Source */
+export function taskEffectiveSourceText(task: AutomationRecord): string {
+  const orig = task.original_text
+  if (orig != null && String(orig).trim()) return String(orig)
+  const raw = task.raw_text
+  if (raw != null && String(raw).trim()) return String(raw)
+  const smart = isSmartObjectTask(task)
+  const layerFallback = String(smart ? (task.smart_object_inner_layer_name || task.layer_name) : task.layer_name || '').trim()
+  return layerFallback
+}
+
+/** target_text 非空且与原文（规范化 trim）不同 → 视为用户或 Ai 改过文案，应参与执行 */
+export function isTargetTextModifiedFromSource(task: AutomationRecord): boolean {
+  const src = taskEffectiveSourceText(task).trim()
+  const tgt = String(task.target_text ?? '').trim()
+  if (!tgt) return false
+  return tgt !== src
+}
+
 export function isAutomationTaskExecutable(task: AutomationRecord) {
   if (task.status === 'skip') return false
-  if (['confirmed', 'ready', 'approved'].includes(task.status)) return true
-  return Boolean(String(task.target_text || '').trim() || String(task.target_font || '').trim())
+  if (String(task.target_font || '').trim()) return true
+  return isTargetTextModifiedFromSource(task)
 }
 
 export function automationTaskIndexes(tasks: AutomationRecord[]) {

@@ -104,6 +104,21 @@ class PhotoshopTicketExportJsonBody(BaseModel):
     ticket: dict[str, Any]
 
 
+class PhotoshopTranslateCopyItem(BaseModel):
+    index: int
+    text: str
+    locale: str
+
+
+class PhotoshopTranslateCopyBody(BaseModel):
+    """批量将工单原文按 BCP 47 区域译为 target 文案（走配置模型）。"""
+
+    items: list[PhotoshopTranslateCopyItem]
+    api_key: str = ""
+    base_url: str = ""
+    model: str = ""
+
+
 class TicketImportBody(BaseModel):
     file_path: str
     ticket_id: str = ""

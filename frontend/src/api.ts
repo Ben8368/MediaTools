@@ -27,7 +27,9 @@ async function request(path: string, init: RequestInit = {}, retry = true): Prom
   const text = await response.text()
   const data = text ? JSON.parse(text) : null
   if (!response.ok) {
-    throw new Error(data?.error || data?.detail || response.statusText)
+    const method = (init.method || 'GET').toUpperCase()
+    const detail = data?.error || data?.detail || response.statusText
+    throw new Error(`${detail}（HTTP ${response.status} · ${method} ${path}）`)
   }
   return data
 }
@@ -92,6 +94,7 @@ export const fetchPhotoshopStatus = () => get('/api/photoshop/status')
 export const scanPhotoshopTicket = (payload: Record<string, unknown>) => post('/api/photoshop/scan', payload)
 export const scanPhotoshopFolder = (payload: Record<string, unknown>) => post('/api/photoshop/scan-folder', payload)
 export const cancelPhotoshopScan = () => post('/api/photoshop/scan/cancel')
+export const translatePhotoshopCopy = (payload: Record<string, unknown>) => post('/api/photoshop/translate-copy', payload)
 export const fetchPhotoshopTickets = () => get('/api/photoshop/tickets')
 export const fetchPhotoshopTicket = (ticketId: string) => get(`/api/photoshop/tickets/${ticketId}`)
 export const importPhotoshopTicket = (filePath: string) => post('/api/photoshop/tickets/import', { file_path: filePath })

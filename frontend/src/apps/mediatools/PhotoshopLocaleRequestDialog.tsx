@@ -30,7 +30,7 @@ type PhotoshopLocaleRequestDialogProps = {
   open: boolean
   portalContainer?: HTMLElement | null
   onClose: () => void
-  onConfirm: (result: PhotoshopLocaleRequestResult) => void
+  onConfirm: (result: PhotoshopLocaleRequestResult) => void | Promise<void>
 }
 
 export function PhotoshopLocaleRequestDialog({
@@ -85,6 +85,7 @@ export function PhotoshopLocaleRequestDialog({
         <div className="fm-picker__header">
           <div>
             <strong id="ps-locale-dialog-title">语种需求</strong>
+            <p className="ps-locale-dialog__hint">确认后写入当前工单并保存；执行时每语种输出对应文件名的 PSD（可在任务表中改 output_name）。</p>
           </div>
           <button type="button" className="fm-icon-btn" title="关闭" aria-label="关闭" onClick={onClose}>
             <CloseIcon />

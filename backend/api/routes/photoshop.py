@@ -16,9 +16,11 @@ from backend.api.models import (
     PhotoshopScanBody,
     PhotoshopTicketBody,
     PhotoshopTicketExportJsonBody,
+    PhotoshopTranslateCopyBody,
     TicketImportBody,
 )
 from backend.services.path_picker import resolve_allowed_path
+from backend.services.photoshop_copy_translate import translate_photoshop_copy_items
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:
@@ -343,5 +345,21 @@ def create_router(
             return JSONResponse({"ok": True, "state": state})
         except FileNotFoundError as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=404)
+
+    @router.post("/api/photoshop/translate-copy")
+    async def photoshop_translate_copy(body: PhotoshopTranslateCopyBody):
+        def _run():
+            return translate_photoshop_copy_items(
+                [item.model_dump() for item in body.items],
+                api_key=body.api_key,
+                base_url=body.base_url,
+                model=body.model,
+            )
+
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, _run)
+        if not result.get("ok"):
+            return JSONResponse(result, status_code=400)
+        return JSONResponse(result)
 
     return router

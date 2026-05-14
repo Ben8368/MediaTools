@@ -270,7 +270,7 @@ def test_build_ticket_expands_languages_and_defaults():
 
     assert payload["meta"]["created_by"] == "mediatools_scan"
     assert len(payload["tasks"]) == 4
-    assert {task["output_name"] for task in payload["tasks"]} == {"zh.psd", "en.psd"}
+    assert {task["output_name"] for task in payload["tasks"]} == {"source_zh.psd", "source_en.psd"}
     smart_tasks = [task for task in payload["tasks"] if task["layer_kind"] == "smart_object_text"]
     assert len(smart_tasks) == 2
     assert {task["smart_object_layer_id"] for task in smart_tasks} == {210}
@@ -767,10 +767,16 @@ def test_task_helpers_and_start_execution_delegate(monkeypatch):
     assert execution._output_filename("", "C:/design/banner.psd") == "banner_photoshop.psd"
 
     tasks = [
-        Mock(output_name="", status="skip", target_text="", target_font=""),
-        Mock(output_name="a.psd", status="confirmed", target_text="", target_font=""),
-        Mock(output_name="a.psd", status="pending", target_text="Hello", target_font=""),
-        Mock(output_name="b.psd", status="pending", target_text="", target_font=""),
+        Mock(output_name="", status="skip", target_text="", target_font="", original_text=""),
+        Mock(
+            output_name="a.psd",
+            status="confirmed",
+            target_text="",
+            target_font="Inter",
+            original_text="Hi",
+        ),
+        Mock(output_name="a.psd", status="pending", target_text="Hello", original_text="Hi", target_font=""),
+        Mock(output_name="b.psd", status="pending", target_text="", target_font="", original_text=""),
     ]
     assert service._should_execute_task(tasks[0]) is False
     assert service._should_execute_task(tasks[1]) is True

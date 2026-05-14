@@ -13,7 +13,15 @@ from document_scanner import scan_document
 from text_logger import PSALogger
 from font_resolver import build_font_index, resolve_font
 from adaptive_lab import LabDocument
-from config_reader import TextMapping
+from config_reader import TextMapping, horizontal_outer_strip
+
+
+def _normalize_ticket_layer_text(value: str) -> str:
+    """将图层文字中的段落分隔统一为换行符 \\n，再写入工单 JSON（与 Ai 翻译一致）。"""
+    if not value:
+        return ""
+    t = value.replace("\r\n", "\n").replace("\r", "\n")
+    return horizontal_outer_strip(t)
 
 
 @dataclass
@@ -85,12 +93,15 @@ def scan_document_for_ticket(
         else:
             normal_count += 1
 
+        norm = _normalize_ticket_layer_text(rec.text)
+        line_breaks = norm.count("\n") if norm else 0
+
         scan_rows.append(TicketScanRow(
             layer_id=rec.layer_id,
             source_psd=os.path.basename(source_psd),
             artboard=artboard,
             layer_name=rec.layer_name,
-            line_count=rec.text.count('\n') + 1,
+            line_count=line_breaks + 1 if norm else 1,
             alignment='left',
             font_size=rec.size_pt,
             tracking=rec.tracking,
@@ -99,8 +110,8 @@ def scan_document_for_ticket(
             source_font=rec.font,
             source_font_family=font_family,
             source_font_weight=font_weight,
-            raw_text=rec.text,
-            original_text=rec.text.replace('\r', ' ').replace('\n', ' ').strip(),
+            raw_text=norm,
+            original_text=norm,
             layer_obj=None,
             smart_object_layer_id=rec.so_layer_id if is_so else 0,
             smart_object_name=rec.so_psb_name if is_so else '',
@@ -266,8 +277,18 @@ def modify_smart_object_text_layer(ps, parent_doc, row: TicketScanRow, mapping: 
 
         # Boundary protection: expand canvas at each SO level (innermost first)
         if result and result.success:
-            size_ratio = result.final_font_size / max(row.font_size, 0.1)
-            expansion = max(1.2, min(3.0, size_ratio * 1.1))
+            if getattr(result, 'fit_status', '') == 'fallback':
+                # 直接套用未做自适应缩排，译文更长时略放大画板，降低裁切概率
+                oh = max(float(getattr(result, 'original_height', 0) or 0), 0.1)
+                fh = max(float(getattr(result, 'final_height', 0) or 0), 0.1)
+                growth = max(1.2, fh / oh)
+                raw = getattr(result, 'new_text', '') or ''
+                master = getattr(result, 'original_text', '') or ''
+                char_growth = (len(raw) + 1) / (len(master) + 1)
+                expansion = max(1.45, min(3.0, 1.15 * max(growth, char_growth ** 0.35)))
+            else:
+                size_ratio = result.final_font_size / max(row.font_size, 0.1)
+                expansion = max(1.2, min(3.0, size_ratio * 1.1))
 
             for so_doc, so_id in reversed(opened_docs):
                 try:

@@ -7,20 +7,21 @@ import {
 } from './automation'
 
 describe('automation task helpers', () => {
-  it('detects executable automation tasks', () => {
+  it('detects executable automation tasks (real text or font change only)', () => {
     expect(isAutomationTaskExecutable({ status: 'skip', target_text: 'hello' })).toBe(false)
-    expect(isAutomationTaskExecutable({ status: 'confirmed' })).toBe(true)
-    expect(isAutomationTaskExecutable({ status: 'ready' })).toBe(true)
-    expect(isAutomationTaskExecutable({ target_text: 'hello' })).toBe(true)
+    expect(isAutomationTaskExecutable({ status: 'confirmed', original_text: 'a', target_text: '' })).toBe(false)
+    expect(isAutomationTaskExecutable({ status: 'ready', original_text: 'a', target_text: 'a' })).toBe(false)
+    expect(isAutomationTaskExecutable({ original_text: 'a', target_text: 'b' })).toBe(true)
+    expect(isAutomationTaskExecutable({ layer_name: 'Layer 1', target_text: 'edited' })).toBe(true)
     expect(isAutomationTaskExecutable({ target_font: 'Inter' })).toBe(true)
-    expect(isAutomationTaskExecutable({ status: 'pending' })).toBe(false)
+    expect(isAutomationTaskExecutable({ status: 'pending', original_text: 'x', target_text: '' })).toBe(false)
   })
 
   it('returns executable task indexes only', () => {
     expect(automationTaskIndexes([
-      { status: 'pending' },
-      { status: 'confirmed' },
-      { target_text: 'replace me' },
+      { status: 'pending', original_text: 'a', target_text: '' },
+      { status: 'confirmed', original_text: 'a', target_text: 'b' },
+      { target_text: 'replace me', layer_name: 'x' },
       { status: 'skip', target_font: 'Inter' },
     ])).toEqual([1, 2])
   })

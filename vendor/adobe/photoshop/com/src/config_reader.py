@@ -8,6 +8,23 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+# 仅含「横向」空白，避免 str.strip() 去掉首尾换行导致多行文案行数变化
+_HORIZONTAL_WS = frozenset(" \t\v\f\u00a0\u2007\u3000")
+
+
+def horizontal_outer_strip(value: str) -> str:
+    """去除首尾横向空白（空格、Tab 等），保留换行符与段落结构。"""
+    if not value:
+        return value
+    s = str(value)
+    start = 0
+    end = len(s)
+    while start < end and s[start] in _HORIZONTAL_WS:
+        start += 1
+    while end > start and s[end - 1] in _HORIZONTAL_WS:
+        end -= 1
+    return s[start:end]
+
 
 @dataclass
 class TextMapping:
@@ -24,11 +41,12 @@ class TextMapping:
         self.match_mode = self.match_mode.strip().lower()
         if self.match_mode not in ("exact", "contains"):
             raise ValueError(f"match_mode 必须是 'exact' 或 'contains'，当前值: '{self.match_mode}'")
-        self.original_text = self.original_text.strip()
+        self.original_text = horizontal_outer_strip(str(self.original_text))
 
         # new_text 可以为 None（留空），表示保持原文字内容不变
         if self.new_text is not None:
-            self.new_text = self.new_text.strip() or None
+            nt = horizontal_outer_strip(str(self.new_text))
+            self.new_text = nt if nt else None
 
         if self.font is not None:
             self.font = self.font.strip() or None

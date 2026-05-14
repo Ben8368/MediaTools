@@ -145,6 +145,29 @@ class TestApiPhotoshopRoutes(unittest.TestCase):
         self.assertTrue(written.is_file())
         self.assertEqual(written.name, "ps-export-1.json")
 
+    @patch("backend.api.routes.photoshop.translate_photoshop_copy_items")
+    def test_translate_copy_delegates_to_service(self, mock_translate):
+        mock_translate.return_value = {"ok": True, "items": [{"index": 0, "text": "你好"}]}
+        response = self.client.post(
+            "/api/photoshop/translate-copy",
+            json={"items": [{"index": 0, "text": "hello", "locale": "zh-CN"}]},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["items"][0]["text"], "你好")
+        mock_translate.assert_called_once()
+
+    @patch("backend.api.routes.photoshop.translate_photoshop_copy_items")
+    def test_translate_copy_failure_returns_400(self, mock_translate):
+        mock_translate.return_value = {"ok": False, "error": "bad"}
+        response = self.client.post(
+            "/api/photoshop/translate-copy",
+            json={"items": [{"index": 0, "text": "x", "locale": "en-US"}]},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json().get("error"), "bad")
+
     def test_execute_passes_selection_and_callbacks_update_job(self):
         def start_execution(*args, **kwargs):
             kwargs["on_progress"]("step 1", 50.0)

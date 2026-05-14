@@ -171,6 +171,21 @@ def delete_photoshop_ticket(ticket_id: str, workspace: dict | None = None) -> di
     return {"ticket_id": ticket_id, "path": str(path), "deleted": True}
 
 
+def _safe_filename_fragment(value: str) -> str:
+    """文件名中一段的安全化（去掉 Windows 非法字符）。"""
+    cleaned = value
+    for ch in r'\/:*?"<>|':
+        cleaned = cleaned.replace(ch, "-")
+    return cleaned.strip()
+
+
+def _language_output_name(source_psd: str, language: str) -> str:
+    """多语言任务默认输出：{母版主文件名}_{语种}.psd"""
+    stem = _safe_filename_fragment(Path(source_psd).stem) or "output"
+    lang = _safe_filename_fragment(language.replace(" ", "")) or "lang"
+    return f"{stem}_{lang}.psd"
+
+
 def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str, languages: list[str]) -> Any:
     ticket_tasks = []
     expanded_languages = [item for item in languages if item] if languages else []
@@ -205,7 +220,7 @@ def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str
         if expanded_languages:
             for language in expanded_languages:
                 ticket_tasks.append(
-                    runtime["TicketTask"](**_task_kwargs(row, output_name=f"{language}.psd", language=language))
+                    runtime["TicketTask"](**_task_kwargs(row, output_name=_language_output_name(source_psd, language), language=language))
                 )
         else:
             ticket_tasks.append(runtime["TicketTask"](**_task_kwargs(row, output_name="", language="")))
@@ -356,12 +371,33 @@ def _is_smart_object_task(task: Any) -> bool:
     )
 
 
+def _effective_source_text(task: Any) -> str:
+    """与前端 taskEffectiveSourceText 一致：扫描原文或图层回退。"""
+    o = getattr(task, "original_text", None)
+    if o is not None and str(o).strip():
+        return str(o)
+    raw = getattr(task, "raw_text", None)
+    if raw is not None and str(raw).strip():
+        return str(raw)
+    if _is_smart_object_task(task):
+        return str(getattr(task, "smart_object_inner_layer_name", "") or getattr(task, "layer_name", "") or "")
+    return str(getattr(task, "layer_name", "") or "")
+
+
+def _is_target_text_modified_from_source(task: Any) -> bool:
+    src = _effective_source_text(task).strip()
+    tgt = str(getattr(task, "target_text", None) or "").strip()
+    if not tgt:
+        return False
+    return tgt != src
+
+
 def _should_execute_task(task: Any) -> bool:
     if task.status == "skip":
         return False
-    if task.status in {"confirmed", "ready", "approved"}:
+    if str(getattr(task, "target_font", None) or "").strip():
         return True
-    return bool((task.target_text or "").strip() or (task.target_font or "").strip())
+    return _is_target_text_modified_from_source(task)
 
 
 def _default_output_name(source_path: str) -> str:
@@ -370,6 +406,12 @@ def _default_output_name(source_path: str) -> str:
 
 
 def _group_tasks(tasks: list[Any]) -> dict[str, list[Any]]:
+    """按 output_name 分组，一次打开一个 PSD 副本、顺序应用组内全部任务再保存。
+
+    扫描时若填写了 target_languages，每条版式会为每种语言生成任务且共享同一 output_name
+    （例如 ``banner_en-US.psd``），即「一种语言 = 一份完整 PSD」，而不是「一句文案一个文件」。
+    output_name 为空时所有任务写入同一份默认命名输出（单语流程）。
+    """
     grouped: dict[str, list[Any]] = {}
     for task in tasks:
         name = (task.output_name or "").strip()

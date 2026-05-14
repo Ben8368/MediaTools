@@ -80,6 +80,10 @@ def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | N
             fit_status='skipped',
         )
 
+    msg = 'converged' if params.converged else 'not converged'
+    if params.iterations_log and 'direct_fallback_no_reflow' in params.iterations_log:
+        msg = 'applied (direct fallback, no adaptive reflow)'
+
     return ModifyResult(
         layer_name=record.layer_name,
         original_text=record.text,
@@ -93,11 +97,23 @@ def _adapted_params_to_result(record: TextLayerRecord, params: AdaptedParams | N
         original_height=record.bounds_h_px,
         final_height=params.final_bounds_h_px,
         success=params.converged,
-        message='converged' if params.converged else 'not converged',
+        message=msg,
         original_leading=record.leading_pt,
         final_leading=params.leading_pt,
-        fit_status='ok' if params.converged else 'overflow',
+        fit_status=(
+            'fallback'
+            if params.iterations_log and 'direct_fallback_no_reflow' in params.iterations_log
+            else ('ok' if params.converged else 'overflow')
+        ),
     )
+
+
+def _normalize_paragraph_breaks_for_ps(text: str) -> str:
+    """Photoshop 文字图层段落符通常为 \\r；统一自 \\n 转换以减少换行丢失。"""
+    if not text:
+        return text
+    t = text.replace('\r\n', '\n').replace('\r', '\n')
+    return t.replace('\n', '\r')
 
 
 def modify_text_layer(
@@ -169,7 +185,7 @@ def modify_text_layer(
         bounds_h_px=current_height,
         dpi=dpi,
         enabled=True,
-        new_text=mapping.new_text if mapping.new_text else None,
+        new_text=_normalize_paragraph_breaks_for_ps(mapping.new_text) if mapping.new_text else None,
         new_font_family=mapping.font if mapping.font else None,
         new_font_weight='',
         new_font_ps=None,
@@ -183,13 +199,11 @@ def modify_text_layer(
     if font_index is None:
         font_index = build_font_index(ps.app)
 
-    # Resolve target font
-    record.new_font_ps = resolve_font_for_record(record, font_index,
-                                                  PSALogger(os.path.join(tempfile.gettempdir(), f'modify_{os.getpid()}.log')))
-
-    # Open lab with correct DPI, delegate to PSA's process_layer
     log_path = os.path.join(tempfile.gettempdir(), f'modify_{os.getpid()}.log')
     logger = PSALogger(log_path)
+
+    # Resolve target font（与下方 adaptive 共用同一 logger）
+    record.new_font_ps = resolve_font_for_record(record, font_index, logger)
 
     try:
         _active_doc_before_lab = ps.app.ActiveDocument
@@ -197,6 +211,7 @@ def modify_text_layer(
         _active_doc_before_lab = None
 
     adapted_params = None
+    fallback_error: Exception | None = None
     try:
         with LabDocument(ps.app, dpi) as lab:
             adapted_params = process_layer(ps.app, ps.app.ActiveDocument, record,
@@ -210,9 +225,45 @@ def modify_text_layer(
                 ps.app.ActiveDocument = _active_doc_before_lab
             except Exception:
                 pass
-        logger.close()
+
+    # Lab / adaptive pipeline often fails inside Smart Objects; still apply text/font
+    # at original size & tracking so localization output is not a byte-copy of the master.
+    if adapted_params is None and (record.new_text or record.new_font_family):
+        try:
+            from psa_applier import apply_params_to_layer, real_bounds_h
+
+            doc = ps.app.ActiveDocument
+            fb = AdaptedParams(
+                font_ps=record.new_font_ps or record.font,
+                size_pt=record.size_pt,
+                size_px=record.size_px,
+                auto_leading=record.auto_leading,
+                leading_pt=record.leading_pt,
+                leading_px=record.leading_px,
+                tracking=record.tracking,
+                final_bounds_h_px=record.bounds_h_px,
+                target_h_px=record.bounds_h_px,
+                converged=True,
+                iterations_log=['direct_fallback_no_reflow'],
+            )
+            apply_params_to_layer(ps.app, doc, layer, fb, record, logger)
+            try:
+                fb.final_bounds_h_px = real_bounds_h(ps.app, layer)
+            except Exception:
+                pass
+            adapted_params = fb
+            logger.log_info(
+                f'Fallback direct apply [{record.layer_path}]: adaptive failed; '
+                'applied new text/font without reflow'
+            )
+        except Exception as exc_fb:
+            logger.log_error('Direct apply fallback failed', exc_fb)
+            fallback_error = exc_fb
+
+    logger.close()
 
     if adapted_params is None:
+        err_tail = f'；直接套用失败: {fallback_error}' if fallback_error else ''
         return ModifyResult(
             layer_name=record.layer_name,
             original_text=record.text,
@@ -226,7 +277,7 @@ def modify_text_layer(
             original_height=record.bounds_h_px,
             final_height=record.bounds_h_px,
             success=False,
-            message='Adaptive algorithm failed',
+            message=f'Adaptive algorithm failed{err_tail}',
             fit_status='error',
         )
 

@@ -29,10 +29,12 @@ def _set_task_result(task: Any, result: Any) -> bool:
 
 
 def _build_mapping(runtime: dict[str, Any], task: Any) -> Any:
+    tt = getattr(task, "target_text", None)
+    new_text = None if tt is None else str(tt)
     return runtime["TextMapping"](
         match_mode="exact",
-        original_text=task.original_text,
-        new_text=(task.target_text or "").strip() or None,
+        original_text=str(getattr(task, "original_text", "") or ""),
+        new_text=new_text,
         font=(task.target_font or "").strip() or None,
     )
 

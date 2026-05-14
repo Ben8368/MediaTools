@@ -370,3 +370,35 @@ else:
                 "api_docs": "/docs",
             }
         )
+
+
+@app.post("/api/{full_path:path}")
+async def api_post_path_fallback(request: Request, full_path: str):
+    """未匹配的 POST /api/* 返回 JSON 404，避免仅注册了 GET 的 SPA 回退路由对路径产生 405。"""
+    _ = full_path
+    return JSONResponse(
+        {
+            "ok": False,
+            "error": (
+                f"未知接口：POST {request.url.path}。"
+                "若为本功能接口，请确认后端已更新并已重启（例如 Photoshop Ai 翻译需要 POST /api/photoshop/translate-copy）。"
+            ),
+        },
+        status_code=404,
+    )
+
+
+@app.post("/api/{full_path:path}")
+async def api_post_path_fallback(request: Request, full_path: str):
+    """未匹配的 POST /api/* 返回 JSON 404，避免仅注册了 GET 的 SPA 回退路由对路径产生 405。"""
+    _ = full_path
+    return JSONResponse(
+        {
+            "ok": False,
+            "error": (
+                f"未知接口：POST {request.url.path}。"
+                "若为本功能接口，请确认后端已更新并已重启（例如 Photoshop Ai 翻译需要 POST /api/photoshop/translate-copy）。"
+            ),
+        },
+        status_code=404,
+    )

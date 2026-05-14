@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from openai import OpenAI
 
@@ -319,6 +320,41 @@ class MediaAgentService:
                 messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": _json_dumps(result)})
 
         return _response(False, "Agent reached the step limit before producing a final answer.", tool_traces, actions, artifacts)
+
+    def localization_batch_translate_json(self, batch: list[dict[str, Any]]) -> str:
+        """将工单文案按 BCP 47 区域本地化翻译；batch 每项含 i、text、locale，返回文本应为 JSON。"""
+        if not self.api_key:
+            raise ValueError("缺少模型 API Key")
+        system = (
+            "你是专业 UI/营销/包装类文案的本地化译者。用户输入为 JSON：字段 items 为数组，每项含 "
+            "i（整数任务序号）、text（待译原文）、locale（BCP 47 区域标签，如 ja-JP、en-US、de-DE、zh-CN）。\n\n"
+            "【1】目标语言：必须将 text 译成 locale 所指地区的**标准书面语**（该语种+该区域），"
+            "不得以其他语种为主、也不得长期混用未约定语言。\n\n"
+            "【2】本地化适配：在「1」的前提下做**区域化表达**——符合当地语感、标点、数字/日期习惯、"
+            "敬语/语体层级（如日韩、欧洲正式文案）、禁忌与营销语气；避免生硬直译；"
+            "品牌/法律敏感处保持克制。保留原文中的数字、产品型号、URL、"
+            "以及 {{name}}、{0}、%s 等占位符与变量形态，勿擅自删除或改写结构。\n\n"
+            "【3】行数与换行：若 text 含换行符 \\n，则译文 t 中 **\\n 的数量必须与 text 完全一致**，"
+            "且**每一行与原文分行一一对应**；禁止把多行合并为一行，禁止无故增加行；"
+            "仅可在行尾保留因语种所需的必要空格（行内不得用空格替代换行）。\n\n"
+            "【4】长度与体量：各**对应行**的译文在视觉与版式上要「贴原文字数体量」——"
+            "优先控制为与该行原文**相近的字符量/词长**（同语种内宜 ±20% 量级；"
+            "跨语系时允许适度放宽，但仍须避免单句明显过长或过短导致排版失控）。"
+            "需要更正式或更短译法时，在不牺牲「3」的前提下用简洁措辞而非堆长句。\n\n"
+            "只输出合法 JSON，格式严格为：{\"items\":[{\"i\":<int>,\"t\":\"译文字符串\"}]}。"
+            "须为每个输入的 i 各输出**恰好一条**，顺序不限；禁止 Markdown、注释、多余字段或说明文字。"
+        )
+        user_payload = json.dumps({"items": batch}, ensure_ascii=False)
+        response = self._chat_completion(
+            8000,
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_payload},
+            ],
+            temperature=0.2,
+        )
+        return (response.choices[0].message.content or "").strip()
 
     def _try_direct_route(self, task: str, extra_context: str) -> dict | None:
         return _try_direct_route_impl(

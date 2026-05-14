@@ -15,6 +15,7 @@ import {
   importPhotoshopTicket,
   scanPhotoshopFolder,
   scanPhotoshopTicket,
+  translatePhotoshopCopy,
   updatePhotoshopTicket,
   wsUrl,
 } from '@/api'
@@ -27,7 +28,9 @@ import { PhotoshopMiniAiChat } from '@/apps/mediatools/PhotoshopMiniAiChat'
 import {
   automationTaskIndexes,
   isAutomationTaskExecutable,
+  isSmartObjectTask,
   patchAutomationTask,
+  taskEffectiveSourceText,
 } from '@/apps/mediatools/automation'
 import {
   Field,
@@ -35,21 +38,54 @@ import {
   ResultBox,
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
+import { useModelConfig } from '@/modelConfigStore'
 
 type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
 type FilterCounts = Record<TaskFilter, number>
+type TranslateUiState =
+  | {
+      mode: 'running'
+      phase: 'model' | 'save' | 'refresh'
+      count: number
+      taskNos: string
+      indexes: number[]
+      localeSample: string
+      textPreview: string
+      textPreviewFull: string
+    }
+  | { mode: 'error'; message: string }
+  | { mode: 'success'; message: string }
 const PHOTOSHOP_EXECUTION_TERMINAL_STATES = new Set(['done', 'error', 'cancelled'])
 
 /** 填入 Photoshop 助手输入框的快捷指令（发送前可改） */
 const PS_AI_PROMPTS = {
-  translate: '请根据当前工单上下文，为各图层任务生成合适的 target_text 翻译建议（说明假设的目标语种）；如需按图层区分请逐条说明。',
   copycheck: '请检查当前工单中各任务的 target_text 相对 original_text：是否存在错别字、语病、术语不一致或与使用场景不符；按任务顺序给出问题与修改建议。',
-  locales: '请结合当前任务与已有语言字段，梳理多语言 / 输出方案（含 output_name 命名）；若信息不足请列出需要我补充的要点。',
 } as const
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/** 解析 POST /api/photoshop/translate-copy 返回的单条译文（兼容 index 为字符串、字段名为 t） */
+function readTranslateCopyItem(row: AnyRecord): { index: number; text: string } | null {
+  const rawIdx = row?.index ?? row?.i
+  let idx: number
+  if (typeof rawIdx === 'number' && Number.isFinite(rawIdx)) idx = rawIdx
+  else {
+    const n = Number(rawIdx)
+    if (!Number.isFinite(n)) return null
+    idx = n
+  }
+  const txt = row?.text ?? row?.t
+  if (txt == null) return null
+  return { index: idx, text: String(txt) }
+}
+
+function truncateForUi(text: string, maxChars: number): string {
+  const t = String(text || '').replace(/\s+/g, ' ').trim()
+  if (t.length <= maxChars) return t
+  return `${t.slice(0, Math.max(0, maxChars - 1))}…`
 }
 
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
@@ -87,6 +123,7 @@ function ExecutionSummary({ result, execution }: { result: any, execution: any }
 }
 
 export function PhotoshopApp() {
+  const { config: modelConfig } = useModelConfig()
   const [status, setStatus] = useState<AnyRecord | null>(null)
   const [activePanel, setActivePanel] = useState<'scan' | 'import' | 'result'>('scan')
   const [tickets, setTickets] = useState<AnyRecord[]>([])
@@ -120,6 +157,9 @@ export function PhotoshopApp() {
   /** 扫描来源：选择 PSD 文件 / 文件夹 时打开的目录或文件选择器 */
   const [scanSourcePicker, setScanSourcePicker] = useState<null | 'file' | 'directory'>(null)
   const [ticketImportPickerOpen, setTicketImportPickerOpen] = useState(false)
+  const [translateBusy, setTranslateBusy] = useState(false)
+  const [translateUi, setTranslateUi] = useState<TranslateUiState | null>(null)
+  const translateOutcomeTimerRef = useRef<number | null>(null)
   const aiComposerNonceRef = useRef(0)
   const [aiComposerSeed, setAiComposerSeed] = useState<{ key: number; text: string } | null>(null)
   const clearAiComposerSeed = useCallback(() => setAiComposerSeed(null), [])
@@ -132,6 +172,132 @@ export function PhotoshopApp() {
   const parsedTicket = ticket
 
   const tasks: AnyRecord[] = Array.isArray(parsedTicket?.tasks) ? parsedTicket.tasks : []
+
+  const localeFallbacks = useMemo(() => {
+    const meta = typeof ticket?.meta === 'object' && ticket.meta ? ticket.meta as AnyRecord : {}
+    const metaLangs = Array.isArray(meta.target_languages) ? meta.target_languages.map((x: unknown) => String(x)) : []
+    return uniqueStrings([...targetLanguages, ...metaLangs])
+  }, [ticket, targetLanguages])
+
+  const resolveTaskLocale = useCallback((task: AnyRecord): string => {
+    const fromTask = String(task.language || '').trim()
+    if (fromTask) return fromTask
+    if (localeFallbacks.length === 1) return localeFallbacks[0]
+    return ''
+  }, [localeFallbacks])
+
+  const translateAndPersist = useCallback(async (
+    items: { index: number; text: string; locale: string }[],
+    onPhase?: (phase: 'save' | 'refresh') => void,
+  ): Promise<string> => {
+    if (!ticketId || !parsedTicket) throw new Error('请先选择工单')
+    const payload: Record<string, unknown> = { items }
+    if (modelConfig.apiKey) payload.api_key = modelConfig.apiKey
+    if (modelConfig.baseUrl) payload.base_url = modelConfig.baseUrl
+    if (modelConfig.model) payload.model = modelConfig.model
+    const data = await translatePhotoshopCopy(payload)
+    if (!data?.ok) throw new Error(data?.error || '翻译失败')
+    const byIndex = new Map<number, string>()
+    for (const row of (data.items || []) as AnyRecord[]) {
+      const parsed = readTranslateCopyItem(row)
+      if (!parsed) continue
+      byIndex.set(parsed.index, parsed.text)
+    }
+    if (items.length > 0 && byIndex.size === 0) {
+      throw new Error('翻译响应无法解析（未得到任何 index/text），请检查网络或后端日志')
+    }
+    const sourceSnap = new Map(items.map((it) => [it.index, it.text.trim()]))
+    const nextTasks = tasks.map((task: AnyRecord, index: number) => {
+      const t = byIndex.get(index)
+      if (t === undefined) return task
+      const snap = sourceSnap.get(index)
+      const out = String(t)
+      /* Ai 写入：只要模型有返回即落库；若与发送给模型的原文 trim 相同再置空（视为未改） */
+      if (snap !== undefined && out.trim() === snap) {
+        return { ...task, target_text: '' }
+      }
+      return { ...task, target_text: out }
+    })
+    const nextTicket = { ...parsedTicket, tasks: nextTasks }
+    onPhase?.('save')
+    setTicket(nextTicket)
+    const saved = await updatePhotoshopTicket(ticketId, ticketWithOutputDir(nextTicket, saveOutputDir))
+    const savedTasks = Array.isArray(saved.ticket?.tasks) ? saved.ticket.tasks : []
+    setTicket(saved.ticket || null)
+    setTicketText('')
+    setSelected((idxs) => idxs.filter((i) => i < savedTasks.length))
+    const doneNums = [...byIndex.keys()].sort((a, b) => a - b).map((i) => i + 1).join('、')
+    const successMsg = `已完成 ${byIndex.size} 条翻译并保存。任务序号：${doneNums}。请到下方任务列表查看各条「目标文案」是否已更新。`
+    setResult({
+      ok: true,
+      message: successMsg,
+    })
+    onPhase?.('refresh')
+    await refresh()
+    return successMsg
+  }, [modelConfig.apiKey, modelConfig.baseUrl, modelConfig.model, parsedTicket, refresh, saveOutputDir, tasks, ticketId])
+
+  const runPhotoshopBulkTranslate = useCallback(async () => {
+    if (!ticketId || !parsedTicket || !tasks.length) {
+      setResult({ ok: false, error: '请先选择工单并确保有任务' })
+      return
+    }
+    const items: { index: number; text: string; locale: string }[] = []
+    tasks.forEach((task: AnyRecord, index: number) => {
+      const text = taskEffectiveSourceText(task)
+      if (!text.trim()) return
+      const locale = resolveTaskLocale(task)
+      if (!locale) return
+      items.push({ index, text, locale })
+    })
+    if (!items.length) {
+      setResult({
+        ok: false,
+        error: localeFallbacks.length > 1
+          ? '没有可翻译的任务：多语言工单请在「语种需求」中为每行生成带 language 的任务，或为工单只保留一种目标语。'
+          : '没有可翻译的任务：请确认各任务行有可译原文，并在「语种需求」中选择目标语。',
+      })
+      return
+    }
+    const indexes = items.map((x) => x.index)
+    const taskNosHuman = items.length <= 14
+      ? items.map((x) => x.index + 1).join('、')
+      : `${items.slice(0, 14).map((x) => x.index + 1).join('、')} 等 ${items.length} 条`
+    const localeLine = [...new Set(items.map((x) => x.locale))].join('、')
+    const fullFirst = items[0].text
+    if (translateOutcomeTimerRef.current != null) {
+      window.clearTimeout(translateOutcomeTimerRef.current)
+      translateOutcomeTimerRef.current = null
+    }
+    setTranslateUi({
+      mode: 'running',
+      phase: 'model',
+      count: items.length,
+      taskNos: taskNosHuman,
+      indexes,
+      localeSample: localeLine,
+      textPreview: truncateForUi(fullFirst, 76),
+      textPreviewFull: fullFirst,
+    })
+    setTranslateBusy(true)
+    try {
+      const successMsg = await translateAndPersist(items, (phase) => {
+        setTranslateUi((prev) => (prev?.mode === 'running' ? { ...prev, phase } : prev))
+      })
+      setTranslateUi({ mode: 'success', message: successMsg })
+      translateOutcomeTimerRef.current = window.setTimeout(() => {
+        translateOutcomeTimerRef.current = null
+        setTranslateUi((u) => (u?.mode === 'success' ? null : u))
+      }, 6500)
+    } catch (err: any) {
+      const msg = err?.message || 'Ai 翻译失败'
+      setResult({ ok: false, error: msg })
+      setTranslateUi({ mode: 'error', message: msg })
+    } finally {
+      setTranslateBusy(false)
+    }
+  }, [localeFallbacks.length, parsedTicket, resolveTaskLocale, tasks, ticketId, translateAndPersist])
+
   const activeTicket = tickets.find((ticket) => ticket.ticket_id === ticketId)
   const sourcePsd = activeTicket?.source_psd || parsedTicket?.meta?.source_psd || ''
   const executableIndexes = useMemo(() => automationTaskIndexes(tasks), [tasks])
@@ -234,36 +400,35 @@ export function PhotoshopApp() {
     updateTasks(visibleIndexes, { target_font: font })
   }
 
-  function handleLocaleRequestConfirm(result: PhotoshopLocaleRequestResult) {
-    const lines: string[] = []
-    if (result.presets.length) {
-      lines.push(`已选预设语种：${result.presets.map((p) => `${p.label}（${p.code}）`).join('、')}`)
-    }
-    if (result.customRaw.trim()) {
-      lines.push(`预设外 / 补充：${result.customRaw.trim()}`)
-    }
-    const prefix = lines.length ? `${lines.join('\n')}\n\n` : ''
-    pushAiComposerText(prefix + PS_AI_PROMPTS.locales)
-
+  async function handleLocaleRequestConfirm(result: PhotoshopLocaleRequestResult) {
+    setLocaleRequestOpen(false)
     const fromCustom = result.customRaw
       .split(/[,\n，\s]+/)
       .map((item) => item.trim())
       .filter(Boolean)
     const additions = uniqueStrings([...result.presets.map((p) => p.bcp47), ...fromCustom])
-    if (additions.length) {
-      const nextTargets = uniqueStrings([...targetLanguages, ...additions])
-      setTargetLanguages(nextTargets)
-      if (ticketId && tasks.length && parsedTicket) {
-        const nextTicket = rebuildTicketForLanguages(parsedTicket, nextTargets)
-        if (nextTicket) {
-          const nextTasks = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
-          setTicket(nextTicket)
-          setTicketText('')
-          setSelected(automationTaskIndexes(nextTasks))
-        }
-      }
+    if (!additions.length) return
+
+    const nextTargets = uniqueStrings([...targetLanguages, ...additions])
+    setTargetLanguages(nextTargets)
+    if (!ticketId || !parsedTicket || !tasks.length) return
+
+    const nextTicket = rebuildTicketForLanguages(parsedTicket, nextTargets)
+    if (!nextTicket) return
+    const nextTaskList = Array.isArray(nextTicket.tasks) ? nextTicket.tasks : []
+    setTicket(nextTicket)
+    setTicketText('')
+    setSelected(automationTaskIndexes(nextTaskList))
+    try {
+      const data = await updatePhotoshopTicket(ticketId, ticketWithOutputDir(nextTicket, saveOutputDir))
+      const savedTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
+      setTicket(data.ticket || null)
+      setSelected((items) => items.filter((index) => index < savedTasks.length))
+      setResult(data)
+      await refresh()
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message || '保存多语言工单失败' })
     }
-    setLocaleRequestOpen(false)
   }
 
   async function refresh() {
@@ -509,6 +674,13 @@ export function PhotoshopApp() {
   }
 
   useEffect(() => { void refresh() }, [])
+
+  useEffect(() => () => {
+    if (translateOutcomeTimerRef.current != null) {
+      window.clearTimeout(translateOutcomeTimerRef.current)
+      translateOutcomeTimerRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!isScanning || !scanStartedAt) return undefined
@@ -973,8 +1145,19 @@ export function PhotoshopApp() {
                 <button type="button" className="ps-ai-quick-btn" onClick={() => setLocaleRequestOpen(true)}>
                   语种需求
                 </button>
-                <button type="button" className="ps-ai-quick-btn" onClick={() => pushAiComposerText(PS_AI_PROMPTS.translate)}>
-                  Ai翻译
+                <button
+                  type="button"
+                  className="ps-ai-quick-btn"
+                  disabled={translateBusy || !ticket || !ticketId}
+                  aria-busy={translateBusy}
+                  title={
+                    !ticket || !ticketId
+                      ? '请先扫描或导入工单'
+                      : '按各任务母版文案（含换行）调用 Ai 写入目标文案并保存；译文须保持与原文相同的行数。若多行被压成一行，请重新扫描工单以更新母版换行后再翻译。'
+                  }
+                  onClick={() => void runPhotoshopBulkTranslate()}
+                >
+                  {translateBusy ? '翻译中…' : 'Ai翻译'}
                 </button>
                 <button type="button" className="ps-ai-quick-btn" onClick={() => pushAiComposerText(PS_AI_PROMPTS.copycheck)}>
                   Ai检查
@@ -995,6 +1178,57 @@ export function PhotoshopApp() {
                   导出工单
                 </button>
               </div>
+              {translateUi?.mode === 'running' ? (
+                <div
+                  className="ps-ai-translate-progress"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy={translateBusy}
+                >
+                  <div className="ps-ai-translate-progress__phase">
+                    <span className="ps-ai-translate-progress__dot" aria-hidden />
+                    {translateUi.phase === 'model'
+                      ? '正在请求 AI 模型翻译（通常需数秒至数十秒）…'
+                      : translateUi.phase === 'save'
+                        ? '正在合并译文并保存工单…'
+                        : '正在同步工单列表…'}
+                  </div>
+                  <div className="ps-ai-translate-progress__meta">
+                    <span><strong>{translateUi.count}</strong> 条</span>
+                    <span title={`任务序号（从 1 开始）：${translateUi.taskNos}`}>
+                      任务 <strong>{translateUi.taskNos}</strong>
+                    </span>
+                    <span title="本批使用的目标区域">{translateUi.localeSample}</span>
+                  </div>
+                  <div
+                    className="ps-ai-translate-progress__preview"
+                    title={translateUi.textPreviewFull}
+                  >
+                    <span className="ps-ai-translate-progress__preview-label">本批首条原文</span>
+                    <span className="ps-ai-translate-progress__preview-text">{translateUi.textPreview}</span>
+                  </div>
+                </div>
+              ) : null}
+              {translateUi?.mode === 'error' ? (
+                <div className="ps-ai-translate-outcome ps-ai-translate-outcome--error" role="alert">
+                  <p className="ps-ai-translate-outcome__text">{translateUi.message}</p>
+                  <div className="ps-ai-translate-outcome__actions">
+                    <button
+                      type="button"
+                      className="ps-ai-translate-outcome__dismiss"
+                      onClick={() => setTranslateUi(null)}
+                    >
+                      关闭
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {translateUi?.mode === 'success' ? (
+                <div className="ps-ai-translate-outcome ps-ai-translate-outcome--success" role="status">
+                  <p className="ps-ai-translate-outcome__text">{translateUi.message}</p>
+                  <p className="ps-ai-translate-outcome__hint">提示也会写在「执行与回执」里；约数秒后自动收起本条。</p>
+                </div>
+              ) : null}
               <div className="ps-language-compact ps-save-path-compact">
                 <div
                   className="ps-save-path-summary"
@@ -1112,6 +1346,7 @@ export function PhotoshopApp() {
                   selected={selectedSet.has(index)}
                   ready={executableIndexSet.has(index)}
                   fonts={fonts}
+                  aiTranslating={Boolean(translateUi?.mode === 'running' && translateUi.indexes.includes(index))}
                   onUpdate={updateTask}
                   onToggle={toggleTask}
                   onConfirm={confirmTask}
@@ -1135,7 +1370,9 @@ export function PhotoshopApp() {
           <div className="ps-section-head">
             <div>
               <h3>执行与回执</h3>
-              <p>保存确认后的工单，再执行已选择任务。</p>
+              <p>
+                保存确认后的工单，再执行已选择任务。多语言时相同「输出文件名」的任务会在同一份 PSD 上依次处理（一种语言一套成品），再保存到输出目录。
+              </p>
             </div>
             <div className="ps-actions">
               <ToolbarButton onClick={() => void persistTicket()} disabled={!ticketId}>保存工单</ToolbarButton>
@@ -1197,6 +1434,7 @@ type PhotoshopTaskRowProps = {
   selected: boolean
   ready: boolean
   fonts: string[]
+  aiTranslating?: boolean
   onUpdate: (index: number, patch: AnyRecord) => void
   onToggle: (index: number, checked: boolean) => void
   onConfirm: (index: number) => void
@@ -1208,25 +1446,40 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
   selected,
   ready,
   fonts,
+  aiTranslating = false,
   onUpdate,
   onToggle,
   onConfirm,
 }: PhotoshopTaskRowProps) {
   const smart = isSmartObjectTask(task)
-  const originalLine = String(task.original_text || '').trim()
-  const layerFallback = String(smart ? (task.smart_object_inner_layer_name || task.layer_name) : task.layer_name || '').trim()
-  const primaryCopy = originalLine || layerFallback || `任务 ${index + 1}`
+  const sourceText = taskEffectiveSourceText(task)
+  const rawTarget = task.target_text
+  const hasStoredTarget = rawTarget != null && String(rawTarget).trim() !== ''
+  const displayValue = hasStoredTarget ? String(rawTarget) : sourceText
+
+  const syncTargetFromInput = (value: string) => {
+    if (value.trim() === sourceText.trim()) {
+      onUpdate(index, { target_text: '' })
+    } else {
+      onUpdate(index, { target_text: value })
+    }
+  }
+
   const taskWarning = hasTaskWarning(task)
   const checkState = taskWarning ? 'warning' : ready ? 'ready' : 'pending'
   const checkTitle = taskWarning
     ? `任务 ${index + 1} · 有错误/警告`
     : ready
       ? `任务 ${index + 1} · 可执行`
-      : `任务 ${index + 1} · 待确认`
+      : `任务 ${index + 1} · 待修改/待确认`
   const taskFontOptions = useMemo(() => fontOptionsForTask(fonts, task), [fonts, task])
 
   return (
-    <div className={`ps-task ${selected ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}`}>
+    <div
+      className={`ps-task ${selected ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}${
+        aiTranslating ? ' ps-task--ai-translating' : ''
+      }`}
+    >
       <label className={`ps-task-check ps-task-check--${checkState}`} title={checkTitle}>
         <input
           type="checkbox"
@@ -1241,11 +1494,11 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
           <div className="ps-task-head-main">
             <input
               className="ps-task-copy-input"
-              aria-label={`替换文本 ${index + 1}`}
-              value={task.target_text || ''}
-              onChange={(event) => onUpdate(index, { target_text: event.target.value })}
-              placeholder={primaryCopy}
-              title={primaryCopy}
+              aria-label={`文案 ${index + 1}（默认母版原文，改动后为目标文案）`}
+              value={displayValue}
+              onChange={(event) => syncTargetFromInput(event.target.value)}
+              placeholder="母版原文；可直接编辑，或与原文一致时留空表示未改"
+              title={sourceText.trim() ? `母版参考：${sourceText}` : '暂无扫描原文，可手写目标文案'}
             />
           </div>
           <div className="ps-task-badges">
@@ -1306,10 +1559,6 @@ const taskFilters: { id: TaskFilter, label: string }[] = [
   { id: 'warning', label: '有错误/警告' },
 ]
 
-function isSmartObjectTask(task: AnyRecord) {
-  return task.layer_kind === 'smart_object_text' || Number(task.smart_object_layer_id || 0) > 0
-}
-
 function hasTaskWarning(task: AnyRecord) {
   return task.status === 'error' || Boolean(String(task.notes || '').trim())
 }
@@ -1326,6 +1575,7 @@ function matchesTaskFilter(task: AnyRecord, filter: TaskFilter) {
 function matchesTaskSearch(task: AnyRecord, search: string) {
   const needle = search.trim().toLowerCase()
   if (!needle) return true
+  const eff = taskEffectiveSourceText(task)
   return [
     task.layer_name,
     task.smart_object_name,
@@ -1333,6 +1583,7 @@ function matchesTaskSearch(task: AnyRecord, search: string) {
     task.artboard_name,
     task.original_text,
     task.target_text,
+    eff,
     task.source_font,
     task.target_font,
   ].some((value) => String(value || '').toLowerCase().includes(needle))
@@ -1387,6 +1638,16 @@ function fontOptionsForTask(fonts: string[], task: AnyRecord) {
   return uniqueStrings([task.target_font, task.source_font, ...fonts])
 }
 
+function masterPsdStemForOutput(ticket: AnyRecord): string {
+  const raw = String(ticket?.meta?.source_psd || '').trim()
+  if (!raw) return 'output'
+  const segments = raw.split(/[/\\]/)
+  const base = segments[segments.length - 1] || raw
+  const withoutExt = base.replace(/\.(psd|psb)$/i, '')
+  const safe = withoutExt.replace(/[/\\:*?"<>|]+/g, '-').trim()
+  return safe || 'output'
+}
+
 function rebuildTicketForLanguages(ticket: AnyRecord | null, languages: string[]) {
   if (!ticket || !Array.isArray(ticket.tasks)) return null
   const bases = new Map<string, AnyRecord>()
@@ -1396,6 +1657,7 @@ function rebuildTicketForLanguages(ticket: AnyRecord | null, languages: string[]
   })
 
   const nextLanguages = uniqueStrings(languages)
+  const masterStem = masterPsdStemForOutput(ticket)
   const nextTasks = Array.from(bases.entries()).flatMap(([key, baseTask]) => {
     if (!nextLanguages.length) {
       const existing = ticket.tasks.find((task: AnyRecord) => taskIdentityKey(task) === key && !task.language) || baseTask
@@ -1403,17 +1665,23 @@ function rebuildTicketForLanguages(ticket: AnyRecord | null, languages: string[]
     }
     return nextLanguages.map((language) => {
       const existing = ticket.tasks.find((task: AnyRecord) => taskIdentityKey(task) === key && task.language === language)
+      const safeStem = String(language || '')
+        .replace(/[/\\:*?"<>|]+/g, '-')
+        .replace(/\s+/g, '')
+        .trim() || 'lang'
       return {
         ...baseTask,
         ...existing,
         language,
-        output_name: existing?.output_name || `${language}.psd`,
+        output_name: existing?.output_name?.trim() || `${masterStem}_${safeStem}.psd`,
       }
     })
   })
 
+  const meta = { ...(typeof ticket.meta === 'object' && ticket.meta ? ticket.meta : {}), target_languages: nextLanguages }
   return {
     ...ticket,
+    meta,
     tasks: nextTasks,
   }
 }

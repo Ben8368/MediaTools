@@ -884,6 +884,139 @@
   opacity: 0.45;
 }
 
+.ps-ai-translate-progress {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,159,10,.35);
+  background: rgba(255,159,10,.09);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255,245,230,.92);
+}
+
+.ps-ai-translate-progress__phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ps-ai-translate-progress__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb02094;
+  flex: 0 0 auto;
+  animation: ps-ai-translate-dot 0.9s ease-in-out infinite;
+}
+
+@keyframes ps-ai-translate-dot {
+  0%, 100% { opacity: 0.45; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.ps-ai-translate-progress__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 6px;
+  font-weight: 600;
+  color: rgba(255,250,235,.78);
+}
+
+.ps-ai-translate-progress__meta strong {
+  font-weight: 850;
+  color: #fff2d6;
+}
+
+.ps-ai-translate-progress__preview {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ps-ai-translate-progress__preview-label {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255,245,230,.55);
+}
+
+.ps-ai-translate-progress__preview-text {
+  font-weight: 650;
+  word-break: break-word;
+  color: rgba(255,252,245,.88);
+}
+
+.ps-ai-translate-outcome {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ps-ai-translate-outcome--error {
+  border: 1px solid rgba(255,82,82,.45);
+  background: rgba(255,72,72,.12);
+  color: rgba(255,235,235,.94);
+}
+
+.ps-ai-translate-outcome--success {
+  border: 1px solid rgba(72,209,124,.42);
+  background: rgba(48,209,88,.12);
+  color: rgba(230,255,240,.92);
+}
+
+.ps-ai-translate-outcome__text {
+  margin: 0;
+  font-weight: 750;
+}
+
+.ps-ai-translate-outcome__hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.82;
+}
+
+.ps-ai-translate-outcome__actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ps-ai-translate-outcome__dismiss {
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  background: rgba(0,0,0,.2);
+  color: inherit;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ps-ai-translate-outcome__dismiss:hover {
+  border-color: rgba(255,255,255,.4);
+  background: rgba(0,0,0,.28);
+}
+
+.ps-locale-dialog__hint {
+  margin: 6px 0 0;
+  max-width: 36em;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(221, 235, 255, 0.58);
+  line-height: 1.45;
+}
+
 .ps-locale-dialog__body {
   display: grid;
   gap: 14px;
@@ -1482,6 +1615,16 @@
 .ps-task--selected {
   border-color: rgba(66,153,255,.58);
   background: rgba(16,63,119,.42);
+}
+
+.ps-task--ai-translating {
+  box-shadow: 0 0 0 2px rgba(255,159,10,.5);
+  animation: ps-task-ai-translate-glow 1.2s ease-in-out infinite;
+}
+
+@keyframes ps-task-ai-translate-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,159,10,.35); }
+  50% { box-shadow: 0 0 0 3px rgba(255,190,80,.55); }
 }
 
 .ps-task--smart {
