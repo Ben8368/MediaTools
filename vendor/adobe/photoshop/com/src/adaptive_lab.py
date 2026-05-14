@@ -17,6 +17,7 @@ class LabDocument:
         self._doc_width = width
         self._doc_height = height
         self._doc = None
+        self._pixel_ctx = None
 
     def __enter__(self):
         try:
@@ -25,9 +26,19 @@ class LabDocument:
             )
         except Exception as e:
             raise AdaptationError(f"Failed to create lab document: {e}")
+        # Force pixel units for the entire lab session — avoids per-measurement
+        # Preference.RulerUnits COM round-trips inside get_h/get_w.
+        self._pixel_ctx = PixelUnitsContext(self._app)
+        self._pixel_ctx.__enter__()
         return self
 
     def __exit__(self, *args):
+        if self._pixel_ctx is not None:
+            try:
+                self._pixel_ctx.__exit__(None, None, None)
+            except Exception:
+                pass
+            self._pixel_ctx = None
         if self._doc is not None:
             try:
                 self._doc.Close(2)
@@ -89,34 +100,33 @@ class LabDocument:
         return lab_layer, ti
 
     def _get_h(self, lab_layer) -> float:
-        with PixelUnitsContext(self._app):
-            try:
-                bounds = lab_layer.Bounds
-                return float(bounds[3]) - float(bounds[1])
-            except Exception:
-                return 0.0
+        try:
+            bounds = lab_layer.Bounds
+            return float(bounds[3]) - float(bounds[1])
+        except Exception:
+            return 0.0
 
     def _get_w(self, lab_layer) -> float:
-        with PixelUnitsContext(self._app):
-            try:
-                bounds = lab_layer.Bounds
-                return float(bounds[2]) - float(bounds[0])
-            except Exception:
-                return 0.0
+        try:
+            bounds = lab_layer.Bounds
+            return float(bounds[2]) - float(bounds[0])
+        except Exception:
+            return 0.0
 
     def measure_text(self, font_ps: str, contents: str, size_pt: float,
                       tracking: float, auto_leading: bool, leading_pt: float) -> float:
         if self._doc is None:
             raise AdaptationError("Lab document is not open.")
         self._activate()
-        lab_layer, _ti = self._create_text_layer(
-            font_ps, contents, size_pt, tracking, auto_leading, leading_pt
-        )
-        h = self._get_h(lab_layer)
-        try:
-            lab_layer.Delete()
-        except Exception:
-            pass
+        with PixelUnitsContext(self._app):
+            lab_layer, _ti = self._create_text_layer(
+                font_ps, contents, size_pt, tracking, auto_leading, leading_pt
+            )
+            h = self._get_h(lab_layer)
+            try:
+                lab_layer.Delete()
+            except Exception:
+                pass
         return h
 
     def measure_text_width(self, font_ps: str, contents: str, size_pt: float,
@@ -124,14 +134,15 @@ class LabDocument:
         if self._doc is None:
             raise AdaptationError("Lab document is not open.")
         self._activate()
-        lab_layer, _ti = self._create_text_layer(
-            font_ps, contents, size_pt, tracking, auto_leading, leading_pt
-        )
-        w = self._get_w(lab_layer)
-        try:
-            lab_layer.Delete()
-        except Exception:
-            pass
+        with PixelUnitsContext(self._app):
+            lab_layer, _ti = self._create_text_layer(
+                font_ps, contents, size_pt, tracking, auto_leading, leading_pt
+            )
+            w = self._get_w(lab_layer)
+            try:
+                lab_layer.Delete()
+            except Exception:
+                pass
         return w
 
     def find_adapted_params(
@@ -156,34 +167,32 @@ class LabDocument:
         final_threshold = max(2.0, target_h * 0.01) if record.faux_bold else max(2.0, target_h * 0.008)
 
         self._activate()
+        # Create layer at original size to measure the hint, then reuse it for
+        # Phase 1 by resetting the size — saves one ArtLayers.Add + Delete cycle.
         lab_layer, ti = self._create_text_layer(
-            new_font_ps, new_text, 72.0, record.tracking, record.auto_leading, record.leading_pt
+            new_font_ps, new_text, record.size_pt, record.tracking,
+            record.auto_leading, record.leading_pt
         )
+        try:
+            font_native_h = self._get_h(lab_layer)
+        except Exception:
+            font_native_h = 0.0
+        if font_native_h > 0.5:
+            hint_pt = record.size_pt * (target_h / font_native_h)
+        else:
+            hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
+        hint_pt = max(1.0, min(500.0, hint_pt))
+        # Reset size to hint for Phase1
+        try:
+            ti.Size = hint_pt
+        except Exception:
+            pass
 
         def get_h() -> float:
             return self._get_h(lab_layer)
 
         def get_w() -> float:
             return self._get_w(lab_layer)
-
-        # Phase 1: binary search on size
-        # Compute initial size hint by measuring new font at original size
-        try:
-            font_native_h = self.measure_text(
-                font_ps=new_font_ps,
-                contents=new_text,
-                size_pt=record.size_pt,
-                tracking=record.tracking,
-                auto_leading=record.auto_leading,
-                leading_pt=record.leading_pt,
-            )
-            if font_native_h > 0.5:
-                hint_pt = record.size_pt * (target_h / font_native_h)
-            else:
-                hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
-        except Exception:
-            hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
-        hint_pt = max(1.0, min(500.0, hint_pt))
         last_mid = phase1_binary_search(ti, get_h, target_h, iterations_log, logger,
                                         initial_hint=hint_pt)
 

@@ -1,0 +1,46 @@
+[2026-05-15 02:42:55] INFO: Font index: 261 families
+[2026-05-15 02:42:55] INFO: Working copy: C:\MediaTools\vendor\adobe\photoshop\com\tuning\smoke-mirror-mirror.psd
+[2026-05-15 02:42:56] INFO: Processing 2 direct + 2 SO layers
+[2026-05-15 02:42:57] BEFORE [上下排版/组 2/0.2 ecnadeeS]: text='0.2 ecnadeeS' font=NotoSans-Bold size_pt=54.5393 size_px=72.7282 tracking=0.0 auto_leading=False leading_pt=62.8717 bounds_h=42.00px
+[2026-05-15 02:42:57] APPLY: [上下排版/组 2/0.2 ecnadeeS] target_h=42.00px font_resolved=NotoSans-Bold
+[2026-05-15 02:42:58] INFO: CALIBRATE [上下排版/组 2/0.2 ecnadeeS]: real_h=42.00px lab_h=57.00px scale=0.7368
+    [iter 01 size] tried=54.5393 → h=57.00px  target=57.00px CONVERGED
+[2026-05-15 02:43:06] INFO: VERIFY [上下排版/组 2/0.2 ecnadeeS]: real_h=57.00px target=42.00px diff=+15.00px
+[2026-05-15 02:43:06] INFO: REFINE 1 [上下排版/组 2/0.2 ecnadeeS]: size=40.1869pt real_h=42.00px target=42.00px
+[2026-05-15 02:43:07] INFO: REFINE 2 [上下排版/组 2/0.2 ecnadeeS]: size=40.1869pt real_h=42.00px target=42.00px
+[2026-05-15 02:43:07] RESULT [上下排版/组 2/0.2 ecnadeeS]: OK font=NotoSans-Bold size_pt=40.1869 size_px=53.5892 auto_leading=False leading_pt=46.3265 tracking=0.0 final_h=42.00px target_h=42.00px
+[2026-05-15 02:43:07] AFTER  [上下排版/组 2/0.2 ecnadeeS] [OK]: text='Seedance 2.0' font=NotoSans-Bold size_pt=40.1869 size_px=53.5892 tracking=0.0 auto_leading=False leading_pt=46.3265 final_h=42.00px
+[2026-05-15 02:43:07] BEFORE [上下排版/组 2/ animaerD]: text=' animaerD' font=NotoSans-Medium size_pt=54.2088 size_px=72.2874 tracking=0.0 auto_leading=False leading_pt=62.4907 bounds_h=41.00px
+[2026-05-15 02:43:07] APPLY: [上下排版/组 2/ animaerD] target_h=41.00px font_resolved=NotoSans-Medium
+[2026-05-15 02:43:10] INFO: CALIBRATE [上下排版/组 2/ animaerD]: real_h=41.00px lab_h=55.00px scale=0.7455
+    [iter 01 size] tried=54.2088 → h=55.00px  target=55.00px CONVERGED
+[2026-05-15 02:43:17] INFO: VERIFY [上下排版/组 2/ animaerD]: real_h=55.00px target=41.00px diff=+14.00px
+[2026-05-15 02:43:18] INFO: REFINE 1 [上下排版/组 2/ animaerD]: size=40.4102pt real_h=41.00px target=41.00px
+[2026-05-15 02:43:18] INFO: REFINE 2 [上下排版/组 2/ animaerD]: size=40.4102pt real_h=41.00px target=41.00px
+[2026-05-15 02:43:18] RESULT [上下排版/组 2/ animaerD]: OK font=NotoSans-Medium size_pt=40.4102 size_px=53.8870 auto_leading=False leading_pt=46.5840 tracking=0.0 final_h=41.00px target_h=41.00px
+[2026-05-15 02:43:18] AFTER  [上下排版/组 2/ animaerD] [OK]: text='Dreamina ' font=NotoSans-Medium size_pt=40.4102 size_px=53.8870 tracking=0.0 auto_leading=False leading_pt=46.5840 final_h=41.00px
+[2026-05-15 02:43:20] BEFORE [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: text=',sepyt tupni oidua dna,oediv ,egami ,txet stroppuS\rsdradnats lausivoidua gnipahser' font=NotoSans-Regular size_pt=24.0148 size_px=24.0148 tracking=15.0 auto_leading=False leading_pt=31.9697 bounds_h=65.00px
+[2026-05-15 02:43:20] APPLY: [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la] target_h=65.00px font_resolved=NotoSans-Regular
+[2026-05-15 02:43:22] INFO: CALIBRATE [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: real_h=65.00px lab_h=57.00px scale=1.1404
+    [iter 01 size] tried=24.0148 → h=57.00px  target=57.00px CONVERGED
+    [iter 08 lead] tried=31.9697 → h=57.00px  target=57.00px CONVERGED
+    [iter 09 lead] tried=31.9697 → h=57.00px  target=57.00px CONVERGED
+[2026-05-15 02:43:31] INFO: BOUNDARY PROTECT [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: Expanded SO canvas by 19% (scale=1.200, size_ratio=1.000)
+[2026-05-15 02:43:32] INFO: VERIFY [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: real_h=57.00px target=65.00px diff=-8.00px
+[2026-05-15 02:43:32] INFO: REFINE 1 [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: size=27.3853pt real_h=65.00px target=65.00px
+[2026-05-15 02:43:33] INFO: REFINE 2 [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: size=27.3853pt real_h=65.00px target=65.00px
+[2026-05-15 02:43:33] RESULT [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la]: OK font=NotoSans-Regular size_pt=27.3853 size_px=27.3853 auto_leading=False leading_pt=36.4567 tracking=15.0 final_h=65.00px target_h=65.00px
+[2026-05-15 02:43:33] AFTER  [,sepyt tupni oidua dna,oediv ,egami ,txet stroppuS sdradnats la] [OK]: text='Supports text, image, video,and audio input types,\rreshaping audiovisual standards' font=NotoSans-Regular size_pt=27.3853 size_px=27.3853 tracking=15.0 auto_leading=False leading_pt=36.4567 final_h=65.00px
+[2026-05-15 02:43:36] BEFORE [llA noitaerC ladomitluM ecnerefeR dnuorA-]: text='llA noitaerC ladomitluM\recnerefeR dnuorA-' font=NotoSans-Bold size_pt=62.8206 size_px=62.8206 tracking=0.0 auto_leading=False leading_pt=70.2805 bounds_h=136.00px
+[2026-05-15 02:43:36] APPLY: [llA noitaerC ladomitluM ecnerefeR dnuorA-] target_h=136.00px font_resolved=NotoSans-Bold
+[2026-05-15 02:43:37] INFO: CALIBRATE [llA noitaerC ladomitluM ecnerefeR dnuorA-]: real_h=136.00px lab_h=119.00px scale=1.1429
+    [iter 01 size] tried=62.8206 → h=119.00px  target=119.00px CONVERGED
+    [iter 08 lead] tried=70.2806 → h=119.00px  target=119.00px CONVERGED
+    [iter 09 lead] tried=70.2806 → h=119.00px  target=119.00px CONVERGED
+[2026-05-15 02:43:46] INFO: BOUNDARY PROTECT [llA noitaerC ladomitluM ecnerefeR dnuorA-]: Expanded SO canvas by 19% (scale=1.200, size_ratio=1.000)
+[2026-05-15 02:43:47] INFO: VERIFY [llA noitaerC ladomitluM ecnerefeR dnuorA-]: real_h=119.00px target=136.00px diff=-17.00px
+[2026-05-15 02:43:47] INFO: REFINE 1 [llA noitaerC ladomitluM ecnerefeR dnuorA-]: size=71.7950pt real_h=136.00px target=136.00px
+[2026-05-15 02:43:48] INFO: REFINE 2 [llA noitaerC ladomitluM ecnerefeR dnuorA-]: size=71.7950pt real_h=136.00px target=136.00px
+[2026-05-15 02:43:48] RESULT [llA noitaerC ladomitluM ecnerefeR dnuorA-]: OK font=NotoSans-Bold size_pt=71.7950 size_px=71.7950 auto_leading=False leading_pt=80.3206 tracking=0.0 final_h=136.00px target_h=136.00px
+[2026-05-15 02:43:48] AFTER  [llA noitaerC ladomitluM ecnerefeR dnuorA-] [OK]: text='Multimodal Creation All\r-Around Reference' font=NotoSans-Bold size_pt=71.7950 size_px=71.7950 tracking=0.0 auto_leading=False leading_pt=80.3206 final_h=136.00px
+[2026-05-15 02:43:49] INFO: Done: C:\MediaTools\vendor\adobe\photoshop\com\tuning\smoke-mirror-mirror.psd
