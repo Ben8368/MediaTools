@@ -304,7 +304,7 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
                     else:
                         hi_t = mid_t
                 current_tracking = (lo_t + hi_t) / 2.0
-                current_tracking = max(-50, min(200, current_tracking))
+                current_tracking = max(-60, min(200, current_tracking))
                 try: ti.Tracking = current_tracking
                 except Exception: pass
 
@@ -329,7 +329,7 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
             # Step 2: tracking at limit, binary-search size down to match width
             if tracking_diff > 10.0 and not tracking_adjustment_failed:
                 try:
-                    ti.Tracking = -50.0
+                    ti.Tracking = -60.0
                 except Exception:
                     pass
 
@@ -380,7 +380,7 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
                     best_size = size_floor
                     try: ti.Size = best_size
                     except Exception: pass
-                    try: ti.Tracking = -50.0
+                    try: ti.Tracking = -60.0
                     except Exception: pass
                     last_mid = best_size
                     width_hard_clamped = True
@@ -403,7 +403,7 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
                     f"{best_size:.4f}pt floor={size_floor:.1f}pt w_diff={best_w_diff:.1f}px"
                 )
                 iterations_log.append(log_entry)
-                current_tracking = -50.0
+                current_tracking = -60.0
 
         except Exception as e:
             log_entry = f"[micro {track_iter:02d}] error: {str(e)}"
