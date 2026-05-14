@@ -80,12 +80,15 @@ def find_outermost_so(app, container, key: str, group: list[TextLayerRecord], lo
 
 
 def process_so_level(app, doc, records: list[TextLayerRecord], logger, dpi: float, depth: int,
-                     _process_layer_func):
+                     _process_layer_func, lab=None):
     """Recursively process records inside an SO document.
 
     At each depth level, records whose so_chain length matches the depth
     are processed directly. Records with deeper chains are grouped by the
     next SO in the chain and processed via recursive entry.
+
+    lab: Optional LabDocument instance from outer level. If provided, reuse it
+         instead of creating a new one (for same-DPI nested SOs).
     """
     direct_here: list[TextLayerRecord] = []
     nested: dict[str, list[TextLayerRecord]] = {}
@@ -101,47 +104,67 @@ def process_so_level(app, doc, records: list[TextLayerRecord], logger, dpi: floa
             nkey = f"{psb}@|@{lpath}"
             nested.setdefault(nkey, []).append(r)
 
-    if direct_here:
-        with LabDocument(app, dpi) as lab:
+    # Decide whether to create our own Lab or reuse the provided one
+    _own_lab = False
+    if lab is None:
+        lab = LabDocument(app, dpi)
+        lab.__enter__()
+        _own_lab = True
+
+    try:
+        if direct_here:
             for r in direct_here:
                 _process_layer_func(app, doc, r, lab, logger, in_so=True)
 
-    for nkey, ngroup in nested.items():
-        entry = ngroup[0].so_chain[depth]
-        so_layer = None
-        if entry.get("layer_path"):
-            so_layer = find_layer_by_path(doc, entry["layer_path"].split("/"))
-        if so_layer is None and entry.get("layer_id") is not None:
-            so_layer = find_layer_by_id(doc, entry["layer_id"])
-        if so_layer is None:
-            psb_name = entry.get("psb_name", "")
-            if psb_name:
-                so_layer = _find_so_by_psb(app, doc, psb_name)
+        for nkey, ngroup in nested.items():
+            entry = ngroup[0].so_chain[depth]
+            so_layer = None
+            if entry.get("layer_path"):
+                so_layer = find_layer_by_path(doc, entry["layer_path"].split("/"))
+            if so_layer is None and entry.get("layer_id") is not None:
+                so_layer = find_layer_by_id(doc, entry["layer_id"])
+            if so_layer is None:
+                psb_name = entry.get("psb_name", "")
+                if psb_name:
+                    so_layer = _find_so_by_psb(app, doc, psb_name)
 
-        if so_layer is None:
-            logger.log_error(f"nested SO '{nkey}' at depth {depth}",
-                             SOEnterError("SO layer not found"))
-            continue
+            if so_layer is None:
+                logger.log_error(f"nested SO '{nkey}' at depth {depth}",
+                                 SOEnterError("SO layer not found"))
+                continue
 
-        try:
-            app.ActiveDocument = doc
-            inner_doc = enter_smart_object(app, so_layer)
-        except SOEnterError as e:
-            logger.log_error(f"enter nested SO '{nkey}'", e)
-            continue
-
-        try:
-            inner_dpi = float(safe_get(inner_doc, "Resolution", dpi))
-            process_so_level(app, inner_doc, ngroup, logger, inner_dpi, depth + 1,
-                             _process_layer_func)
             try:
-                inner_doc.Save()
-                inner_doc.Close(1)
+                app.ActiveDocument = doc
+                inner_doc = enter_smart_object(app, so_layer)
+            except SOEnterError as e:
+                logger.log_error(f"enter nested SO '{nkey}'", e)
+                continue
+
+            try:
+                inner_dpi = float(safe_get(inner_doc, "Resolution", dpi))
+
+                # If DPI matches, pass lab for reuse; otherwise let nested level create its own
+                if abs(inner_dpi - dpi) < 0.1:
+                    process_so_level(app, inner_doc, ngroup, logger, inner_dpi, depth + 1,
+                                     _process_layer_func, lab=lab)
+                else:
+                    process_so_level(app, inner_doc, ngroup, logger, inner_dpi, depth + 1,
+                                     _process_layer_func, lab=None)
+
+                try:
+                    inner_doc.Save()
+                    inner_doc.Close(1)
+                except Exception as e:
+                    logger.log_error(f"save/close nested SO '{nkey}'", e)
             except Exception as e:
-                logger.log_error(f"save/close nested SO '{nkey}'", e)
-        except Exception as e:
-            logger.log_error(f"process nested SO '{nkey}'", e)
+                logger.log_error(f"process nested SO '{nkey}'", e)
+                try:
+                    inner_doc.Close(2)
+                except Exception:
+                    pass
+    finally:
+        if _own_lab:
             try:
-                inner_doc.Close(2)
+                lab.__exit__(None, None, None)
             except Exception:
                 pass

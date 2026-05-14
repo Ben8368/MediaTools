@@ -23,7 +23,10 @@ def phase1_binary_search(ti, get_h, target_h: float, iterations_log: list[str],
     last_mid = initial_hint
     _safety = False
     for i in range(1, 11):
-        mid = (lo + hi) / 2.0
+        if i == 1:
+            mid = initial_hint
+        else:
+            mid = (lo + hi) / 2.0
         try: ti.Size = mid
         except Exception: pass
         last_mid = mid
@@ -257,6 +260,29 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
     tracking_adjustment_failed = False
     width_hard_clamped = False
 
+    # Pre-check: test if original tracking already gives acceptable width
+    if orig_w > 1.0:
+        try:
+            ti.Tracking = record.tracking
+            w_at_orig_tracking = get_w()
+            w_diff_at_orig = abs(w_at_orig_tracking - orig_w)
+            log_entry = (
+                f"[phase3 pre-check] tracking={record.tracking:.1f} "
+                f"-> w={w_at_orig_tracking:.2f}px orig_w={orig_w:.2f}px "
+                f"diff={w_diff_at_orig:.2f}px"
+            )
+            iterations_log.append(log_entry)
+
+            if w_diff_at_orig < 10.0:
+                log_entry = (
+                    f"[phase3 skip] width diff {w_diff_at_orig:.2f}px < 10px, "
+                    f"keeping original tracking={record.tracking:.1f}"
+                )
+                iterations_log.append(log_entry)
+                return Phase3Result(record.tracking, last_mid, False, False)
+        except Exception:
+            pass
+
     _safety = False
     for track_iter in range(1, 6):
         try:
@@ -265,8 +291,9 @@ def phase3_tracking(ti, get_h, get_w, phase2_h: float, orig_w: float,
 
             # Step 1: Try to adjust tracking to match original width
             if orig_w > 1.0 and not tracking_adjustment_failed:
-                lo_t = current_tracking - 50
-                hi_t = current_tracking + 50
+                anchor = record.tracking
+                lo_t = anchor - 100
+                hi_t = anchor + 100
                 for _ in range(5):
                     mid_t = (lo_t + hi_t) / 2.0
                     try: ti.Tracking = mid_t

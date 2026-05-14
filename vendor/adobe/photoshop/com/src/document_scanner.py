@@ -254,12 +254,31 @@ def _extract_text_record(
     except Exception:
         pass
 
-    # Detect multi-style text layers (multiple formatting ranges)
+    # Detect multi-style text layers: only flag as multi_style when
+    # font or size differs across runs (color-only differences are irrelevant)
     multi_style = False
     try:
         runs = ti.Runs
         if runs.Count > 1:
-            multi_style = True
+            try:
+                first_font = runs[0].Font
+                first_size = float(runs[0].Size)
+            except Exception:
+                multi_style = True
+                first_font = None
+                first_size = None
+
+            if not multi_style and first_font is not None:
+                for idx in range(1, runs.Count):
+                    try:
+                        r_font = runs[idx].Font
+                        r_size = float(runs[idx].Size)
+                        if r_font != first_font or abs(r_size - first_size) > 0.5:
+                            multi_style = True
+                            break
+                    except Exception:
+                        multi_style = True
+                        break
     except Exception:
         try:
             _ = ti.Font

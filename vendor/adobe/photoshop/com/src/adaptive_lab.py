@@ -65,6 +65,8 @@ class LabDocument:
         ti = lab_layer.TextItem
         try: ti.Font = font_ps
         except Exception: pass
+        try: ti.Size = size_pt
+        except Exception: pass
         try: ti.Contents = contents
         except Exception: pass
         try: ti.Tracking = tracking
@@ -74,8 +76,6 @@ class LabDocument:
         if not auto_leading and leading_pt > 0:
             try: ti.Leading = leading_pt
             except Exception: pass
-        try: ti.Size = size_pt
-        except Exception: pass
         # Center the text layer to prevent boundary overflow
         try:
             bounds = lab_layer.Bounds
@@ -167,9 +167,22 @@ class LabDocument:
             return self._get_w(lab_layer)
 
         # Phase 1: binary search on size
-        # Compute initial size hint: orig_size × (target_h / orig_bounds_h)
-        # This ratio-based estimate is much closer than the fixed 72pt default
-        hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
+        # Compute initial size hint by measuring new font at original size
+        try:
+            font_native_h = self.measure_text(
+                font_ps=new_font_ps,
+                contents=new_text,
+                size_pt=record.size_pt,
+                tracking=record.tracking,
+                auto_leading=record.auto_leading,
+                leading_pt=record.leading_pt,
+            )
+            if font_native_h > 0.5:
+                hint_pt = record.size_pt * (target_h / font_native_h)
+            else:
+                hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
+        except Exception:
+            hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
         hint_pt = max(1.0, min(500.0, hint_pt))
         last_mid = phase1_binary_search(ti, get_h, target_h, iterations_log, logger,
                                         initial_hint=hint_pt)

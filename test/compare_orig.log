@@ -1,0 +1,95 @@
+[2026-05-14 13:02:28] INFO: Scanning: C:\MediaTools\test\test.psd, DPI=72.0
+[2026-05-14 13:02:28] SCAN START: doc=test_work.psd path=C:\MediaTools\test\test_work.psd dpi=72.0
+[2026-05-14 13:02:29] SCAN: [Input/Text/Audio] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=24.00px dpi=72.0
+[2026-05-14 13:02:29] SCAN: [Input/Text/Video] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=24.00px dpi=72.0
+[2026-05-14 13:02:29] SCAN: [Input/Text/Image] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:02:30] SCAN: [Input/Text/Text] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=23.00px dpi=72.0
+[2026-05-14 13:02:31] SCAN: [Text/T] font=NotoSans-SemiBold size_pt=18.44 size_px=18.44 tracking=18.0 auto_leading=False leading_pt=26.00 bounds_h=22.00px dpi=72.0
+[2026-05-14 13:02:35] SCAN: [BT/Learn more] font=NotoSans-SemiBold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:02:40] SCAN: [Dreamina Seedance 2.0] font=NotoSans-Regular size_pt=61.21 size_px=61.21 tracking=0.0 auto_leading=False leading_pt=87.44 bounds_h=48.00px dpi=72.0
+[2026-05-14 13:02:43] SCAN: [Supports text, image, video, and audio input types, reshaping a] font=NotoSans-Medium size_pt=40.70 size_px=40.70 tracking=-20.0 auto_leading=True leading_pt=0.00 bounds_h=104.00px dpi=72.0
+[2026-05-14 13:02:46] SCAN: [Multimodal Creation All-Around Reference] font=NotoSans-Bold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=141.00px dpi=72.0
+[2026-05-14 13:02:48] INFO: SO composite key '黑色.psb' already visited, skipping: Top/LOGO白
+[2026-05-14 13:02:48] INFO: SO composite key 'Dreamina Seedance 2.0.psb' already visited, skipping: Top/C蛋白
+[2026-05-14 13:02:50] SCAN: [BT/Learn more] font=NotoSans-SemiBold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:02:51] SCAN: [Input/Text/Audio] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=24.00px dpi=72.0
+[2026-05-14 13:02:51] SCAN: [Input/Text/Video] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=24.00px dpi=72.0
+[2026-05-14 13:02:51] SCAN: [Input/Text/Image] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:02:51] SCAN: [Input/Text/Text] font=NotoSans-SemiBold size_pt=50.00 size_px=50.00 tracking=18.0 auto_leading=True leading_pt=0.00 bounds_h=23.00px dpi=72.0
+[2026-05-14 13:02:52] INFO: SO composite key 'Voice.psb' already visited, skipping: Input/ICON/Voice
+[2026-05-14 13:02:52] INFO: SO composite key 'Text.psb' already visited, skipping: Input/ICON/Text
+[2026-05-14 13:02:52] INFO: SO composite key 'Image.psb' already visited, skipping: Input/ICON/Image
+[2026-05-14 13:02:52] INFO: SO composite key 'Video.psb' already visited, skipping: Input/ICON/Video
+[2026-05-14 13:02:53] SCAN: [Supports text, image, video, and audio input types, reshaping a] font=NotoSans-Medium size_pt=40.70 size_px=40.70 tracking=-20.0 auto_leading=True leading_pt=0.00 bounds_h=104.00px dpi=72.0
+[2026-05-14 13:02:55] SCAN: [Multimodal Creation All-Around Reference] font=NotoSans-Bold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=141.00px dpi=72.0
+[2026-05-14 13:02:58] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:02:58] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:02:58] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:02:59] SCAN: [1080P High-Bitrate Rendering Without Compromise] font=NotoSans-SemiBold size_pt=108.93 size_px=108.93 tracking=-50.0 auto_leading=True leading_pt=0.00 bounds_h=43.00px dpi=72.0
+[2026-05-14 13:03:01] SCAN: [Dreamina Seedance 2.0] font=NotoSans-Regular size_pt=61.21 size_px=61.21 tracking=0.0 auto_leading=False leading_pt=87.44 bounds_h=48.00px dpi=72.0
+[2026-05-14 13:03:03] SCAN: [BT/Learn more] font=NotoSans-SemiBold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:03:04] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:04] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:04] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:06] SCAN: [BT/Learn more] font=NotoSans-SemiBold size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=29.00px dpi=72.0
+[2026-05-14 13:03:08] SCAN: [1080P High-Bitrate Rendering Without Compromise] font=NotoSans-SemiBold size_pt=108.93 size_px=108.93 tracking=-50.0 auto_leading=True leading_pt=0.00 bounds_h=43.00px dpi=72.0
+[2026-05-14 13:03:09] SCAN: [Dreamina Seedance 2.0] font=NotoSans-Regular size_pt=61.21 size_px=61.21 tracking=0.0 auto_leading=False leading_pt=87.44 bounds_h=48.00px dpi=72.0
+[2026-05-14 13:03:11] SCAN: [05-1.91x1-1080P/260428-1080P/固定层/1080P High-Bitrate Rendering Without Compromise] font=NotoSansSC-Medium size_pt=117.40 size_px=117.40 tracking=-30.0 auto_leading=True leading_pt=0.00 bounds_h=131.00px dpi=72.0
+[2026-05-14 13:03:12] SCAN: [按钮/Learn more] font=NotoSans-Medium size_pt=100.75 size_px=100.75 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=19.00px dpi=72.0
+[2026-05-14 13:03:13] SCAN: [Dreamina Seedance 2.0] font=NotoSans-SemiBold size_pt=104.19 size_px=104.19 tracking=-50.0 auto_leading=True leading_pt=0.00 bounds_h=26.00px dpi=72.0
+[2026-05-14 13:03:15] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:15] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:15] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:17] SCAN: [1080P High-Bitrate Rendering Without Compromise] font=NotoSans-SemiBold size_pt=108.93 size_px=108.93 tracking=-50.0 auto_leading=True leading_pt=0.00 bounds_h=43.00px dpi=72.0
+[2026-05-14 13:03:19] SCAN: [按钮/Learn more] font=NotoSans-Medium size_pt=92.26 size_px=92.26 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=30.00px dpi=72.0
+[2026-05-14 13:03:20] SCAN: [Dreamina Seedance 2.0] font=NotoSansSC-Bold size_pt=103.80 size_px=103.80 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=46.00px dpi=72.0
+[2026-05-14 13:03:20] INFO: SO composite key '图层 1.psb' already visited, skipping: Icon
+[2026-05-14 13:03:21] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:21] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:21] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:24] SCAN: [[ Learn more ]] font=AdobeHeitiStd-Regular size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=47.00px dpi=72.0
+[2026-05-14 13:03:26] SCAN: [Skip the Queue Superior performance  zero waiting time ] font=NotoSans-SemiBold size_pt=81.78 size_px=81.78 tracking=20.0 auto_leading=False leading_pt=77.26 bounds_h=151.00px dpi=72.0
+[2026-05-14 13:03:27] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:27] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:27] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:29] SCAN: [Dreamina Seedance 2.0] font=NotoSans-Regular size_pt=61.21 size_px=61.21 tracking=0.0 auto_leading=False leading_pt=87.44 bounds_h=48.00px dpi=72.0
+[2026-05-14 13:03:30] SCAN: [进度条/97%] font=NotoSans-SemiBold size_pt=56.66 size_px=56.66 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=54.00px dpi=72.0
+[2026-05-14 13:03:32] INFO: SO composite key '黑色.psb' already visited, skipping: Top/LOGO白
+[2026-05-14 13:03:32] INFO: SO composite key 'Dreamina Seedance 2.0.psb' already visited, skipping: Top/C蛋白
+[2026-05-14 13:03:34] SCAN: [进度条/97%] font=NotoSans-SemiBold size_pt=56.66 size_px=56.66 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=54.00px dpi=72.0
+[2026-05-14 13:03:35] SCAN: [[ Learn more ]] font=AdobeHeitiStd-Regular size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=47.00px dpi=72.0
+[2026-05-14 13:03:37] SCAN: [Skip the Queue Superior performance  zero waiting time ] font=NotoSans-SemiBold size_pt=81.78 size_px=81.78 tracking=20.0 auto_leading=False leading_pt=77.26 bounds_h=195.00px dpi=72.0
+[2026-05-14 13:03:40] SCAN: [[ Learn more ]] font=AdobeHeitiStd-Regular size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=47.00px dpi=72.0
+[2026-05-14 13:03:42] SCAN: [Skip the Queue Superior performance  zero waiting time ] font=NotoSans-SemiBold size_pt=81.78 size_px=81.78 tracking=20.0 auto_leading=False leading_pt=77.26 bounds_h=151.00px dpi=72.0
+[2026-05-14 13:03:43] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:44] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:44] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:45] SCAN: [Dreamina Seedance 2.0] font=NotoSans-Regular size_pt=61.21 size_px=61.21 tracking=0.0 auto_leading=False leading_pt=87.44 bounds_h=48.00px dpi=72.0
+[2026-05-14 13:03:47] SCAN: [进度条/97%] font=NotoSans-SemiBold size_pt=56.66 size_px=56.66 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=54.00px dpi=72.0
+[2026-05-14 13:03:48] INFO: SO composite key '黑色.psb' already visited, skipping: Top/LOGO白
+[2026-05-14 13:03:48] INFO: SO composite key 'Dreamina Seedance 2.0.psb' already visited, skipping: Top/C蛋白
+[2026-05-14 13:03:50] SCAN: [进度条/97%] font=NotoSans-SemiBold size_pt=56.66 size_px=56.66 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=54.00px dpi=72.0
+[2026-05-14 13:03:52] SCAN: [[ Learn more ]] font=AdobeHeitiStd-Regular size_pt=51.51 size_px=51.51 tracking=20.0 auto_leading=False leading_pt=73.72 bounds_h=47.00px dpi=72.0
+[2026-05-14 13:03:54] SCAN: [Skip the Queue Superior performance  zero waiting time ] font=NotoSans-SemiBold size_pt=81.78 size_px=81.78 tracking=20.0 auto_leading=False leading_pt=77.26 bounds_h=195.00px dpi=72.0
+[2026-05-14 13:03:56] SCAN: [Dreamina Seedance 2.0] font=NotoSans-SemiBold size_pt=107.36 size_px=107.36 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=66.00px dpi=72.0
+[2026-05-14 13:03:57] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:03:57] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:03:57] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:03:58] SCAN: [02-1.91x1-准确度/260427-准确度/Simulating Real-World Kinetic & Dynamic Interactions] font=ByteSans-Bold size_pt=14.26 size_px=14.26 tracking=0.0 auto_leading=False leading_pt=13.57 bounds_h=93.00px dpi=72.0
+[2026-05-14 13:03:59] SCAN: [内容/左上/Seedance/Seedance] font=CapCutSansDisplay-Medium size_pt=50.00 size_px=50.00 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=91.00px dpi=72.0
+[2026-05-14 13:04:02] SCAN: [内容/交互/00:03 / 01:05] font=CapCutSansDisplay-Medium size_pt=14.00 size_px=14.00 tracking=80.0 auto_leading=False leading_pt=61.00 bounds_h=17.00px dpi=72.0
+[2026-05-14 13:04:02] SCAN: [内容/交互/Describe the video] font=CapCutSansDisplay-Medium size_pt=14.00 size_px=14.00 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=20.00px dpi=72.0
+[2026-05-14 13:04:05] SCAN: [Dreamina Seedance 2.0] font=NotoSans-SemiBold size_pt=107.36 size_px=107.36 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=66.00px dpi=72.0
+[2026-05-14 13:04:06] SCAN: [02-1x1-准确度/260427-准确度/Simulating real-world kinematic/dynamic interactions] font=CapCutSansDisplay-Medium size_pt=12.95 size_px=12.95 tracking=0.0 auto_leading=False leading_pt=13.57 bounds_h=38.00px dpi=72.0
+[2026-05-14 13:04:07] SCAN: [内容/左上/Seedance/Seedance] font=CapCutSansDisplay-Medium size_pt=50.00 size_px=50.00 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=91.00px dpi=72.0
+[2026-05-14 13:04:07] INFO: SO composite key 'Byte.psb' already visited, skipping: 内容/左上/Seedance/Byte
+[2026-05-14 13:04:07] INFO: SO composite key '图层 6.psb' already visited, skipping: 内容/左上/图层 41
+[2026-05-14 13:04:08] INFO: SO composite key '图层 7.psb' already visited, skipping: 内容/右上/图层 39
+[2026-05-14 13:04:08] SCAN: [内容/交互/00:03 / 01:05] font=CapCutSansDisplay-Medium size_pt=14.00 size_px=14.00 tracking=80.0 auto_leading=False leading_pt=61.00 bounds_h=17.00px dpi=72.0
+[2026-05-14 13:04:08] SCAN: [内容/交互/Describe the video] font=CapCutSansDisplay-Medium size_pt=14.00 size_px=14.00 tracking=0.0 auto_leading=True leading_pt=0.00 bounds_h=20.00px dpi=72.0
+[2026-05-14 13:04:08] INFO: SO composite key '图层 5.psb' already visited, skipping: 内容/图层 38
+[2026-05-14 13:04:09] INFO: SO composite key '黑色.png' already visited, skipping: 黑色
+[2026-05-14 13:04:09] INFO: SO composite key '灰色.png' already visited, skipping: 灰色
+[2026-05-14 13:04:09] INFO: SO composite key '白.png' already visited, skipping: 白
+[2026-05-14 13:04:11] SCAN COMPLETE: 52 text layers found
+[2026-05-14 13:04:11] INFO: Found 52 text layers
