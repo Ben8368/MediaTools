@@ -15,8 +15,10 @@ from backend.api.models import (
     PhotoshopExecuteBody,
     PhotoshopScanBody,
     PhotoshopTicketBody,
+    PhotoshopTicketExportJsonBody,
     TicketImportBody,
 )
+from backend.services.path_picker import resolve_allowed_path
 
 
 def _iter_source_files(directory: str, suffixes: tuple[str, ...], recursive: bool, max_files: int) -> list[Path]:
@@ -245,6 +247,23 @@ def create_router(
         try:
             result = save_photoshop_ticket(ticket_id, body.ticket, get_current_workspace())
             return JSONResponse({"ok": True, **result})
+        except Exception as exc:
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+    @router.post("/api/photoshop/tickets/{ticket_id}/export-json")
+    async def photoshop_ticket_export_json(ticket_id: str, body: PhotoshopTicketExportJsonBody):
+        from modules.adobe.photoshop.service import write_photoshop_ticket_export_file
+
+        workspace = get_current_workspace()
+        try:
+            if not (ticket_id or "").strip():
+                return JSONResponse({"ok": False, "error": "ticket_id is required"}, status_code=400)
+            target_dir = resolve_allowed_path((body.directory or "").strip(), workspace)
+            if not target_dir.is_dir():
+                return JSONResponse({"ok": False, "error": "导出目标必须是已存在的目录"}, status_code=400)
+            dest = target_dir / f"{ticket_id.strip()}.json"
+            write_photoshop_ticket_export_file(dest, body.ticket)
+            return JSONResponse({"ok": True, "path": str(dest)})
         except Exception as exc:
             return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 

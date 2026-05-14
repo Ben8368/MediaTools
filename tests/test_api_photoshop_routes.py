@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.api.routes.photoshop import create_router
+from backend.services.workspace import _workspace_payload
 
 
 class FakeJobRegistry:
@@ -35,7 +36,7 @@ class FakeJobRegistry:
 class TestApiPhotoshopRoutes(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.workspace = {"project_root": str(Path(self.temp_dir.name))}
+        self.workspace = _workspace_payload(Path(self.temp_dir.name))
         self.job_registry = FakeJobRegistry()
         self.get_status = MagicMock(return_value={"ok": True, "connected": False})
         self.scan_document = MagicMock(return_value={"ok": True, "ticket_id": "ps-1"})
@@ -128,6 +129,21 @@ class TestApiPhotoshopRoutes(unittest.TestCase):
 
         with patch("modules.adobe.photoshop.delete_photoshop_ticket", side_effect=FileNotFoundError("missing")):
             self.assertEqual(self.client.delete("/api/photoshop/tickets/missing").status_code, 404)
+
+    def test_export_json_writes_file_under_workspace(self):
+        out = Path(self.workspace["project_root"]) / "export_here"
+        out.mkdir()
+        ticket = {"meta": {"source_psd": "a.psd"}, "tasks": []}
+        response = self.client.post(
+            "/api/photoshop/tickets/ps-export-1/export-json",
+            json={"directory": str(out), "ticket": ticket},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        written = Path(payload["path"])
+        self.assertTrue(written.is_file())
+        self.assertEqual(written.name, "ps-export-1.json")
 
     def test_execute_passes_selection_and_callbacks_update_job(self):
         def start_execution(*args, **kwargs):

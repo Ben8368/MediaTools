@@ -96,6 +96,14 @@ class FolderScanBody(BaseModel):
 class PhotoshopTicketBody(BaseModel):
     ticket: dict[str, Any]
 
+
+class PhotoshopTicketExportJsonBody(BaseModel):
+    """将当前工单 JSON 写入用户选定目录（须落在允许根目录内）。"""
+
+    directory: str
+    ticket: dict[str, Any]
+
+
 class TicketImportBody(BaseModel):
     file_path: str
     ticket_id: str = ""

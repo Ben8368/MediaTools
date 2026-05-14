@@ -6,6 +6,7 @@ import {
   cancelPhotoshopScan,
   deletePhotoshopTicket,
   executePhotoshopTicket,
+  exportPhotoshopTicketJson,
   fetchPhotoshopExecution,
   fetchPhotoshopStatus,
   fetchPhotoshopTicket,
@@ -114,6 +115,8 @@ export function PhotoshopApp() {
   const [localeRequestOpen, setLocaleRequestOpen] = useState(false)
   const [saveOutputDir, setSaveOutputDir] = useState('')
   const [savePathPickerOpen, setSavePathPickerOpen] = useState(false)
+  /** 为 true 时：目录选择器确认后除保存工单外，还将 JSON 导出到所选目录 */
+  const pendingExportAfterPathRef = useRef(false)
   /** 扫描来源：选择 PSD 文件 / 文件夹 时打开的目录或文件选择器 */
   const [scanSourcePicker, setScanSourcePicker] = useState<null | 'file' | 'directory'>(null)
   const [ticketImportPickerOpen, setTicketImportPickerOpen] = useState(false)
@@ -375,18 +378,22 @@ export function PhotoshopApp() {
     }
   }
 
-  async function save() {
+  async function persistTicket(outputDirOverride?: string): Promise<AnyRecord | null> {
     try {
       if (!ticket) throw new Error('当前没有可保存的工单')
-      const data = await updatePhotoshopTicket(ticketId, ticketWithOutputDir(ticket, saveOutputDir))
+      if (!ticketId) throw new Error('请先选择当前工单后再保存')
+      const dir = outputDirOverride !== undefined ? outputDirOverride : saveOutputDir
+      const data = await updatePhotoshopTicket(ticketId, ticketWithOutputDir(ticket, dir))
       const nextTasks = Array.isArray(data.ticket?.tasks) ? data.ticket.tasks : []
       setTicket(data.ticket || null)
       setTicketText('')
       setSelected((items) => items.filter((index) => index < nextTasks.length))
       setResult(data)
       await refresh()
+      return data.ticket || null
     } catch (err: any) {
       setResult({ ok: false, error: err?.message || '保存失败，请检查工单 JSON 格式' })
+      return null
     }
   }
 
@@ -396,34 +403,54 @@ export function PhotoshopApp() {
         setResult({ ok: false, error: '请先选择当前工单后再保存' })
         return
       }
-      void save()
+      void persistTicket()
       return
     }
     setSavePathPickerOpen(true)
   }
 
-  function handleSaveOutputDirPicked(path: string) {
+  async function handleSaveOutputDirPicked(path: string) {
+    const runExport = pendingExportAfterPathRef.current
+    pendingExportAfterPathRef.current = false
     setSaveOutputDir(path)
-    if (ticketId) void save()
+    if (!ticketId) return
+    const saved = await persistTicket(path)
+    if (!runExport || !saved) return
+    try {
+      const data = await exportPhotoshopTicketJson(ticketId, path, saved as Record<string, unknown>)
+      if (!data?.ok) throw new Error(data?.error || '导出失败')
+      setResult({
+        ok: true,
+        message: `工单 JSON 已保存到：${data.path}`,
+      })
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message || '导出工单 JSON 失败' })
+    }
   }
 
-  function exportTicketToFile() {
-    if (!ticket) {
-      setResult({ ok: false, error: '当前没有可导出的工单内容' })
+  async function exportTicketWithOutputPath() {
+    if (!ticket || !ticketId) {
+      setResult({ ok: false, error: '当前没有可导出的工单' })
       return
     }
-    const body = `${JSON.stringify(ticket, null, 2)}\n`
-    const blob = new Blob([body], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const safe = String(ticketId || 'photoshop-ticket').replace(/[^\w.-]+/g, '_').slice(0, 80) || 'photoshop-ticket'
-    a.download = `${safe}.json`
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+    const dir = saveOutputDir.trim()
+    if (!dir) {
+      pendingExportAfterPathRef.current = true
+      setSavePathPickerOpen(true)
+      return
+    }
+    const saved = await persistTicket()
+    if (!saved) return
+    try {
+      const data = await exportPhotoshopTicketJson(ticketId, dir, saved as Record<string, unknown>)
+      if (!data?.ok) throw new Error(data?.error || '导出失败')
+      setResult({
+        ok: true,
+        message: `工单 JSON 已保存到：${data.path}`,
+      })
+    } catch (err: any) {
+      setResult({ ok: false, error: err?.message || '导出工单 JSON 失败' })
+    }
   }
 
   async function execute(dryRun: boolean) {
@@ -586,7 +613,10 @@ export function PhotoshopApp() {
           title="选择修改后 PSD 的保存目录"
           confirmLabel="确认"
           portalContainer={psAppRootRef.current}
-          onClose={() => setSavePathPickerOpen(false)}
+          onClose={() => {
+            setSavePathPickerOpen(false)
+            pendingExportAfterPathRef.current = false
+          }}
           onPick={handleSaveOutputDirPicked}
         />
 
@@ -662,9 +692,29 @@ export function PhotoshopApp() {
                       </button>
                     </div>
                     {sourceMode === null ? (
-                      <div className="ps-scan-source-pane ps-scan-source-pane--readonly">
+                      <div
+                        className={`ps-scan-source-pane ps-scan-source-pane--readonly${isScanning ? ' ps-save-path-summary--disabled' : ''}`}
+                        role="button"
+                        tabIndex={isScanning ? -1 : 0}
+                        aria-disabled={isScanning}
+                        aria-label="点此选 PSD/PSB；批量请先点「文件夹批量」。无路径则扫描当前文档"
+                        onClick={() => {
+                          if (isScanning) return
+                          setSourceMode('file')
+                          setPsdFolder('')
+                          setScanSourcePicker('file')
+                        }}
+                        onKeyDown={(event) => {
+                          if (isScanning) return
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          setSourceMode('file')
+                          setPsdFolder('')
+                          setScanSourcePicker('file')
+                        }}
+                      >
                         <span className="ps-save-path-summary__value ps-save-path-summary__value--empty">
-                          未选择下方具体路径时，将扫描 Photoshop 当前打开的 PSD/PSB 文档
+                          点此选 PSD/PSB；批量请先点「文件夹批量」。无路径则扫当前文档。
                         </span>
                       </div>
                     ) : sourceMode === 'file' ? (
@@ -929,7 +979,19 @@ export function PhotoshopApp() {
                 <button type="button" className="ps-ai-quick-btn" onClick={() => pushAiComposerText(PS_AI_PROMPTS.copycheck)}>
                   Ai检查
                 </button>
-                <button type="button" className="ps-ai-quick-btn" onClick={exportTicketToFile} disabled={!ticketText.trim()}>
+                <button
+                  type="button"
+                  className="ps-ai-quick-btn"
+                  onClick={() => void exportTicketWithOutputPath()}
+                  disabled={!ticket || !ticketId}
+                  title={
+                    !ticket || !ticketId
+                      ? '请先扫描或导入工单'
+                      : saveOutputDir.trim()
+                        ? `将工单 JSON 保存到已选输出目录（${saveOutputDir.trim()}）`
+                        : '先选择输出目录并保存工单，再将 JSON 写入该目录'
+                  }
+                >
                   导出工单
                 </button>
               </div>
@@ -1062,7 +1124,7 @@ export function PhotoshopApp() {
                 <small>确认修改会自动勾选任务；点击右侧按钮会先保存工单，再生成并打开输出 PSD。</small>
               </div>
               <div className="ps-execute-dock-actions">
-                <ToolbarButton onClick={save} disabled={!ticketId}>只保存</ToolbarButton>
+                <ToolbarButton onClick={() => void persistTicket()} disabled={!ticketId}>只保存</ToolbarButton>
                 <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>保存并执行</PrimaryButton>
               </div>
             </div>
@@ -1076,7 +1138,7 @@ export function PhotoshopApp() {
               <p>保存确认后的工单，再执行已选择任务。</p>
             </div>
             <div className="ps-actions">
-              <ToolbarButton onClick={save} disabled={!ticketId}>保存工单</ToolbarButton>
+              <ToolbarButton onClick={() => void persistTicket()} disabled={!ticketId}>保存工单</ToolbarButton>
               <PrimaryButton onClick={() => void execute(false)} disabled={!ticketId || !selected.length}>执行已选任务</PrimaryButton>
               <ToolbarButton onClick={refreshExecution} disabled={!ticketId}>刷新执行状态</ToolbarButton>
               <ToolbarButton onClick={async () => ticketId && setExecution(await cancelPhotoshopExecution(ticketId))} disabled={!ticketId}>取消执行</ToolbarButton>

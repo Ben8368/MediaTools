@@ -96,6 +96,11 @@ def _save_ticket_payload(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def write_photoshop_ticket_export_file(dest: Path, payload: dict[str, Any]) -> None:
+    """将工单 JSON 写入用户选定路径（路径须已由调用方校验为允许根目录内）。"""
+    _save_ticket_payload(dest, payload)
+
+
 def _ticket_summary(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     meta = payload.get("meta", {})
     tasks = [task for task in payload.get("tasks", []) if isinstance(task, dict)]

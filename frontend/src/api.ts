@@ -96,6 +96,8 @@ export const fetchPhotoshopTickets = () => get('/api/photoshop/tickets')
 export const fetchPhotoshopTicket = (ticketId: string) => get(`/api/photoshop/tickets/${ticketId}`)
 export const importPhotoshopTicket = (filePath: string) => post('/api/photoshop/tickets/import', { file_path: filePath })
 export const updatePhotoshopTicket = (ticketId: string, ticket: Record<string, unknown>) => put(`/api/photoshop/tickets/${ticketId}`, { ticket })
+export const exportPhotoshopTicketJson = (ticketId: string, directory: string, ticket: Record<string, unknown>) =>
+  post(`/api/photoshop/tickets/${encodeURIComponent(ticketId)}/export-json`, { directory, ticket })
 export const deletePhotoshopTicket = (ticketId: string) => request(`/api/photoshop/tickets/${ticketId}`, { method: 'DELETE' })
 export const executePhotoshopTicket = (ticketId: string, dryRun: boolean, selectedTaskIndexes: number[]) => post(`/api/photoshop/tickets/${ticketId}/execute`, { dry_run: dryRun, selected_task_indexes: selectedTaskIndexes })
 export const fetchPhotoshopExecution = (ticketId: string) => get(`/api/photoshop/executions/${ticketId}`)

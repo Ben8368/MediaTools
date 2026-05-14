@@ -508,7 +508,17 @@
 }
 
 .ps-save-path-compact .ps-scan-source-unified .ps-scan-source-pane--readonly {
-  cursor: default;
+  cursor: pointer;
+  border-radius: 8px;
+  outline: none;
+}
+
+.ps-save-path-compact .ps-scan-source-unified .ps-scan-source-pane--readonly:hover:not(.ps-save-path-summary--disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ps-save-path-compact .ps-scan-source-unified .ps-scan-source-pane--readonly:focus-visible {
+  box-shadow: 0 0 0 2px rgba(77, 171, 255, 0.35);
 }
 
 .ps-save-path-compact .ps-scan-source-unified .ps-scan-source-pane--readonly .ps-save-path-summary__value {
