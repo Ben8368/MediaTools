@@ -45,6 +45,7 @@ class TextLayerRecord:
     new_font_weight: str | None = None
     new_font_ps: str | None = None
     enabled: bool = False
+    multi_style: bool = False
     so_chain: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -81,6 +82,7 @@ class TextLayerRecord:
             "color_g": self.color_g,
             "color_b": self.color_b,
             "enabled": self.enabled,
+            "multi_style": self.multi_style,
             "new_text": self.new_text,
             "new_font_family": self.new_font_family,
             "new_font_weight": self.new_font_weight,
@@ -124,6 +126,7 @@ class TextLayerRecord:
             new_font_weight=d.get("new_font_weight"),
             new_font_ps=d.get("new_font_ps"),
             enabled=d.get("enabled", False),
+            multi_style=d.get("multi_style", False),
             so_chain=d.get("so_chain", []),
         )
 

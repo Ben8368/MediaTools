@@ -38,6 +38,13 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
     Returns AdaptedParams on success, None on failure.
     """
     try:
+        if record.multi_style:
+            logger.log_warning(
+                f"SKIP multi-style layer [{record.layer_path}]: "
+                f"layer has multiple text formatting ranges, cannot safely modify"
+            )
+            return None
+
         if in_so:
             parts = record.layer_path.split("/")
             layer = find_layer_by_path(doc, parts)
@@ -185,8 +192,11 @@ def apply_params_to_layer(app, doc, art_layer, params: AdaptedParams,
     ti = art_layer.TextItem
     try:
         ti.Font = params.font_ps
-    except Exception as e:
-        logger.log_error(f"set Font on '{record.layer_path}'", e)
+    except Exception:
+        try:
+            ti.Font = params.font_ps.replace(" ", "-")
+        except Exception as e:
+            logger.log_error(f"set Font on '{record.layer_path}'", e)
     try:
         ti.Size = params.size_pt
     except Exception as e:

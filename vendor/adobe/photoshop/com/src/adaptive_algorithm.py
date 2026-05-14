@@ -10,13 +10,17 @@ from text_utils import safe_get
 
 
 def phase1_binary_search(ti, get_h, target_h: float, iterations_log: list[str],
-                         logger=None) -> float:
+                         logger=None, initial_hint: float = 72.0) -> float:
     """Phase 1: binary search on font size, max 10 iterations, early exit.
 
     Returns last_mid (best size in pt).
+
+    initial_hint: estimated starting size in pt. Search range is
+    [hint*0.25, hint*4.0] instead of [1, 500] to reduce iterations.
     """
-    lo, hi = 1.0, 500.0
-    last_mid = 72.0
+    lo = max(1.0, initial_hint * 0.25)
+    hi = min(500.0, initial_hint * 4.0)
+    last_mid = initial_hint
     _safety = False
     for i in range(1, 11):
         mid = (lo + hi) / 2.0

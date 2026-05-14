@@ -254,6 +254,19 @@ def _extract_text_record(
     except Exception:
         pass
 
+    # Detect multi-style text layers (multiple formatting ranges)
+    multi_style = False
+    try:
+        runs = ti.Runs
+        if runs.Count > 1:
+            multi_style = True
+    except Exception:
+        try:
+            _ = ti.Font
+            _ = ti.Size
+        except Exception:
+            multi_style = True
+
     # Bounding box
     bounds = layer_bounds_px(app, art_layer)
     bl, bt, br, bb = bounds
@@ -290,5 +303,6 @@ def _extract_text_record(
         color_r=color_r,
         color_g=color_g,
         color_b=color_b,
+        multi_style=multi_style,
         so_chain=so_chain or [],
     )

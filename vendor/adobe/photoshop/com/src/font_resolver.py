@@ -33,6 +33,7 @@ _WEIGHT_SORTED = sorted(WEIGHT_MAP, key=lambda x: -len(x[0]))
 @dataclass
 class FontEntry:
     ps_name: str
+    display_name: str
     family: str
     weight_kw: str
     weight_num: int
@@ -61,7 +62,11 @@ def build_font_index(app) -> dict[str, list[FontEntry]]:
     for i in range(count):
         try:
             font = fonts[i]
-            ps_name = font.Name
+            display_name = font.Name
+            try:
+                ps_name = font.PostScriptName
+            except Exception:
+                ps_name = display_name
             family = font.Family
             style = font.Style if hasattr(font, "Style") else ""
         except Exception:
@@ -75,6 +80,7 @@ def build_font_index(app) -> dict[str, list[FontEntry]]:
 
         entry = FontEntry(
             ps_name=ps_name,
+            display_name=display_name,
             family=family,
             weight_kw=weight_kw,
             weight_num=weight_num,

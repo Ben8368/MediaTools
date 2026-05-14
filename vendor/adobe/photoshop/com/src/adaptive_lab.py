@@ -11,15 +11,17 @@ from adaptive_algorithm import (
 
 
 class LabDocument:
-    def __init__(self, app, resolution: float):
+    def __init__(self, app, resolution: float, width: int = 4096, height: int = 4096):
         self._app = app
         self._resolution = resolution
+        self._doc_width = width
+        self._doc_height = height
         self._doc = None
 
     def __enter__(self):
         try:
             self._doc = self._app.Documents.Add(
-                1000, 1000, self._resolution, "PSA_Lab"
+                self._doc_width, self._doc_height, self._resolution, "PSA_Lab"
             )
         except Exception as e:
             raise AdaptationError(f"Failed to create lab document: {e}")
@@ -32,6 +34,19 @@ class LabDocument:
             except Exception:
                 pass
             self._doc = None
+
+    def clear(self):
+        """Remove all layers from the lab document so it can be reused."""
+        if self._doc is None:
+            return
+        try:
+            for layer in list(self._doc.ArtLayers):
+                try:
+                    layer.Delete()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _activate(self):
         try:
@@ -61,6 +76,16 @@ class LabDocument:
             except Exception: pass
         try: ti.Size = size_pt
         except Exception: pass
+        # Center the text layer to prevent boundary overflow
+        try:
+            bounds = lab_layer.Bounds
+            w = float(bounds[2]) - float(bounds[0])
+            h = float(bounds[3]) - float(bounds[1])
+            cx = (self._doc_width / 2.0) - (w / 2.0) - float(bounds[0])
+            cy = (self._doc_height / 2.0) - (h / 2.0) - float(bounds[1])
+            lab_layer.Translate(cx, cy)
+        except Exception:
+            pass
         return lab_layer, ti
 
     def _get_h(self, lab_layer) -> float:
@@ -142,7 +167,12 @@ class LabDocument:
             return self._get_w(lab_layer)
 
         # Phase 1: binary search on size
-        last_mid = phase1_binary_search(ti, get_h, target_h, iterations_log, logger)
+        # Compute initial size hint: orig_size × (target_h / orig_bounds_h)
+        # This ratio-based estimate is much closer than the fixed 72pt default
+        hint_pt = record.size_pt * (target_h / max(record.bounds_h_px, 1.0))
+        hint_pt = max(1.0, min(500.0, hint_pt))
+        last_mid = phase1_binary_search(ti, get_h, target_h, iterations_log, logger,
+                                        initial_hint=hint_pt)
 
         # Phase 2: precision adjustment
         if is_multiline and not record.auto_leading:
