@@ -22,7 +22,7 @@ def phase1_binary_search(ti, get_h, target_h: float, iterations_log: list[str],
     hi = min(500.0, initial_hint * 4.0)
     last_mid = initial_hint
     _safety = False
-    for i in range(1, 11):
+    for i in range(1, 9):
         if i == 1:
             mid = initial_hint
         else:
@@ -65,7 +65,7 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
     _safety = False
     _prev_lead_h = 0.0
     _prev2_lead_h = 0.0  # detect alternating oscillation
-    for prec_iter in range(1, 6):
+    for prec_iter in range(1, 4):
         h = get_h()
         if abs(h - target_h) < phase2_threshold:
             if prec_iter == 1:
@@ -78,7 +78,7 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
             current_size = float(safe_get(ti, "Size", last_mid) or last_mid)
             lo_l = current_size * 0.8
             hi_l = current_size * 2.5
-            for _ in range(5):
+            for _ in range(4):
                 mid_l = (lo_l + hi_l) / 2.0
                 try: ti.Leading = mid_l
                 except Exception: pass
@@ -137,7 +137,7 @@ def phase2_singleline(ti, get_h, target_h: float, phase2_threshold: float,
     Returns updated last_mid.
     """
     _safety = False
-    for prec_iter in range(1, 6):
+    for prec_iter in range(1, 4):
         h = get_h()
         if abs(h - target_h) < phase2_threshold:
             if prec_iter == 1:
