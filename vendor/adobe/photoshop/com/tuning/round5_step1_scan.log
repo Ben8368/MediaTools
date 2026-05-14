@@ -1,0 +1,6 @@
+[2026-05-15 01:59:11] SCAN START: doc=smoke.psd path=C:\MediaTools\vendor\adobe\photoshop\com\tuning\smoke.psd dpi=96.01199340820312
+[2026-05-15 01:59:13] SCAN: [Supports text, image, video,and audio input types, reshaping au] font=NotoSans-Regular size_pt=24.47 size_px=24.47 tracking=0.0 auto_leading=False leading_pt=31.46 bounds_h=65.00px dpi=72.0
+[2026-05-15 01:59:15] SCAN: [Multimodal Creation All -Around Reference] font=NotoSans-Bold size_pt=62.91 size_px=62.91 tracking=0.0 auto_leading=False leading_pt=69.90 bounds_h=136.00px dpi=72.0
+[2026-05-15 01:59:18] SCAN: [上下排版/组 2/Seedance 2.0] font=NotoSans-Bold size_pt=53.99 size_px=72.00 tracking=0.0 auto_leading=False leading_pt=62.24 bounds_h=42.00px dpi=96.01199340820312
+[2026-05-15 01:59:19] SCAN: [上下排版/组 2/Dreamina ] font=NotoSans-Medium size_pt=53.99 size_px=72.00 tracking=0.0 auto_leading=False leading_pt=62.24 bounds_h=41.00px dpi=96.01199340820312
+[2026-05-15 01:59:19] SCAN COMPLETE: 4 text layers found

@@ -130,6 +130,8 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
             for refine_iter in range(1, max_refine + 1):
                 diff = real_h - record.bounds_h_px
                 if abs(diff) < refine_converge_px:
+                    if refine_iter == 1:
+                        break  # first REFINE hit — skip safety
                     if _refine_safety:
                         break
                     _refine_safety = True

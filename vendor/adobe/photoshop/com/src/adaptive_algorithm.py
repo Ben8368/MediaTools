@@ -63,7 +63,8 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
         pass
 
     _safety = False
-    _prev_lead_h = 0.0  # detect oscillation
+    _prev_lead_h = 0.0
+    _prev2_lead_h = 0.0  # detect alternating oscillation
     for prec_iter in range(1, 6):
         h = get_h()
         if abs(h - target_h) < phase2_threshold:
@@ -103,9 +104,14 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
         if logger:
             logger.log_iteration(7 + prec_iter, "lead", current_leading, h, target_h)
 
-        # Detect oscillation: same height as previous round → stop
-        if abs(h - _prev_lead_h) < 0.5 and prec_iter > 1:
-            break
+        # Detect oscillation: height alternating between two values
+        # (e.g. 116↔120) or stuck at same value → stop
+        if _prev_lead_h > 0:
+            if abs(h - _prev_lead_h) < 1.0:
+                break  # same height as last round
+            if _prev2_lead_h > 0 and abs(h - _prev2_lead_h) < 1.0:
+                break  # alternating: 116→120→116
+        _prev2_lead_h = _prev_lead_h
         _prev_lead_h = h
 
         if abs(h - target_h) >= phase2_threshold:
