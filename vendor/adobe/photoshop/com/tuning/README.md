@@ -11,7 +11,7 @@
 C:\MediaTools\vendor\adobe\photoshop\com\
 ├── tuning\
 │   ├── test.psd                ← 母版，永远不动
-│   ├── TUNING_GUIDE.md         ← 本文档
+│   ├── README.md               ← 本文档
 │   └── （测试过程产生的文件）
 └── src\
     ├── main.py                 ← CLI 入口
