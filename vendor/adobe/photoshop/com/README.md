@@ -8,19 +8,21 @@
 
 ```text
 com/
-├── src/
+├── src/                        ← 源代码
 │   ├── ps_connector.py
 │   ├── text_modifier.py
 │   ├── ticket_workflow.py
-│   ├── ticket_json.py
-│   ├── ticket_excel.py
-│   ├── config_reader.py
-│   ├── font_analyzer.py
-│   ├── font_verifier.py
-│   ├── font_weight_mapper.py
-│   ├── font_metrics_cache.py
+│   ├── adaptive_lab.py
+│   ├── adaptive_algorithm.py
+│   ├── psa_applier.py
+│   ├── document_scanner.py
+│   ├── smart_object_handler.py
+│   ├── font_resolver.py
 │   └── ...
-└── README.md
+├── tuning/                     ← 调优测试
+│   ├── test.psd                ← 测试母版
+│   └── README.md               ← 调优指南
+└── README.md                   ← 本文档
 ```
 
 ## 使用方式
@@ -38,6 +40,18 @@ connector = runtime["PhotoshopConnector"]()
 - 适配器根路径：`vendor/adobe/photoshop/com/src`
 - 仅支持 Windows + pywin32
 - 供 MediaTools 后端和服务层加载
+
+## 核心模块
+
+### PSA 自适应算法
+
+位于 `src/adaptive_*.py`，负责跨字体的文字图层参数自适应：
+
+- `adaptive_lab.py` - Lab 文档环境 + `find_adapted_params()` 核心算法
+- `adaptive_algorithm.py` - Phase 1/2/3 迭代算法（字号、行高、字距）
+- `psa_applier.py` - 单层处理流程：CALIBRATE → APPLY → VERIFY → REFINE
+
+**调优指南**：[tuning/README.md](tuning/README.md) - 往返测试方法、评估指标、问题定位
 
 ## 相关文档
 
