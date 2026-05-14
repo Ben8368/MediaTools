@@ -40,6 +40,8 @@ def phase1_binary_search(ti, get_h, target_h: float, iterations_log: list[str],
         else:
             hi = mid
         if abs(hi - lo) < 2.0 or (h > 0 and abs(h - target_h) / target_h < 0.04):
+            if i == 1:
+                break  # hint hit on first try — skip safety confirmation
             if _safety:
                 break
             _safety = True
@@ -61,9 +63,12 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
         pass
 
     _safety = False
+    _prev_lead_h = 0.0  # detect oscillation
     for prec_iter in range(1, 6):
         h = get_h()
         if abs(h - target_h) < phase2_threshold:
+            if prec_iter == 1:
+                break  # first round converged — skip safety
             if _safety:
                 break
             _safety = True
@@ -98,6 +103,11 @@ def phase2_multiline(ti, get_h, target_h: float, phase2_threshold: float,
         if logger:
             logger.log_iteration(7 + prec_iter, "lead", current_leading, h, target_h)
 
+        # Detect oscillation: same height as previous round → stop
+        if abs(h - _prev_lead_h) < 0.5 and prec_iter > 1:
+            break
+        _prev_lead_h = h
+
         if abs(h - target_h) >= phase2_threshold:
             try:
                 current_size = float(safe_get(ti, "Size", last_mid) or last_mid)
@@ -124,6 +134,8 @@ def phase2_singleline(ti, get_h, target_h: float, phase2_threshold: float,
     for prec_iter in range(1, 6):
         h = get_h()
         if abs(h - target_h) < phase2_threshold:
+            if prec_iter == 1:
+                break  # first round converged — skip safety
             if _safety:
                 break
             _safety = True
