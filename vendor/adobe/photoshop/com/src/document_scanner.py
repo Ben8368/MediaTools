@@ -176,6 +176,9 @@ def _walk_layers(
             except SOEnterError as e:
                 if logger:
                     logger.log_error(f"enter SO {'/'.join(current_path)}", e)
+            except Exception as e:
+                if logger:
+                    logger.log_error(f"scan SO {'/'.join(current_path)}", e)
 
         else:
             # Try recurse (LayerSet / group has no Kind or Kind=3)

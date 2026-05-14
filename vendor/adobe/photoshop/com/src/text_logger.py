@@ -19,7 +19,10 @@ class PSALogger:
         full = f"[{self._ts()}] {prefix}{line}" if indent == 0 else f"  {prefix}{line}"
         self._fh.write(full + "\n")
         self._fh.flush()
-        print(full)
+        try:
+            print(full)
+        except UnicodeEncodeError:
+            print(full.encode("utf-8", errors="replace").decode("ascii", errors="replace"))
 
     def log_info(self, msg: str):
         self._write(f"INFO: {msg}")
