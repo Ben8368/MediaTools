@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 type FontPickerProps = {
   label?: string
@@ -11,6 +11,8 @@ type FontPickerProps = {
   compact?: boolean
   /** 隐藏列标题，仅保留控件本身（任务行等紧凑场景） */
   hideLabels?: boolean
+  /** 为 true 时不可展开列表、不可改选（如固定文案行） */
+  disabled?: boolean
   onChange: (value: string) => void
 }
 
@@ -97,12 +99,21 @@ function parseFont(font: string): FontVariant {
   return { value: cleaned, family: displayFamilyName(family), style, order, italic, weight }
 }
 
+/** 含空格检索时按词同时匹配（如「noto sc」可命中「Noto Sans SC」） */
+function fontMatchesQuery(parsed: FontVariant, needle: string): boolean {
+  const q = needle.trim().toLowerCase()
+  if (!q) return true
+  const hay = `${parsed.family} ${parsed.value}`.toLowerCase()
+  const tokens = q.split(/\s+/).filter(Boolean)
+  return tokens.length > 0 && tokens.every((t) => hay.includes(t))
+}
+
 function buildGroups(fonts: string[], query: string) {
-  const needle = query.trim().toLowerCase()
+  const needle = query.trim()
   const groups = new Map<string, FontVariant[]>()
   uniqueFonts(fonts).forEach((font) => {
     const parsed = parseFont(font)
-    if (needle && !parsed.family.toLowerCase().includes(needle)) return
+    if (!fontMatchesQuery(parsed, needle)) return
     const list = groups.get(parsed.family) || []
     if (!list.some((item) => item.value === parsed.value)) list.push(parsed)
     groups.set(parsed.family, list)
@@ -113,7 +124,6 @@ function buildGroups(fonts: string[], query: string) {
       variants: variants.sort((a, b) => a.order - b.order || Number(a.italic) - Number(b.italic) || a.value.localeCompare(b.value)),
     }))
     .sort((a, b) => a.family.localeCompare(b.family))
-    .slice(0, 60)
 }
 
 export function FontPicker({
@@ -126,10 +136,15 @@ export function FontPicker({
   accent = 'blue',
   compact = false,
   hideLabels = false,
+  disabled = false,
   onChange,
 }: FontPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    if (disabled) setOpen(false)
+  }, [disabled])
 
   const allFonts = useMemo(() => uniqueFonts([value, sourceFont || '', ...fonts]), [fonts, sourceFont, value])
   const groups = useMemo(() => buildGroups(allFonts, query), [allFonts, query])
@@ -146,6 +161,7 @@ export function FontPicker({
   }
 
   const handleFamilyChange = (newFamily: string) => {
+    if (disabled) return
     if (!newFamily) {
       onChange('')
       setQuery('')
@@ -164,11 +180,15 @@ export function FontPicker({
   }
 
   const halfClass = `font-picker-half ${hideLabels ? 'font-picker-half--nolabel' : ''}`
+  const locked = disabled
 
   return (
     <div
-      className={`font-picker-split font-picker-split--${accent} ${compact ? 'font-picker-split--compact' : ''}`}
+      className={`font-picker-split font-picker-split--${accent} ${compact ? 'font-picker-split--compact' : ''}${
+        locked ? ' font-picker-split--disabled' : ''
+      }`}
       onBlur={(event) => {
+        if (locked) return
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) closeMenus()
       }}
     >
@@ -182,18 +202,23 @@ export function FontPicker({
           )}
           <input
             aria-label={ariaLabel}
-            value={open ? query : currentFamily}
+            readOnly={locked}
+            disabled={locked}
+            value={open && !locked ? query : currentFamily}
             onChange={(event) => {
+              if (locked) return
               setQuery(event.target.value)
               setOpen(true)
             }}
             onKeyDown={(event) => {
+              if (locked) return
               if (event.key !== 'Enter') return
               event.preventDefault()
               const firstMatch = groups[0]?.family
               if (firstMatch) handleFamilyChange(firstMatch)
             }}
             onFocus={() => {
+              if (locked) return
               setQuery('')
               setOpen(true)
             }}
@@ -202,13 +227,15 @@ export function FontPicker({
           <button
             type="button"
             aria-label="展开字体列表"
+            disabled={locked}
             onClick={() => {
+              if (locked) return
               setOpen((next) => !next)
             }}
           >
             ⌄
           </button>
-          {open && (
+          {open && !locked && (
             <div className="font-picker-menu" role="listbox">
               <button
                 type="button"

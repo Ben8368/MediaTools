@@ -357,7 +357,7 @@ export function AEApp() {
   }, [isScanning])
 
   useEffect(() => {
-    void fetchSystemFonts({ limit: 700 }).then((data) => {
+    void fetchSystemFonts({ limit: 8000 }).then((data) => {
       const names = (data.items || []).map((item: AnyRecord) => item.name).filter(Boolean)
       setFonts(names)
     }).catch(() => setFonts([]))

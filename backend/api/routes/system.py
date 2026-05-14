@@ -69,7 +69,7 @@ def create_router(get_current_workspace, get_auditor_status, get_wechat_moments_
         )
 
     @router.get("/api/system/fonts")
-    async def system_fonts(query: str = "", limit: int = 500):
+    async def system_fonts(query: str = "", limit: int = 2000):
         return JSONResponse(list_system_fonts(query=query, limit=limit))
 
     return router

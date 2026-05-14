@@ -88,6 +88,28 @@ function truncateForUi(text: string, maxChars: number): string {
   return `${t.slice(0, Math.max(0, maxChars - 1))}…`
 }
 
+/**
+ * 从输出文件名最后一段推断语种（如 x_ja-JP.psd），仅作 task.language 为空时的筛选补充。
+ */
+function inferLocaleFromOutputName(outputName: unknown): string {
+  const name = String(outputName || '').trim()
+  if (!name) return ''
+  const base = name.split(/[/\\]/).pop() || name
+  const dot = base.lastIndexOf('.')
+  const stem = dot === -1 ? base : base.slice(0, dot)
+  const us = stem.lastIndexOf('_')
+  if (us === -1 || us >= stem.length - 1) return ''
+  const frag = stem.slice(us + 1)
+  if (/^[a-z]{2}(-[A-Za-z0-9]+)*$/i.test(frag)) return frag
+  return ''
+}
+
+function taskLocaleForListFilter(task: AnyRecord, resolve: (t: AnyRecord) => string): string {
+  const direct = resolve(task).trim()
+  if (direct) return direct
+  return inferLocaleFromOutputName(task.output_name).trim()
+}
+
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {
   if (!result && !execution) return <div className="ps-empty">暂无执行记录。</div>
   
@@ -139,6 +161,8 @@ export function PhotoshopApp() {
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null)
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all')
   const [taskSearch, setTaskSearch] = useState('')
+  /** 空字符串表示「全部」：批量字体/批量确认作用于当前列表筛选下的全部可见任务。 */
+  const [bulkLocaleFilter, setBulkLocaleFilter] = useState('')
   const [bulkFont, setBulkFont] = useState('')
   const [fonts, setFonts] = useState<string[]>([])
   const [result, setResult] = useState<unknown>('等待扫描或选择工单')
@@ -185,6 +209,25 @@ export function PhotoshopApp() {
     if (localeFallbacks.length === 1) return localeFallbacks[0]
     return ''
   }, [localeFallbacks])
+
+  const bulkLocaleOptions = useMemo(() => {
+    const acc = new Set<string>()
+    for (const task of tasks) {
+      const loc = taskLocaleForListFilter(task, resolveTaskLocale)
+      if (loc) acc.add(loc)
+    }
+    return Array.from(acc).sort((a, b) => a.localeCompare(b))
+  }, [tasks, resolveTaskLocale])
+
+  useEffect(() => {
+    setBulkLocaleFilter('')
+  }, [ticketId])
+
+  useEffect(() => {
+    if (bulkLocaleFilter && !bulkLocaleOptions.includes(bulkLocaleFilter)) {
+      setBulkLocaleFilter('')
+    }
+  }, [bulkLocaleFilter, bulkLocaleOptions])
 
   const translateAndPersist = useCallback(async (
     items: { index: number; text: string; locale: string }[],
@@ -244,6 +287,7 @@ export function PhotoshopApp() {
     }
     const items: { index: number; text: string; locale: string }[] = []
     tasks.forEach((task: AnyRecord, index: number) => {
+      if (Boolean(task.preserve_copy)) return
       const text = taskEffectiveSourceText(task)
       if (!text.trim()) return
       const locale = resolveTaskLocale(task)
@@ -351,7 +395,22 @@ export function PhotoshopApp() {
       .filter(({ task }) => matchesTaskFilter(task, taskFilter))
       .filter(({ task }) => matchesTaskSearch(task, deferredTaskSearch))
   ), [tasks, taskFilter, deferredTaskSearch])
-  const visibleIndexes = useMemo(() => filteredTaskEntries.map(({ index }) => index), [filteredTaskEntries])
+
+  /** 列表展示：在搜索/分类筛选之上，再按批量区「语种」下拉过滤（与批量设字体/确认范围一致）。 */
+  const displayedTaskEntries = useMemo(() => {
+    const key = bulkLocaleFilter.trim()
+    if (!key) return filteredTaskEntries
+    return filteredTaskEntries.filter(
+      ({ task }) => taskLocaleForListFilter(task, resolveTaskLocale) === key,
+    )
+  }, [filteredTaskEntries, bulkLocaleFilter, resolveTaskLocale])
+
+  const visibleIndexes = useMemo(() => displayedTaskEntries.map(({ index }) => index), [displayedTaskEntries])
+  /** 批量改字体时排除「固定文案」任务 */
+  const bulkFontTargetIndexes = useMemo(
+    () => visibleIndexes.filter((i) => !Boolean(tasks[i]?.preserve_copy)),
+    [visibleIndexes, tasks],
+  )
 
   const updateTask = useCallback((index: number, patch: AnyRecord) => {
     setTicket((current) => patchAutomationTask(current, index, patch))
@@ -396,8 +455,8 @@ export function PhotoshopApp() {
 
   function applyBulkFontToVisibleTasks() {
     const font = bulkFont.trim()
-    if (!font || !visibleIndexes.length) return
-    updateTasks(visibleIndexes, { target_font: font })
+    if (!font || !bulkFontTargetIndexes.length) return
+    updateTasks(bulkFontTargetIndexes, { target_font: font })
   }
 
   async function handleLocaleRequestConfirm(result: PhotoshopLocaleRequestResult) {
@@ -714,7 +773,7 @@ export function PhotoshopApp() {
   }, [isScanning])
 
   useEffect(() => {
-    void fetchSystemFonts({ limit: 700 }).then((data) => {
+    void fetchSystemFonts({ limit: 8000 }).then((data) => {
       const names = uniqueStrings((data.items || []).map((item: AnyRecord) => item.name).filter(Boolean))
       setFonts(names)
     }).catch(() => setFonts([]))
@@ -1292,9 +1351,10 @@ export function PhotoshopApp() {
               </div>
             </div>
             <div className="ps-task-guide">
-              <span><b>1</b> 填替换文案</span>
-              <span><b>2</b> 选择字体和输出名</span>
-              <span><b>3</b> 确认后执行</span>
+              <span title="编辑各任务目标文案（与母版一致时可留空）"><b>1</b> 改目标文案</span>
+              <span title="选择目标字体、输出文件名；可按语种筛选后批量设字体"><b>2</b> 字体·输出·批量</span>
+              <span title="产品名等勾选「固定」后：不参与 Ai 翻译与批量改字体，执行沿用母版"><b>3</b> 固定文案免译</span>
+              <span title="点击「确认修改」后再保存/执行"><b>4</b> 确认后执行</span>
               <em>{selectedExecutableCount}/{executableIndexes.length} 已选可执行</em>
             </div>
             <div className="ps-task-controls">
@@ -1327,18 +1387,58 @@ export function PhotoshopApp() {
                   compact
                   hideLabels
                   ariaLabel="批量目标字体"
+                  emptyLabel="沿用源"
                   value={bulkFont}
                   sourceFont=""
                   fonts={fonts}
                   onChange={setBulkFont}
                 />
-                <ToolbarButton onClick={applyBulkFontToVisibleTasks} disabled={!bulkFont.trim() || !visibleIndexes.length}>批量设置字体</ToolbarButton>
-                <ToolbarButton onClick={confirmVisibleTasks} disabled={!visibleIndexes.length}>批量确认当前筛选</ToolbarButton>
+                <div className="ps-bulk-locale">
+                  <select
+                    className="ps-bulk-locale-select"
+                    aria-label="语种：批量操作限定当前筛选内的任务"
+                    value={bulkLocaleFilter}
+                    onChange={(event) => setBulkLocaleFilter(event.target.value)}
+                  >
+                    <optgroup label="语种">
+                      <option value="">全部（当前筛选）</option>
+                      {bulkLocaleOptions.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+                <ToolbarButton
+                  onClick={applyBulkFontToVisibleTasks}
+                  disabled={!bulkFont.trim() || !bulkFontTargetIndexes.length}
+                  title={
+                    bulkFontTargetIndexes.length < visibleIndexes.length && visibleIndexes.length > 0
+                      ? `对 ${bulkFontTargetIndexes.length} 条设置目标字体（已跳过 ${visibleIndexes.length - bulkFontTargetIndexes.length} 条固定文案）`
+                      : bulkLocaleFilter.trim()
+                        ? `对列表中的 ${bulkFontTargetIndexes.length} 条（语种 ${bulkLocaleFilter}）设置目标字体`
+                        : `对当前列表中的 ${bulkFontTargetIndexes.length} 条任务设置目标字体`
+                  }
+                >
+                  批量设置字体
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={confirmVisibleTasks}
+                  disabled={!visibleIndexes.length}
+                  title={
+                    bulkLocaleFilter.trim()
+                      ? `确认当前列表中的 ${visibleIndexes.length} 条（语种 ${bulkLocaleFilter}）`
+                      : `确认当前列表中的 ${visibleIndexes.length} 条任务`
+                  }
+                >
+                  批量确认当前筛选
+                </ToolbarButton>
               </div>
               {warningTaskCount ? <p className="ps-task-warning">有 {warningTaskCount} 个任务带错误或备注，建议筛选“有错误/警告”后复核。</p> : null}
             </div>
             <div className="ps-task-list">
-              {filteredTaskEntries.length ? filteredTaskEntries.map(({ task, index }) => (
+              {displayedTaskEntries.length ? displayedTaskEntries.map(({ task, index }) => (
                 <PhotoshopTaskRow
                   key={index}
                   task={task}
@@ -1351,7 +1451,15 @@ export function PhotoshopApp() {
                   onToggle={toggleTask}
                   onConfirm={confirmTask}
                 />
-              )) : <div className="ps-empty">{tasks.length ? '当前筛选没有匹配任务。' : '等待扫描或选择工单。'}</div>}
+              )) : (
+                <div className="ps-empty">
+                  {!tasks.length
+                    ? '等待扫描或选择工单。'
+                    : bulkLocaleFilter.trim()
+                      ? `当前分类/搜索下没有语种为「${bulkLocaleFilter}」的任务；请检查各任务「语种」字段或改选「全部」。`
+                      : '当前筛选没有匹配任务。'}
+                </div>
+              )}
             </div>
             <div className="ps-execute-dock" aria-label="工单执行操作">
               <div>
@@ -1452,16 +1560,26 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
   onConfirm,
 }: PhotoshopTaskRowProps) {
   const smart = isSmartObjectTask(task)
+  const preserve = Boolean(task.preserve_copy)
   const sourceText = taskEffectiveSourceText(task)
   const rawTarget = task.target_text
   const hasStoredTarget = rawTarget != null && String(rawTarget).trim() !== ''
-  const displayValue = hasStoredTarget ? String(rawTarget) : sourceText
+  const displayValue = preserve ? sourceText : hasStoredTarget ? String(rawTarget) : sourceText
 
   const syncTargetFromInput = (value: string) => {
+    if (preserve) return
     if (value.trim() === sourceText.trim()) {
       onUpdate(index, { target_text: '' })
     } else {
       onUpdate(index, { target_text: value })
+    }
+  }
+
+  const togglePreserve = (checked: boolean) => {
+    if (checked) {
+      onUpdate(index, { preserve_copy: true, target_text: '', target_font: '' })
+    } else {
+      onUpdate(index, { preserve_copy: false })
     }
   }
 
@@ -1477,8 +1595,8 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
   return (
     <div
       className={`ps-task ${selected ? 'ps-task--selected' : ''} ${smart ? 'ps-task--smart' : ''}${
-        aiTranslating ? ' ps-task--ai-translating' : ''
-      }`}
+        preserve ? ' ps-task--preserve-copy' : ''
+      }${aiTranslating ? ' ps-task--ai-translating' : ''}`}
     >
       <label className={`ps-task-check ps-task-check--${checkState}`} title={checkTitle}>
         <input
@@ -1496,14 +1614,32 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
               className="ps-task-copy-input"
               aria-label={`文案 ${index + 1}（默认母版原文，改动后为目标文案）`}
               value={displayValue}
+              readOnly={preserve}
               onChange={(event) => syncTargetFromInput(event.target.value)}
-              placeholder="母版原文；可直接编辑，或与原文一致时留空表示未改"
-              title={sourceText.trim() ? `母版参考：${sourceText}` : '暂无扫描原文，可手写目标文案'}
+              placeholder={preserve ? '固定文案：与母版一致，不参与翻译/批量改字体' : '母版原文；可直接编辑，或与原文一致时留空表示未改'}
+              title={
+                preserve
+                  ? '已标记固定文案（如产品名）：执行时沿用母版原文与源字体'
+                  : sourceText.trim()
+                    ? `母版参考：${sourceText}`
+                    : '暂无扫描原文，可手写目标文案'
+              }
             />
           </div>
-          <div className="ps-task-badges">
-            <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
-            {taskWarning ? <em className="ps-badge ps-badge--warning">有错误/警告</em> : null}
+          <div className="ps-task-head-meta">
+            <div className="ps-task-badges">
+              <em className={smart ? 'ps-badge ps-badge--smart' : 'ps-badge ps-badge--layer'}>{smart ? '智能对象内文字层' : '普通文字层'}</em>
+              {preserve ? <em className="ps-badge ps-badge--preserve">固定文案</em> : null}
+              {taskWarning ? <em className="ps-badge ps-badge--warning">有错误/警告</em> : null}
+            </div>
+            <label className="ps-task-preserve" title="产品名等品牌固定用语：不随 Ai 翻译、不参与批量改字体；执行时写回母版原文与源字体">
+              <input
+                type="checkbox"
+                checked={preserve}
+                onChange={(event) => togglePreserve(event.target.checked)}
+              />
+              <span>固定</span>
+            </label>
           </div>
         </div>
         <div className="ps-task-toolbar">
@@ -1513,6 +1649,7 @@ const PhotoshopTaskRow = memo(function PhotoshopTaskRow({
               hideLabels
               accent={smart ? 'purple' : 'blue'}
               ariaLabel={`目标字体 ${index + 1}`}
+              disabled={preserve}
               value={task.target_font || ''}
               sourceFont={task.source_font}
               fonts={taskFontOptions}

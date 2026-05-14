@@ -29,11 +29,19 @@ def _set_task_result(task: Any, result: Any) -> bool:
 
 
 def _build_mapping(runtime: dict[str, Any], task: Any) -> Any:
+    orig = str(getattr(task, "original_text", "") or "")
+    if bool(getattr(task, "preserve_copy", False)):
+        return runtime["TextMapping"](
+            match_mode="exact",
+            original_text=orig,
+            new_text=orig,
+            font=(str(getattr(task, "source_font", None) or "").strip() or None),
+        )
     tt = getattr(task, "target_text", None)
     new_text = None if tt is None else str(tt)
     return runtime["TextMapping"](
         match_mode="exact",
-        original_text=str(getattr(task, "original_text", "") or ""),
+        original_text=orig,
         new_text=new_text,
         font=(task.target_font or "").strip() or None,
     )

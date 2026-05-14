@@ -76,9 +76,15 @@ def _scanned_fonts() -> list[dict[str, str]]:
     return entries
 
 
-def list_system_fonts(query: str = "", limit: int = 500) -> dict[str, Any]:
+def list_system_fonts(query: str = "", limit: int = 2000) -> dict[str, Any]:
     """Return installed fonts from OS metadata with a filesystem fallback."""
     needle = query.strip().lower()
+    # 0 = 不截断（仅建议用于带 query 的检索）；否则封顶避免一次返回过大 JSON
+    cap = 10000
+    if limit < 0:
+        limit = 2000
+    elif limit > 0:
+        limit = min(limit, cap)
     seen: set[str] = set()
     items: list[dict[str, str]] = []
     for item in [*_registry_fonts(), *_scanned_fonts()]:

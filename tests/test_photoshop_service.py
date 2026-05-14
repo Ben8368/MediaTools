@@ -59,6 +59,7 @@ class FakeTicketTask:
     smart_object_layer_id: int = 0
     smart_object_name: str = ""
     smart_object_inner_layer_name: str = ""
+    preserve_copy: bool = False
 
 
 @dataclass
@@ -757,6 +758,29 @@ def test_start_ticket_execution_marks_error_when_all_tasks_fail(tmp_path, monkey
     assert finished and finished[0][0] is False
 
 
+def test_build_mapping_preserve_copy_uses_original_and_source_font():
+    from modules.adobe.photoshop import execution
+
+    captured: dict = {}
+
+    def _tm(**kw):
+        captured.update(kw)
+        return kw
+
+    runtime = {"TextMapping": _tm}
+    task = Mock(
+        original_text="Product™",
+        target_text="误译",
+        target_font="Arial",
+        source_font="Noto Sans",
+        preserve_copy=True,
+    )
+    execution._build_mapping(runtime, task)
+    assert captured["original_text"] == "Product™"
+    assert captured["new_text"] == "Product™"
+    assert captured["font"] == "Noto Sans"
+
+
 def test_task_helpers_and_start_execution_delegate(monkeypatch):
     assert service._default_output_name("C:/design/banner.psd") == "banner_photoshop.psd"
     from modules.adobe.photoshop import execution
@@ -776,12 +800,12 @@ def test_task_helpers_and_start_execution_delegate(monkeypatch):
             original_text="Hi",
         ),
         Mock(output_name="a.psd", status="pending", target_text="Hello", original_text="Hi", target_font=""),
-        Mock(output_name="b.psd", status="pending", target_text="", target_font="", original_text=""),
+        Mock(output_name="b.psd", status="pending", target_text="", target_font="", original_text="Brand", preserve_copy=True),
     ]
     assert service._should_execute_task(tasks[0]) is False
     assert service._should_execute_task(tasks[1]) is True
     assert service._should_execute_task(tasks[2]) is True
-    assert service._should_execute_task(tasks[3]) is False
+    assert service._should_execute_task(tasks[3]) is True
     assert set(service._group_tasks(tasks)) == {"", "a.psd", "b.psd"}
 
     delegate = Mock(return_value={"ok": True})

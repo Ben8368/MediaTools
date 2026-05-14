@@ -210,6 +210,7 @@ def _build_ticket(runtime: dict[str, Any], scan_rows: list[Any], source_psd: str
             "target_text": "",
             "target_font": "",
             "status": "pending",
+            "preserve_copy": False,
             "layer_kind": "smart_object_text" if smart_object_layer_id else "text",
             "smart_object_layer_id": smart_object_layer_id,
             "smart_object_name": getattr(row, "smart_object_name", "") or "",
@@ -395,6 +396,8 @@ def _is_target_text_modified_from_source(task: Any) -> bool:
 def _should_execute_task(task: Any) -> bool:
     if task.status == "skip":
         return False
+    if bool(getattr(task, "preserve_copy", False)):
+        return True
     if str(getattr(task, "target_font", None) or "").strip():
         return True
     return _is_target_text_modified_from_source(task)

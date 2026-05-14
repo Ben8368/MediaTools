@@ -1304,6 +1304,8 @@
   display: grid;
   gap: 10px;
   overflow: auto;
+  position: relative;
+  z-index: 0;
 }
 
 .ps-ticket-list {
@@ -1374,10 +1376,18 @@
 }
 
 .ps-task-guide {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 10px;
+  min-width: 0;
+}
+
+.ps-task-guide > span {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .ps-task-guide span,
@@ -1390,28 +1400,35 @@
   border-radius: 999px;
   background: rgba(4,10,18,.34);
   color: rgba(221,235,255,.70);
-  padding: 0 11px;
+  padding: 0 10px;
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
+  line-height: 1.2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-task-guide > em {
+  flex: 0 0 auto;
+  max-width: min(200px, 38%);
+  margin-left: auto;
+  border-color: rgba(48,209,88,.18);
+  color: #55e483;
 }
 
 .ps-task-guide b {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 18px;
   height: 18px;
   border-radius: 999px;
   background: rgba(10,115,255,.20);
   color: #8fc5ff;
   font-size: 11px;
-}
-
-.ps-task-guide em {
-  border-color: rgba(48,209,88,.18);
-  color: #55e483;
 }
 
 .ps-task-controls {
@@ -1424,7 +1441,10 @@
   background:
     linear-gradient(165deg, rgba(12,28,48,.55), rgba(4,10,18,.38));
   padding: 0;
-  overflow: hidden;
+  /* 允许批量区 FontPicker 下拉超出本块高度，且整体叠在任务列表之上 */
+  overflow: visible;
+  position: relative;
+  z-index: 40;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
 }
 
@@ -1497,23 +1517,94 @@
 
 .ps-task-controls__bulk {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   padding: 10px;
   border-top: 1px solid rgba(142,183,237,.10);
   background: rgba(3,8,14,.22);
+  overflow: visible;
 }
 
-.ps-task-controls__bulk .font-picker-split {
-  flex: 1 1 280px;
-  min-width: 240px;
-  max-width: min(420px, 100%);
+.ps-task-controls__bulk .font-picker-split.font-picker-split--compact {
+  flex: 0 1 200px;
+  min-width: 148px;
+  max-width: 220px;
+}
+
+.ps-task-controls__bulk .font-picker-split--compact .font-picker {
+  grid-template-columns: minmax(0, 1fr) 26px;
+  min-height: 34px;
+  border-radius: 10px;
+}
+
+.ps-task-controls__bulk .font-picker-split--compact .font-picker-summary {
+  inset: 4px 28px 4px 8px;
+}
+
+.ps-task-controls__bulk .font-picker-split--compact .font-picker-summary span {
+  font-size: 12px;
+}
+
+.ps-task-controls__bulk .font-picker-split--compact .font-picker input {
+  padding: 0 8px !important;
+  font-size: 12px !important;
+}
+
+.ps-task-controls__bulk .font-picker-split--compact .font-picker > button {
+  width: 26px;
+  min-width: 26px;
+  max-width: 26px;
+}
+
+.ps-task-controls__bulk .font-picker-menu {
+  left: 0;
+  right: auto;
+  min-width: min(220px, 100%);
+  max-width: min(260px, calc(100vw - 48px));
+  z-index: 300;
+}
+
+.ps-task-controls__bulk .font-picker-option span {
+  font-size: 12px;
+}
+
+.ps-bulk-locale {
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.ps-bulk-locale-select {
+  width: 100%;
+  min-height: 34px;
+  box-sizing: border-box;
+  border: 1px solid rgba(142, 183, 237, 0.22);
+  border-radius: 10px;
+  background: rgba(4, 10, 18, 0.78);
+  color: #f6fbff;
+  padding: 0 10px;
+  outline: 0;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ps-bulk-locale-select:focus {
+  border-color: rgba(77, 171, 255, 0.48);
+  box-shadow: 0 0 0 3px rgba(77, 171, 255, 0.12);
+}
+
+.ps-bulk-locale-select option,
+.ps-bulk-locale-select optgroup {
+  background: #0d1520;
+  color: #f6fbff;
 }
 
 .ps-task-controls__bulk .mt-btn {
   min-height: 34px;
   font-weight: 850;
+  flex-shrink: 0;
 }
 
 .ps-task-warning {
@@ -1807,6 +1898,47 @@
 .ps-task-head-main {
   min-width: 0;
   flex: 1;
+}
+
+.ps-task-head-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ps-task-preserve {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  cursor: pointer;
+  color: rgba(221, 235, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ps-task-preserve input {
+  margin: 0;
+  accent-color: #4dabff;
+}
+
+.ps-badge.ps-badge--preserve {
+  background: rgba(120, 86, 255, 0.22);
+  color: rgba(230, 222, 255, 0.95);
+  border: 1px solid rgba(168, 142, 255, 0.35);
+}
+
+.ps-task--preserve-copy .ps-task-copy-input {
+  opacity: 0.92;
+  background: rgba(120, 86, 255, 0.08);
+}
+
+.ps-task--preserve-copy .ps-task-copy-input:focus {
+  border-color: rgba(142, 120, 255, 0.35);
 }
 
 .ps-task-copy-input {
@@ -2266,9 +2398,23 @@
 
   .ps-metrics,
   .ps-scan-counts,
-  .ps-task-guide,
   .ps-task-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .ps-task-guide {
+    flex-wrap: wrap;
+  }
+
+  .ps-task-guide > span {
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .ps-task-guide > em {
+    margin-left: 0;
+    max-width: 100%;
+    width: 100%;
+    justify-content: center;
   }
 
   .ps-ai-quick-actions {

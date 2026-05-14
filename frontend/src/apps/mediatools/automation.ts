@@ -25,6 +25,7 @@ export function isTargetTextModifiedFromSource(task: AutomationRecord): boolean 
 
 export function isAutomationTaskExecutable(task: AutomationRecord) {
   if (task.status === 'skip') return false
+  if (Boolean(task.preserve_copy)) return true
   if (String(task.target_font || '').trim()) return true
   return isTargetTextModifiedFromSource(task)
 }

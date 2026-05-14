@@ -15,6 +15,9 @@ describe('automation task helpers', () => {
     expect(isAutomationTaskExecutable({ layer_name: 'Layer 1', target_text: 'edited' })).toBe(true)
     expect(isAutomationTaskExecutable({ target_font: 'Inter' })).toBe(true)
     expect(isAutomationTaskExecutable({ status: 'pending', original_text: 'x', target_text: '' })).toBe(false)
+    expect(
+      isAutomationTaskExecutable({ status: 'pending', original_text: 'Brand', target_text: '', preserve_copy: true }),
+    ).toBe(true)
   })
 
   it('returns executable task indexes only', () => {

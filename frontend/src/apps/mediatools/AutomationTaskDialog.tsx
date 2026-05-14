@@ -42,6 +42,7 @@ export function AutomationTaskDialog({
       target_font: draft.target_font || '',
       output_name: draft.output_name || '',
       status: statusPatch || draft.status || 'pending',
+      preserve_copy: Boolean(draft.preserve_copy),
     }
     onSave(index, patch, nextSelected)
     onClose()
@@ -72,7 +73,11 @@ export function AutomationTaskDialog({
           </label>
           <label>
             替换文本
-            <textarea value={draft.target_text || ''} onChange={(event) => setDraft({ ...draft, target_text: event.target.value })} />
+            <textarea
+              value={draft.target_text || ''}
+              readOnly={Boolean(draft.preserve_copy)}
+              onChange={(event) => setDraft({ ...draft, target_text: event.target.value })}
+            />
           </label>
           <label>
             当前字体
@@ -85,8 +90,26 @@ export function AutomationTaskDialog({
             sourceFont={draft.source_font || draft.font || ''}
             fonts={fonts}
             accent={accent}
+            disabled={Boolean(draft.preserve_copy)}
             onChange={(font) => setDraft({ ...draft, target_font: font })}
           />
+          <label className="automation-dialog-preserve">
+            <span>
+              <input
+                type="checkbox"
+                checked={Boolean(draft.preserve_copy)}
+                onChange={(event) => {
+                  const v = event.target.checked
+                  setDraft({
+                    ...draft,
+                    preserve_copy: v,
+                    ...(v ? { target_text: '', target_font: '' } : {}),
+                  })
+                }}
+              />
+              固定文案（产品名等：不参与 Ai 翻译与批量改字体，执行沿用母版）
+            </span>
+          </label>
           <label>
             输出名称
             <input value={draft.output_name || ''} onChange={(event) => setDraft({ ...draft, output_name: event.target.value })} />

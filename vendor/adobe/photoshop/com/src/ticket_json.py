@@ -40,6 +40,8 @@ class TicketTask:
     ai_confidence: float = 0.0  # AI 生成时的置信度 (0.0~1.0)
     ai_notes: str = ""  # AI 生成时的备注
     user_approved: bool = False  # 用户是否审核确认
+    # True：固定文案（如产品名）；不参加 Ai 翻译/批量改字体；执行时沿用 original_text 与 source_font
+    preserve_copy: bool = False
     layer_kind: str = "text"
     smart_object_layer_id: int = 0
     smart_object_name: str = ""
@@ -81,6 +83,7 @@ class TicketTask:
             ai_confidence=float(d.get("ai_confidence", 0.0)),
             ai_notes=str(d.get("ai_notes", "")),
             user_approved=bool(d.get("user_approved", False)),
+            preserve_copy=bool(d.get("preserve_copy", False)),
         )
 
 
@@ -208,6 +211,7 @@ _EXCEL_COLUMNS = [
     ("layer_kind", "图层类型"),
     ("smart_object_name", "智能对象"),
     ("smart_object_inner_layer_name", "智能对象内层"),
+    ("preserve_copy", "固定文案"),
     ("output_name", "输出文件"),
     ("language", "语言"),
     ("original_text", "原文"),
@@ -223,7 +227,7 @@ _EXCEL_COLUMNS = [
     ("user_approved", "已审核"),
 ]
 
-_USER_EDITABLE = {"target_text", "target_font", "status", "notes", "user_approved"}
+_USER_EDITABLE = {"target_text", "target_font", "status", "notes", "user_approved", "preserve_copy"}
 
 
 def export_to_excel(ticket: Ticket, excel_path: str) -> None:
@@ -298,6 +302,7 @@ def export_to_excel(ticket: Ticket, excel_path: str) -> None:
         "layer_id": 8,
         "artboard_name": 14,
         "layer_name": 20,
+        "preserve_copy": 10,
         "output_name": 16,
         "language": 10,
         "original_text": 30,
@@ -389,6 +394,7 @@ def import_from_excel(excel_path: str, ticket: Ticket) -> Ticket:
             new_status = get(row, "status")
             new_notes = get(row, "notes")
             new_approved_raw = get(row, "user_approved")
+            new_preserve_raw = get(row, "preserve_copy")
 
             if new_target_text is not None:
                 t.target_text = new_target_text
@@ -400,6 +406,8 @@ def import_from_excel(excel_path: str, ticket: Ticket) -> Ticket:
                 t.notes = new_notes
             if new_approved_raw is not None:
                 t.user_approved = new_approved_raw.lower() in ("是", "true", "yes", "1", "✓")
+            if new_preserve_raw is not None:
+                t.preserve_copy = new_preserve_raw.lower() in ("是", "true", "yes", "1", "✓")
 
             updated += 1
         except Exception as e:
