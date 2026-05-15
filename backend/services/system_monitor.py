@@ -13,7 +13,7 @@ from typing import Any
 import psutil
 
 from adapters import FFmpegAdapter, PhotoshopAutomationAdapter, UmcliAdapter, YtdlpAdapter
-from backend.api.modules import build_module_catalog
+from backend.services.module_catalog import build_module_catalog
 from backend.config import BASE_DIR, LOG_MODE
 from backend.services.auditor import get_auditor_status
 from backend.services.runtime.filebrowser import get_filebrowser_status

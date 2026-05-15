@@ -2,8 +2,7 @@ import { memo, useEffect, useState } from 'react'
 
 import { FontPicker } from '@/apps/mediatools/FontPicker'
 import { PrimaryButton, ToolbarButton } from '@/apps/mediatools/primitives'
-
-type AnyRecord = Record<string, any>
+import type { AnyRecord } from '@/types'
 
 type AutomationTaskDialogProps = {
   open: boolean

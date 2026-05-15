@@ -39,8 +39,8 @@ import {
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
 import { useModelConfig } from '@/modelConfigStore'
+import type { AnyRecord } from '@/types'
 
-type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'text' | 'smart_object_text' | 'pending' | 'ready' | 'warning'
 type FilterCounts = Record<TaskFilter, number>
 type TranslateUiState =

@@ -14,8 +14,8 @@ import {
   ResultBox,
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
+import type { AnyRecord } from '@/types'
 
-type AnyRecord = Record<string, any>
 export function AuditorApp() {
   const [status, setStatus] = useState<AnyRecord | null>(null)
   const [config, setConfig] = useState<AnyRecord>({})

@@ -24,8 +24,8 @@ import {
   ResultBox,
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
+import type { AnyRecord } from '@/types'
 
-type AnyRecord = Record<string, any>
 type DecryptCategory = 'all' | 'running' | 'completed' | 'pending' | 'stopped' | 'error'
 
 const DECRYPT_CATEGORIES: Array<{ key: DecryptCategory; label: string; icon: string }> = [

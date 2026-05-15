@@ -35,8 +35,8 @@ import {
   isAutomationTaskExecutable,
   patchAutomationTask,
 } from '@/apps/mediatools/automation'
+import type { AnyRecord } from '@/types'
 
-type AnyRecord = Record<string, any>
 type TaskFilter = 'all' | 'pending' | 'ready' | 'warning'
 
 function ExecutionSummary({ result, execution }: { result: any, execution: any }) {

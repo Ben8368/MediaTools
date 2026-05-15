@@ -14,8 +14,8 @@ import {
   ResultBox,
   ToolbarButton,
 } from '@/apps/mediatools/primitives'
+import type { AnyRecord } from '@/types'
 
-type AnyRecord = Record<string, any>
 export function WorkbenchApp() {
   const [media, setMedia] = useState<AnyRecord | null>(null)
   const [videoPath, setVideoPath] = useState('')
