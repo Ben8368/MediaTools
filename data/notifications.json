@@ -166,5 +166,21 @@
     "message": "\u5de5\u5355 d4041124 \u6267\u884c\u5931\u8d25: \u65e0\u6210\u529f\u4efb\u52a1 ((-2147417846, '\u6d88\u606f\u7b5b\u9009\u5668\u663e\u793a\u5e94\u7528\u7a0b\u5e8f\u6b63\u5728\u4f7f\u7528\u4e2d\u3002', None, None))",
     "timestamp": 1778810352.1129704,
     "read": false
+  },
+  {
+    "id": "1778811688426_21",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\ud83d\ude80 \u5f00\u59cb\u6267\u884c\u5de5\u5355 e7d6ae9b-3613-478d-b3e5-3157ae20f470 (12 \u4e2a\u4efb\u52a1)",
+    "timestamp": 1778811688.4260404,
+    "read": false
+  },
+  {
+    "id": "1778811695649_22",
+    "level": "ERROR",
+    "module": "photoshop.execution",
+    "message": "\u5de5\u5355 e7d6ae9b \u6267\u884c\u5931\u8d25: \u65e0\u6210\u529f\u4efb\u52a1 ((-2147417846, '\u6d88\u606f\u7b5b\u9009\u5668\u663e\u793a\u5e94\u7528\u7a0b\u5e8f\u6b63\u5728\u4f7f\u7528\u4e2d\u3002', None, None))",
+    "timestamp": 1778811695.6491504,
+    "read": false
   }
 ]

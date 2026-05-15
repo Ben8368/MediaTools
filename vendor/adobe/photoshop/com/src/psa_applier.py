@@ -15,6 +15,7 @@ from text_utils import (
     expand_so_canvas,
     pt_to_px,
     layer_bounds_px,
+    com_retry,
     LayerNotFoundError,
     SOEnterError,
 )
@@ -86,9 +87,9 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
 
         target_h_lab = record.bounds_h_px / scale if scale > 0 else record.bounds_h_px
 
-        # Restore doc+layer as active (lab switched it)
-        app.ActiveDocument = doc
-        doc.ActiveLayer = layer
+        # Restore doc+layer as active (lab switched it) — retry on COM busy
+        com_retry(setattr, app, "ActiveDocument", doc)
+        com_retry(setattr, doc, "ActiveLayer", layer)
 
         # Run adaptive algorithm with corrected target
         params = lab.find_adapted_params(
@@ -97,8 +98,8 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
         )
 
         # Apply to real layer
-        app.ActiveDocument = doc
-        doc.ActiveLayer = layer
+        com_retry(setattr, app, "ActiveDocument", doc)
+        com_retry(setattr, doc, "ActiveLayer", layer)
         apply_params_to_layer(app, doc, layer, params, record, logger)
 
         # ===== Boundary protection for Smart Objects =====
@@ -138,8 +139,8 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
                 ratio = record.bounds_h_px / real_h if real_h > 0.5 else 1.0
                 new_size_pt = params.size_pt * ratio
                 try:
-                    app.ActiveDocument = doc
-                    doc.ActiveLayer = layer
+                    com_retry(setattr, app, "ActiveDocument", doc)
+                    com_retry(setattr, doc, "ActiveLayer", layer)
                     ti = layer.TextItem
                     ti.Size = new_size_pt
                     if not params.auto_leading:
@@ -187,8 +188,8 @@ def apply_params_to_layer(app, doc, art_layer, params: AdaptedParams,
     with per-property error handling so one failure doesn't block others.
     """
     try:
-        app.ActiveDocument = doc
-        doc.ActiveLayer = art_layer
+        com_retry(setattr, app, "ActiveDocument", doc)
+        com_retry(setattr, doc, "ActiveLayer", art_layer)
     except Exception:
         pass
     ti = art_layer.TextItem

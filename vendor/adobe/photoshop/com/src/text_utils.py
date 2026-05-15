@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 import win32com.client
 
 
@@ -12,6 +13,34 @@ class PSNotRunningError(PSAError):
 
 class NoActiveDocumentError(PSAError):
     pass
+
+
+class PSBusyError(PSAError):
+    """Photoshop COM is busy and rejected the call."""
+    pass
+
+
+# COM error codes for "application is busy"
+_COM_BUSY_CODES = (-2147417846, -2147417842, -2147418113)
+_COM_RETRY_DELAY = 1.5  # seconds between retries
+_COM_RETRY_MAX = 3
+
+
+def com_retry(func, *args, retries=_COM_RETRY_MAX, delay=_COM_RETRY_DELAY, **kwargs):
+    """Call *func(*args, **kwargs)*, retrying on PS-busy COM errors."""
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as exc:
+            code = getattr(exc, "hresult", 0) or getattr(exc, "args", [0])[0] if getattr(exc, "args", None) else 0
+            if isinstance(code, int) and code in _COM_BUSY_CODES:
+                last_exc = exc
+                if attempt < retries - 1:
+                    time.sleep(delay)
+                continue
+            raise
+    raise PSBusyError(f"PS COM busy after {retries} retries") from last_exc
 
 
 class LayerNotFoundError(PSAError):
@@ -104,8 +133,8 @@ executeAction(idplacedLayerEditContents, desc, DialogModes.NO);
 
 def enter_smart_object(app, so_layer):
     try:
-        app.ActiveDocument.ActiveLayer = so_layer
-        app.DoJavaScript(_JS_ENTER_SO)
+        com_retry(setattr, app.ActiveDocument, "ActiveLayer", so_layer)
+        com_retry(app.DoJavaScript, _JS_ENTER_SO)
         return app.ActiveDocument
     except Exception as e:
         raise SOEnterError(f"Failed to enter Smart Object '{so_layer.Name}': {e}")
@@ -226,7 +255,7 @@ def expand_so_canvas(app, so_doc, scale: float = 1.2) -> bool:
                Higher values are used when the new text is significantly larger.
     """
     try:
-        app.DoJavaScript(_JS_EXPAND_SO_CANVAS.format(scale=scale))
+        com_retry(app.DoJavaScript, _JS_EXPAND_SO_CANVAS.format(scale=scale))
         return True
     except Exception:
         return False

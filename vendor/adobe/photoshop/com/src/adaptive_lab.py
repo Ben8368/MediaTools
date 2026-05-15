@@ -1,6 +1,6 @@
 from __future__ import annotations
 from text_models import TextLayerRecord, AdaptedParams
-from text_utils import PixelUnitsContext, safe_get, pt_to_px, AdaptationError
+from text_utils import PixelUnitsContext, safe_get, pt_to_px, AdaptationError, com_retry
 from adaptive_algorithm import (
     phase1_binary_search,
     phase2_multiline,
@@ -21,8 +21,9 @@ class LabDocument:
 
     def __enter__(self):
         try:
-            self._doc = self._app.Documents.Add(
-                self._doc_width, self._doc_height, self._resolution, "PSA_Lab"
+            self._doc = com_retry(
+                self._app.Documents.Add,
+                self._doc_width, self._doc_height, self._resolution, "PSA_Lab",
             )
         except Exception as e:
             raise AdaptationError(f"Failed to create lab document: {e}")
