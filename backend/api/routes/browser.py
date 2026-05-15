@@ -146,8 +146,8 @@ async def cdp_proxy(websocket: WebSocket, session_id: str):
                             elif msg.type == aiohttp.WSMsgType.ERROR:
                                 break
                     except Exception:
-                        pass
-                
+                        logger.debug("CDP ws forward error", exc_info=True)
+
                 await asyncio.gather(client_to_cdp(), cdp_to_client())
     
     except Exception as e:
@@ -155,4 +155,4 @@ async def cdp_proxy(websocket: WebSocket, session_id: str):
         try:
             await websocket.close(code=4006, reason=str(e))
         except Exception:
-            pass
+            logger.debug("CDP ws close error", exc_info=True)

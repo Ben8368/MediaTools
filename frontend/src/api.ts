@@ -9,7 +9,7 @@ function setApiKey(apiKey: string) {
   if (key) localStorage.setItem(API_KEY_STORAGE_KEY, key)
 }
 
-async function request(path: string, init: RequestInit = {}, retry = true): Promise<any> {
+async function request<T = any>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers)
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const apiKey = getApiKey()

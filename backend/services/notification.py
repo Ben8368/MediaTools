@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from collections import deque
@@ -26,6 +27,9 @@ class Notification:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+_log = logging.getLogger(__name__)
 
 
 class NotificationManager:
@@ -102,7 +106,7 @@ class NotificationManager:
                 data = [n.to_dict() for n in self._notifications]
             self._db_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception:
-            pass
+            _log.warning("notification persist failed", exc_info=True)
 
     def _load_from_disk(self) -> None:
         """Load notifications from disk."""
@@ -122,7 +126,7 @@ class NotificationManager:
                     )
                     self._notifications.append(notification)
         except Exception:
-            pass
+            _log.warning("notification load failed", exc_info=True)
 
 
 _manager = NotificationManager()

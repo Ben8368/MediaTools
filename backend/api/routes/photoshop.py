@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from pathlib import Path
 from typing import Any
@@ -314,7 +315,7 @@ def create_router(
                         message=f"工单 {ticket_id[:8]} 执行失败: 无成功任务 ({payload.get('error', 'unknown')})"
                     )
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("notification push failed", exc_info=True)
 
         try:
             result = start_ticket_execution(

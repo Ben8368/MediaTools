@@ -1,6 +1,9 @@
 """In-memory application log buffer for the Web UI."""
 import logging
 import threading
+
+_log = logging.getLogger(__name__)
+
 from collections import deque
 from datetime import datetime
 from typing import Any
@@ -63,9 +66,9 @@ class LogBuffer(logging.Handler):
                         message=getattr(record, "event", msg),
                     )
                 except Exception:
-                    pass
+                    _log.debug("log buffer write failed", exc_info=True)
         except Exception:
-            pass
+            _log.debug("log buffer outer write failed", exc_info=True)
 
     def get_records(
         self,

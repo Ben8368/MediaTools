@@ -337,7 +337,7 @@ async def ws_agent(websocket: WebSocket):
         try:
             await websocket.send_text(json.dumps({"ok": False, "answer": str(exc)}, ensure_ascii=False))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("WS send error", exc_info=True)
 
 
 if FRONTEND_DEV_SERVER:
