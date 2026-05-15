@@ -1,1 +1,3 @@
-*.psd
+# Generated roundtrip outputs (keep baseline.psd and smoke.psd tracked in git)
+*-mirror.psd
+*-mirror-mirror.psd
