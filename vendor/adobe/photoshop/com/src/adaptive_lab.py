@@ -102,14 +102,14 @@ class LabDocument:
 
     def _get_h(self, lab_layer) -> float:
         try:
-            bounds = lab_layer.Bounds
+            bounds = com_retry(getattr, lab_layer, "Bounds")
             return float(bounds[3]) - float(bounds[1])
         except Exception:
             return 0.0
 
     def _get_w(self, lab_layer) -> float:
         try:
-            bounds = lab_layer.Bounds
+            bounds = com_retry(getattr, lab_layer, "Bounds")
             return float(bounds[2]) - float(bounds[0])
         except Exception:
             return 0.0

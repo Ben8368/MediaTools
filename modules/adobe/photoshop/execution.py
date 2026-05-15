@@ -344,6 +344,10 @@ def start_ticket_execution_impl(
 
                 # Save ticket after every group so partial progress is never lost
                 runtime["save_ticket_json"](ticket, str(ticket_path))
+                # Brief pause between groups to let PS finish pending operations
+                # before the next group opens another PSD (avoids COM busy errors).
+                import time as _time
+                _time.sleep(1.0)
                 _log_notice(_log, "📄 语种组 %s: %d 成功, %d 失败, %d 跳过 → %s",
                             output_name or "(default)",
                             sum(1 for _ in tasks if getattr(_, "status", None) == "done"),

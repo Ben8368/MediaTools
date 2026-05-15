@@ -176,7 +176,7 @@ def process_layer(app, doc, record: TextLayerRecord, lab: LabDocument, logger,
 
 def real_bounds_h(app, art_layer) -> float:
     """Measure the real rendered height of a layer in pixels."""
-    bounds = layer_bounds_px(app, art_layer)
+    bounds = com_retry(layer_bounds_px, app, art_layer)
     return float(bounds[3]) - float(bounds[1])
 
 
@@ -194,32 +194,32 @@ def apply_params_to_layer(app, doc, art_layer, params: AdaptedParams,
         pass
     ti = art_layer.TextItem
     try:
-        ti.Font = params.font_ps
+        com_retry(setattr, ti, "Font", params.font_ps)
     except Exception:
         try:
-            ti.Font = params.font_ps.replace(" ", "-")
+            com_retry(setattr, ti, "Font", params.font_ps.replace(" ", "-"))
         except Exception as e:
             logger.log_error(f"set Font on '{record.layer_path}'", e)
     try:
-        ti.Size = params.size_pt
+        com_retry(setattr, ti, "Size", params.size_pt)
     except Exception as e:
         logger.log_error(f"set Size on '{record.layer_path}'", e)
     try:
-        ti.UseAutoLeading = params.auto_leading
+        com_retry(setattr, ti, "UseAutoLeading", params.auto_leading)
     except Exception as e:
         logger.log_error(f"set UseAutoLeading on '{record.layer_path}'", e)
     if not params.auto_leading:
         try:
-            ti.Leading = params.leading_pt
+            com_retry(setattr, ti, "Leading", params.leading_pt)
         except Exception as e:
             logger.log_error(f"set Leading on '{record.layer_path}'", e)
     try:
-        ti.Tracking = params.tracking
+        com_retry(setattr, ti, "Tracking", params.tracking)
     except Exception as e:
         logger.log_error(f"set Tracking on '{record.layer_path}'", e)
     new_text = record.new_text if record.new_text is not None else record.text
     try:
-        ti.Contents = new_text
+        com_retry(setattr, ti, "Contents", new_text)
     except Exception as e:
         logger.log_error(f"set Contents on '{record.layer_path}'", e)
 
