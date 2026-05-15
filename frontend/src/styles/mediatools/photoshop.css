@@ -366,6 +366,7 @@
 
 .ps-form-grid > .ps-form-grid-span {
   grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .ps-save-path-compact .ps-scan-source-unified {
@@ -503,6 +504,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   margin-left: 12px;
   padding-left: 12px;
 }
@@ -545,12 +547,6 @@
 
 .ps-save-path-compact .ps-scan-source-unified .ps-save-path-summary:focus:not(:focus-visible) {
   outline: none;
-}
-
-.ps-scan-source-unified .ps-save-path-summary__clear {
-  padding: 4px 10px;
-  font-size: 11px;
-  line-height: normal;
 }
 
 .ps-scan-progress {
@@ -679,6 +675,7 @@
 }
 
 .ps-app .mt-field {
+  min-width: 0;
   color: rgba(221,235,255,.72);
 }
 
@@ -1102,6 +1099,13 @@
   padding: 0;
 }
 
+/* 路径摘要：允许在 grid/flex 父级内收缩，避免长路径把操作按钮挤出视口 */
+.ps-language-compact.ps-save-path-compact {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .ps-language-compact summary {
   cursor: pointer;
   list-style: none;
@@ -1166,7 +1170,6 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   color: rgba(221,235,255,.82);
   font-size: 12px;
@@ -1183,23 +1186,52 @@
 
 .ps-save-path-summary__clear {
   flex: 0 0 auto;
-  margin-left: 8px;
-  border: 1px solid rgba(142,183,237,.22);
-  border-radius: 999px;
-  background: rgba(4,10,18,.45);
-  color: rgba(238,246,255,.88);
-  padding: 4px 10px;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  margin-left: 0;
+  padding: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(221, 235, 255, 0.5);
   cursor: pointer;
-  white-space: nowrap;
-  transition: background .12s ease, border-color .12s ease;
+  line-height: 0;
+  transition: color 0.12s ease;
 }
 
-.ps-save-path-summary__clear:hover {
-  border-color: rgba(77,171,255,.48);
-  background: rgba(10,64,120,.42);
+.ps-save-path-summary__clear svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.ps-save-path-summary__clear:hover:not(:disabled) {
+  color: rgba(238, 246, 255, 0.92);
+}
+
+.ps-save-path-summary__clear:focus {
+  outline: none;
+}
+
+.ps-save-path-summary__clear:focus-visible {
+  outline: 2px solid rgba(77, 171, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.ps-save-path-summary__clear:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .ps-language-chips {

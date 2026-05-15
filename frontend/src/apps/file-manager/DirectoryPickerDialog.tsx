@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { createFilebrowserDirectory, fetchFilebrowserDisks, getWorkspace } from '@/api'
@@ -50,6 +50,13 @@ export function DirectoryPickerDialog({
   const [mkdirBusy, setMkdirBusy] = useState(false)
   const [addressDraft, setAddressDraft] = useState('')
   const addressFocusedRef = useRef(false)
+  const addressInputRef = useRef<HTMLInputElement>(null)
+
+  const scrollAddressInputToEnd = useCallback(() => {
+    const el = addressInputRef.current
+    if (!el || el.clientWidth <= 0) return
+    el.scrollLeft = Math.max(0, el.scrollWidth - el.clientWidth)
+  }, [])
 
   const canPickDirectory = mode === 'directory' || mode === 'any'
   const canPickFile = mode === 'file' || mode === 'any'
@@ -92,6 +99,12 @@ export function DirectoryPickerDialog({
   useEffect(() => {
     if (!addressFocusedRef.current) setAddressDraft(currentPath)
   }, [currentPath])
+
+  /* 未编辑时让地址栏显示路径尾部（长路径常见需求） */
+  useLayoutEffect(() => {
+    if (!open || addressFocusedRef.current) return
+    scrollAddressInputToEnd()
+  }, [addressDraft, open, scrollAddressInputToEnd])
 
   const commitAddress = useCallback(async () => {
     const raw = addressDraft.trim()
@@ -201,6 +214,7 @@ export function DirectoryPickerDialog({
               </IconButton>
             </div>
             <input
+              ref={addressInputRef}
               type="text"
               className="fm-picker__address-input"
               value={addressDraft}
@@ -211,6 +225,7 @@ export function DirectoryPickerDialog({
               onBlur={() => {
                 addressFocusedRef.current = false
                 void commitAddress()
+                requestAnimationFrame(() => scrollAddressInputToEnd())
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {

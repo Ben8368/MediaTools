@@ -21,9 +21,11 @@ import {
 } from '@/api'
 import { AiIcon } from '@/apps/downloader/icons'
 import { DirectoryPickerDialog } from '@/apps/FileManagerApp'
+import { CloseIcon } from '@/apps/file-manager/controls'
 import { AutomationTaskDialog, AutomationTaskDialogMemo } from '@/apps/mediatools/AutomationTaskDialog'
 import { FontPicker } from '@/apps/mediatools/FontPicker'
 import { PhotoshopLocaleRequestDialog, type PhotoshopLocaleRequestResult } from '@/apps/mediatools/PhotoshopLocaleRequestDialog'
+import { PsSavePathSummaryValue } from '@/apps/mediatools/PsSavePathSummaryValue'
 import { PhotoshopMiniAiChat } from '@/apps/mediatools/PhotoshopMiniAiChat'
 import {
   automationTaskIndexes,
@@ -972,17 +974,17 @@ export function PhotoshopApp() {
                           setScanSourcePicker('file')
                         }}
                       >
-                        <span
-                          className={`ps-save-path-summary__value${psdPath.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                        <PsSavePathSummaryValue
+                          path={psdPath}
+                          placeholder="点此选择 PSD/PSB；未选路径则扫描当前打开的文档"
                           title={psdPath.trim() || undefined}
-                        >
-                          {psdPath.trim() || '点此选择 PSD/PSB；未选路径则扫描当前打开的文档'}
-                        </span>
+                        />
                         {psdPath.trim() ? (
                           <button
                             type="button"
                             className="ps-save-path-summary__clear"
                             aria-label="清除已选 PSD 路径"
+                            title="清除"
                             disabled={isScanning}
                             onClick={(event) => {
                               event.preventDefault()
@@ -991,7 +993,9 @@ export function PhotoshopApp() {
                               setSourceMode((m) => (!psdFolder.trim() ? null : m))
                             }}
                           >
-                            清除
+                            <span aria-hidden={true}>
+                              <CloseIcon />
+                            </span>
                           </button>
                         ) : null}
                       </div>
@@ -1019,17 +1023,17 @@ export function PhotoshopApp() {
                           setScanSourcePicker('directory')
                         }}
                       >
-                        <span
-                          className={`ps-save-path-summary__value${psdFolder.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                        <PsSavePathSummaryValue
+                          path={psdFolder}
+                          placeholder="点此选择包含 PSD/PSB 的文件夹；未选路径则扫描当前打开的文档"
                           title={psdFolder.trim() || undefined}
-                        >
-                          {psdFolder.trim() || '点此选择包含 PSD/PSB 的文件夹；未选路径则扫描当前打开的文档'}
-                        </span>
+                        />
                         {psdFolder.trim() ? (
                           <button
                             type="button"
                             className="ps-save-path-summary__clear"
                             aria-label="清除已选文件夹路径"
+                            title="清除"
                             disabled={isScanning}
                             onClick={(event) => {
                               event.preventDefault()
@@ -1038,7 +1042,9 @@ export function PhotoshopApp() {
                               setSourceMode((m) => (!psdPath.trim() ? null : m))
                             }}
                           >
-                            清除
+                            <span aria-hidden={true}>
+                              <CloseIcon />
+                            </span>
                           </button>
                         ) : null}
                       </div>
@@ -1115,24 +1121,26 @@ export function PhotoshopApp() {
                         setTicketImportPickerOpen(true)
                       }}
                     >
-                      <span
-                        className={`ps-save-path-summary__value${ticketImportPath.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                      <PsSavePathSummaryValue
+                        path={ticketImportPath}
+                        placeholder="选择工单 JSON（.json）"
                         title={ticketImportPath.trim() || undefined}
-                      >
-                        {ticketImportPath.trim() || '选择工单 JSON（.json）'}
-                      </span>
+                      />
                       {ticketImportPath.trim() ? (
                         <button
                           type="button"
                           className="ps-save-path-summary__clear"
                           aria-label="清除已选工单文件路径"
+                          title="清除"
                           onClick={(event) => {
                             event.preventDefault()
                             event.stopPropagation()
                             setTicketImportPath('')
                           }}
                         >
-                          清除
+                          <span aria-hidden={true}>
+                            <CloseIcon />
+                          </span>
                         </button>
                       ) : null}
                     </div>
@@ -1309,28 +1317,30 @@ export function PhotoshopApp() {
                     activateOutputPathRow()
                   }}
                 >
-                  <span
-                    className={`ps-save-path-summary__value${saveOutputDir.trim() ? '' : ' ps-save-path-summary__value--empty'}`}
+                  <PsSavePathSummaryValue
+                    path={saveOutputDir}
+                    placeholder="点此选择输出目录；确认后保存工单（未选目录则与母版 PSD 同目录）"
                     title={
                       saveOutputDir.trim()
                         ? `${saveOutputDir.trim()} — 点击将工单保存到服务器（不弹出目录）。若要更换目录请先点「清除」。`
                         : '选择输出目录后自动保存工单。未选择时修改后的 PSD 默认在母版 PSD 同目录。'
                     }
-                  >
-                    {saveOutputDir.trim() || '点此选择输出目录；确认后保存工单（未选目录则与母版 PSD 同目录）'}
-                  </span>
+                  />
                   {saveOutputDir.trim() ? (
                     <button
                       type="button"
                       className="ps-save-path-summary__clear"
                       aria-label="清除已选目录（将改回与母版 PSD 同目录）"
+                      title="清除"
                       onClick={(event) => {
                         event.preventDefault()
                         event.stopPropagation()
                         setSaveOutputDir('')
                       }}
                     >
-                      清除
+                      <span aria-hidden={true}>
+                        <CloseIcon />
+                      </span>
                     </button>
                   ) : null}
                 </div>
