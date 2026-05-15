@@ -59,7 +59,7 @@ def update_file(file_path: Path) -> bool:
         except UnicodeDecodeError:
             try:
                 content = file_path.read_text(encoding='utf-16')
-            except:
+            except (UnicodeDecodeError, OSError):
                 print(f"Skipping {file_path}: encoding error")
                 return False
 

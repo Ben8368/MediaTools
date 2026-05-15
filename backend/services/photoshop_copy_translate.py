@@ -6,8 +6,8 @@ import json
 import re
 from typing import Any
 
-from backend.agent.service import MediaAgentService
 from backend.config import get_api_config
+from backend.services.llm_translate import localization_batch_translate
 
 # 与 vendor Photoshop config_reader.horizontal_outer_strip 行为一致：不去掉首尾的换行
 _HORIZONTAL_WS = frozenset(" \t\v\f\u00a0\u2007\u3000")
@@ -55,12 +55,10 @@ def translate_photoshop_copy_items(
     返回: {ok: True, items: [{index, text}]} 或 {ok: False, error}
     """
     cfg = get_api_config()
-    svc = MediaAgentService(
-        api_key=api_key or cfg["api_key"],
-        base_url=base_url or cfg["api_base_url"],
-        model=model or cfg["analysis_model"],
-    )
-    if not (svc.api_key or "").strip():
+    effective_api_key = api_key or cfg["api_key"]
+    effective_base_url = base_url or cfg["api_base_url"]
+    effective_model = model or cfg["analysis_model"]
+    if not (effective_api_key or "").strip():
         return {"ok": False, "error": "未配置模型 API Key"}
 
     normalized: list[dict[str, Any]] = []
@@ -88,7 +86,12 @@ def translate_photoshop_copy_items(
     for offset in range(0, len(normalized), chunk_size):
         chunk = normalized[offset : offset + chunk_size]
         try:
-            raw = svc.localization_batch_translate_json(chunk)
+            raw = localization_batch_translate(
+                chunk,
+                api_key=effective_api_key,
+                base_url=effective_base_url,
+                model=effective_model,
+            )
             payload = _parse_json_object(raw)
         except Exception as exc:
             return {"ok": False, "error": f"翻译或解析失败: {exc}"}

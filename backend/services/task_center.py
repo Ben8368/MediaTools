@@ -365,7 +365,7 @@ class TaskCenter:
             if task[field]:
                 try:
                     task[field] = json.loads(task[field])
-                except:
+                except (json.JSONDecodeError, TypeError):
                     task[field] = {}
 
         return task

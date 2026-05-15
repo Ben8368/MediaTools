@@ -106,7 +106,7 @@ def create_patch(tool: str, patch_name: str, description: str = "") -> bool:
             try:
                 num = int(p.name.split("-")[0])
                 numbers.append(num)
-            except:
+            except (ValueError, IndexError, AttributeError):
                 pass
         next_num = max(numbers) + 1 if numbers else 1
     else:
