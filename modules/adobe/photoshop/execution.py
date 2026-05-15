@@ -171,8 +171,19 @@ def start_ticket_execution_impl(
                     output_path.parent.mkdir(parents=True, exist_ok=True)
 
                     if not dry_run:
-                        shutil.copy2(source_psd, output_path)
-                        doc = connector.open_document(str(output_path))
+                        try:
+                            shutil.copy2(source_psd, output_path)
+                            doc = connector.open_document(str(output_path))
+                        except Exception as exc:
+                            _log.error("Failed to prepare output %s: %s", output_path, exc)
+                            state.message = f"Failed to open output for {output_name}"
+                            failed_tasks += len(tasks)
+                            for task in tasks:
+                                task.status = "error"
+                                task.notes = f"Output preparation failed: {exc}"
+                            # Still save partially-updated ticket
+                            runtime["save_ticket_json"](ticket, str(ticket_path))
+                            continue
                     else:
                         if not connector.app.Documents.Count:
                             raise RuntimeError("No open Photoshop document found for dry run")
@@ -318,14 +329,27 @@ def start_ticket_execution_impl(
                         break
 
                     if not dry_run and doc is not None:
-                        doc.Save()
+                        try:
+                            doc.Save()
+                        except Exception as exc:
+                            _log.warning("Failed to save output %s: %s", output_path, exc)
                         leave_open = group_index == len(grouped_items) - 1
                         if not leave_open:
-                            connector.close_document(doc, save=False)
+                            try:
+                                connector.close_document(doc, save=False)
+                            except Exception:
+                                pass
                         doc = None
                         output_paths.append(str(output_path))
 
+                # Save ticket after every group so partial progress is never lost
                 runtime["save_ticket_json"](ticket, str(ticket_path))
+                _log_notice(_log, "📄 语种组 %s: %d 成功, %d 失败, %d 跳过 → %s",
+                            output_name or "(default)",
+                            sum(1 for _ in tasks if getattr(_, "status", None) == "done"),
+                            sum(1 for _ in tasks if getattr(_, "status", None) == "error"),
+                            sum(1 for _ in tasks if getattr(_, "status", None) == "skip"),
+                            output_path if not dry_run else "(dry-run)")
 
                 state.layer_results = layer_results
                 state.log_paths = log_paths
@@ -391,6 +415,11 @@ def start_ticket_execution_impl(
                 state.error = str(exc)
                 state.message = str(exc)
                 state.finished_at = time.time()
+                # Save ticket with any partial progress before giving up
+                try:
+                    runtime["save_ticket_json"](ticket, str(ticket_path))
+                except Exception:
+                    pass
                 if doc is not None and connector:
                     try:
                         connector.close_document(doc, save=False)

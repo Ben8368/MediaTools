@@ -1,1 +1,170 @@
-[]
+[
+  {
+    "id": "1778809946927_0",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\ud83d\ude80 \u5f00\u59cb\u6267\u884c\u5de5\u5355 8db82791-02bb-4e79-8176-476d8a8cb254 (6 \u4e2a\u4efb\u52a1)",
+    "timestamp": 1778809946.927841,
+    "read": false
+  },
+  {
+    "id": "1778809953215_1",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809953.2159653,
+    "read": false
+  },
+  {
+    "id": "1778809953217_2",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809953.2170124,
+    "read": false
+  },
+  {
+    "id": "1778809958925_3",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809958.9252148,
+    "read": false
+  },
+  {
+    "id": "1778809958926_4",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809958.9265325,
+    "read": false
+  },
+  {
+    "id": "1778809964583_5",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809964.5835156,
+    "read": false
+  },
+  {
+    "id": "1778809964584_6",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778809964.5845695,
+    "read": false
+  },
+  {
+    "id": "1778809964610_7",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u5de5\u5355 8db82791 \u6267\u884c\u5b8c\u6210: \u6210\u529f 6 \u6761\uff0c\u5931\u8d25 0 \u6761",
+    "timestamp": 1778809964.6105833,
+    "read": false
+  },
+  {
+    "id": "1778809964611_8",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\ud83d\udcca \u5de5\u5355 8db82791-02bb-4e79-8176-476d8a8cb254 \u6267\u884c\u5b8c\u6210: \u6210\u529f 6 \u6761, \u5931\u8d25 0 \u6761",
+    "timestamp": 1778809964.6118062,
+    "read": false
+  },
+  {
+    "id": "1778810225206_9",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\ud83d\ude80 \u5f00\u59cb\u6267\u884c\u5de5\u5355 d4041124-52ee-425f-8fc8-dcecc5d53c7f (12 \u4e2a\u4efb\u52a1)",
+    "timestamp": 1778810225.2065303,
+    "read": false
+  },
+  {
+    "id": "1778810255625_10",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u2705 [smart_object] Supports text, image, video,and audio input types, reshaping au: converged",
+    "timestamp": 1778810255.6252468,
+    "read": false
+  },
+  {
+    "id": "1778810291285_11",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u2705 [smart_object] Multimodal Creation All -Around Reference: converged",
+    "timestamp": 1778810291.2858346,
+    "read": false
+  },
+  {
+    "id": "1778810291287_12",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810291.287023,
+    "read": false
+  },
+  {
+    "id": "1778810291287_13",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810291.287956,
+    "read": false
+  },
+  {
+    "id": "1778810320958_14",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u2705 [smart_object] Supports text, image, video,and audio input types, reshaping au: converged",
+    "timestamp": 1778810320.9583538,
+    "read": false
+  },
+  {
+    "id": "1778810347175_15",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u2705 [smart_object] Multimodal Creation All -Around Reference: converged",
+    "timestamp": 1778810347.1751797,
+    "read": false
+  },
+  {
+    "id": "1778810347176_16",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810347.1767223,
+    "read": false
+  },
+  {
+    "id": "1778810347177_17",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810347.1777048,
+    "read": false
+  },
+  {
+    "id": "1778810352109_18",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Seedance 2.0: \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810352.109074,
+    "read": false
+  },
+  {
+    "id": "1778810352110_19",
+    "level": "NOTICE",
+    "module": "photoshop.execution",
+    "message": "\u23ed Dreamina : \u56fa\u5b9a\u6587\u6848\uff1a\u5df2\u8df3\u8fc7\u5199\u5165\uff0c\u4fdd\u7559\u4ece\u6bcd\u7248\u590d\u5236\u5230\u8be5 PSD \u540e\u7684\u56fe\u5c42\u5185\u5bb9",
+    "timestamp": 1778810352.1102247,
+    "read": false
+  },
+  {
+    "id": "1778810352112_20",
+    "level": "ERROR",
+    "module": "photoshop.execution",
+    "message": "\u5de5\u5355 d4041124 \u6267\u884c\u5931\u8d25: \u65e0\u6210\u529f\u4efb\u52a1 ((-2147417846, '\u6d88\u606f\u7b5b\u9009\u5668\u663e\u793a\u5e94\u7528\u7a0b\u5e8f\u6b63\u5728\u4f7f\u7528\u4e2d\u3002', None, None))",
+    "timestamp": 1778810352.1129704,
+    "read": false
+  }
+]
